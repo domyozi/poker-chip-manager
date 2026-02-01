@@ -257,7 +257,8 @@ body {
 .players-ring {
   position: relative;
   width: 100%; max-width: 480px;
-  height: 280px;
+  height: 320px;
+  min-height: 320px;
   z-index: 2;
 }
 
@@ -288,6 +289,7 @@ body {
   font-size: 12px; font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
   transition: color 0.3s;
 }
 .player-card .chips {
@@ -650,6 +652,18 @@ body {
   .action-btns { gap: 6px; }
   .action-btn { max-width: 90px; padding: 11px 6px; font-size: 11px; }
 }
+
+/* スマホ横向き */
+@media (max-height: 500px) and (orientation: landscape) {
+  .players-ring { height: 260px; min-height: 260px; }
+  .player-card { width: 85px; }
+  .player-card .avatar { width: 36px; height: 36px; font-size: 14px; }
+  .player-card .name { font-size: 10px; }
+  .player-card .chips { font-size: 10px; }
+  .pot-center { transform: translate(-50%, -50%) scale(0.85); }
+  .action-panel { padding: 10px 16px; }
+  .action-btn { padding: 10px 8px; }
+}
 </style>
 </head>
 <body>
@@ -997,11 +1011,32 @@ let isSplitMode = false;
 // Player positions (ellipse ring). index → {x%, y%}
 function calcPositions(n) {
   const positions = [];
-  // テーブルの上に並べる。角度を上から時計回り
+  const cx = 50, cy = 50;
+
+  // 2人の場合: 上下に大きく離す
+  if (n === 2) {
+    positions.push({ x: cx, y: 10 });  // 上
+    positions.push({ x: cx, y: 90 });  // 下
+    return positions;
+  }
+
+  // 3-4人の場合: 広めの楕円
+  if (n <= 4) {
+    const rx = 44, ry = 42;
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+      positions.push({
+        x: cx + rx * Math.cos(angle),
+        y: cy + ry * Math.sin(angle)
+      });
+    }
+    return positions;
+  }
+
+  // 5人以上: 標準の楕円配置
+  const rx = 42, ry = 40;
   for (let i = 0; i < n; i++) {
-    const angle = (i / n) * 2 * Math.PI - Math.PI / 2; // 上が-π/2
-    const cx = 50, cy = 50;
-    const rx = 42, ry = 40;
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
     positions.push({
       x: cx + rx * Math.cos(angle),
       y: cy + ry * Math.sin(angle)
