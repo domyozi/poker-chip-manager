@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Playfair+Display:wght@400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* ─── CSS Variables ──────────────────────────── */
 :root {
@@ -60,6 +60,25 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+.screen:not(#game-screen) {
+  position: relative;
+  background-image: url('img/backgroundimg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.screen:not(#game-screen)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 14, 12, 0.7);
+  z-index: 0;
+  pointer-events: none;
+}
+.screen:not(#game-screen) > * {
+  position: relative;
+  z-index: 1;
+}
 .screen.screen-scroll-start,
 #settings-screen {
   justify-content: flex-start;
@@ -70,22 +89,6 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
 }
 #settings-screen {
   position: relative;
-  background-image: url('img/backgroundimg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-#settings-screen::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 14, 12, 0.7);
-  z-index: 0;
-  pointer-events: none;
-}
-#settings-screen > * {
-  position: relative;
-  z-index: 1;
 }
 .screen.hidden { opacity: 0; transform: scale(0.96); pointer-events: none; }
 .screen { pointer-events: auto; }
@@ -97,6 +100,26 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   letter-spacing: 6px;
   text-transform: uppercase;
   margin-bottom: 12px;
+  text-shadow: 0 0 40px var(--gold-glow);
+}
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.brand-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(0,0,0,0.4));
+}
+.brand-title {
+  font-family: 'Cinzel', serif;
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 3px;
   text-shadow: 0 0 40px var(--gold-glow);
 }
 .setup-subtitle {
@@ -1512,7 +1535,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
 <!-- ─── ROOM SCREEN ───────────────────────────── -->
 <div id="room-screen" class="screen">
   <div class="app-version" id="app-version">v0.0.0</div>
-  <div class="setup-title">POKER</div>
+  <div class="brand-header">
+    <img src="img/logo.png" alt="Pocket Pot" class="brand-logo">
+    <div class="brand-title">Pocket Pot</div>
+  </div>
   <div class="setup-subtitle">テーブルに入る</div>
 
   <div class="setup-section">
@@ -1549,7 +1575,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   <div class="screen-header">
     <button class="room-btn back-btn" id="waiting-back-btn">← 戻る</button>
   </div>
-  <div class="setup-title">WAITING</div>
+  <div class="brand-header">
+    <img src="img/logo.png" alt="Pocket Pot" class="brand-logo">
+    <div class="brand-title">Pocket Pot</div>
+  </div>
   <div class="setup-subtitle">参加者が揃うのを待っています</div>
 
   <div class="setup-section">
@@ -1606,7 +1635,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── SETTINGS SCREEN ───────────────────────── -->
 <div id="settings-screen" class="screen hidden">
-  <div class="setup-title">SETTINGS</div>
+  <div class="brand-header">
+    <img src="img/logo.png" alt="Pocket Pot" class="brand-logo">
+    <div class="brand-title">Pocket Pot</div>
+  </div>
   <div class="setup-subtitle">ホストが設定を確定します</div>
 
   <div id="settings-host-panel">
