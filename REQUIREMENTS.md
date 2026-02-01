@@ -42,4 +42,7 @@ P2 (Deferred):\
 - index.html \uc0\u51473 \u49900 \
 - No new frameworks\
 - Supabase config untouched\
+
+## Delivery Rule\
+- Every change must be committed and pushed to git before completion\
 }

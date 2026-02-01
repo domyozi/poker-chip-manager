@@ -898,30 +898,23 @@ summary.setup-label::-webkit-details-marker { display: none; }
   z-index: 3;
   pointer-events: none;
 }
-.community-card {
+.card-slot {
   width: 42px; height: 60px;
-  background: #f6f6f3;
   border-radius: 9px;
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
   display: flex; align-items: center; justify-content: center;
-  color: #111;
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
   position: relative;
-  opacity: 1;
 }
-.community-card .suit { font-size: 18px; }
-.community-card .corner {
-  position: absolute;
-  font-size: 10px; font-weight: 700;
+.card-slot img {
+  width: 100%; height: 100%;
+  object-fit: contain;
 }
-.community-card .corner.tl { top: 6px; left: 6px; }
-.community-card .corner.br { bottom: 6px; right: 6px; transform: rotate(180deg); }
-.community-card.deal-in { animation: deal-in 0.45s ease-out; }
-@keyframes deal-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.card-slot.empty {
+  border-style: dashed;
+  opacity: 0.35;
+  box-shadow: none;
 }
 
 /* ─── Action Panel ───────────────────────────── */
@@ -1330,7 +1323,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   .player-card .name { font-size: 10px; }
   .player-card .chips { font-size: 11px; }
   .pot-amount { font-size: 24px; }
-  .community-card { width: 38px; height: 54px; }
+  .card-slot { width: 38px; height: 54px; }
   .action-btns { gap: 6px; }
   .action-btn { max-width: 90px; padding: 11px 6px; font-size: 11px; }
   .table-center-image img { max-width: 200px; }
@@ -1657,7 +1650,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.3.0";
+const APP_VERSION = "v0.4.0";
 
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
@@ -2884,32 +2877,23 @@ function getCommunityCardCount(phase) {
 function renderCommunityCards() {
   const container = document.getElementById('community-cards');
   if (!container) return;
-  if (!gameState) {
-    container.innerHTML = '';
-    lastCommunityCount = 0;
-    return;
-  }
-  const count = getCommunityCardCount(gameState.phase);
-  if (count === 0) {
-    container.innerHTML = '';
-    lastCommunityCount = 0;
-    return;
-  }
-  if (count === lastCommunityCount && container.children.length === count) return;
   container.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const card = document.createElement('div');
-    card.className = 'community-card';
-    if (i >= lastCommunityCount) card.classList.add('deal-in');
-    const suit = COMMUNITY_SUITS[i % COMMUNITY_SUITS.length];
-    card.innerHTML = `
-      <div class="corner tl">${suit}</div>
-      <div class="suit">${suit}</div>
-      <div class="corner br">${suit}</div>
-    `;
-    container.appendChild(card);
+  const count = gameState ? getCommunityCardCount(gameState.phase) : 0;
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'card-slot';
+    if (i < count) {
+      const img = document.createElement('img');
+      img.src = 'img/trump.png';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.onerror = () => { img.style.display = 'none'; };
+      slot.appendChild(img);
+    } else {
+      slot.classList.add('empty');
+    }
+    container.appendChild(slot);
   }
-  lastCommunityCount = count;
 }
 
 function renderPhase() {

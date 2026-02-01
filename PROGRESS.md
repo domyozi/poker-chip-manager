@@ -1,11 +1,12 @@
 # Progress
 
 ## Current Version
-- v0.3.0 (2026-02-01)
+- v0.4.0 (2026-02-01)
 
 ## ✅ Done
 - Added center table image (card-back watermark)
 - Added visible version label (top-right)
+- Phase indicator community cards: 5 slots always; fill 0→3→4→5 using img/trump.png
 
 ## 🛠 In Progress
 - P0: Mobile room code input (typing/deleting breaks on iOS)
@@ -24,8 +25,13 @@
 - [ ] Play screen shows center logo, doesn’t block taps
 - [ ] Version is visible on top-right
 - [ ] No console errors when card-back.png is missing
+- [ ] Preflop: 5 empty slots visible
+- [ ] Flop/Turn/River: slots fill 3/4/5 with img/trump.png
 
 ## Release Notes
+### v0.4.0
+- Phase indicator community cards: 5 slots always; fill 0→3→4→5 using img/trump.png
+
 ### v0.3.0
 - Added center table image (card-back watermark) using img/trump.png
 
