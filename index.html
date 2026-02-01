@@ -752,6 +752,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   align-items: stretch;
   justify-content: flex-start;
   background: #0f1a16;
+  padding: 0;
 }
 
 /* Header */
@@ -1375,11 +1376,35 @@ summary.setup-label::-webkit-details-marker { display: none; }
   text-align: center;
   width: 90%; max-width: 300px;
 }
-.next-hand-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 18px; font-weight: 700;
-  color: var(--gold);
+.next-hand-winners {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
   margin-bottom: 6px;
+}
+.next-hand-winner-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.next-hand-winner-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--felt-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border: 2px solid var(--gold);
+}
+.next-hand-winner-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
 }
 .next-hand-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 22px; }
 .next-hand-gain {
@@ -1400,6 +1425,123 @@ summary.setup-label::-webkit-details-marker { display: none; }
   transition: transform 0.15s;
 }
 .next-hand-btn:hover { transform: translateY(-1px); }
+.next-hand-btn.secondary {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--text-primary);
+}
+.next-hand-buttons {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.next-hand-buttons .next-hand-btn {
+  flex: 1;
+}
+
+/* ─── Chip Status Overlay ─────────────────────── */
+.chip-status-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 52;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.chip-status-overlay.visible { opacity: 1; pointer-events: auto; }
+.chip-status-card {
+  background: var(--felt-edge);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 24px;
+  width: 90%; max-width: 360px;
+}
+.chip-status-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 16px;
+}
+.chip-status-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.chip-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+}
+.chip-status-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--felt-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.chip-status-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.chip-status-chips {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.chip-status-change {
+  font-size: 12px;
+  min-width: 60px;
+  text-align: right;
+}
+.chip-status-change.positive { color: #4ade80; }
+.chip-status-change.negative { color: #f87171; }
+.chip-status-change.neutral { color: var(--text-muted); }
+
+/* ─── History List ───────────────────────────── */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+.history-item {
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.history-header {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.history-result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.history-winner {
+  color: #4ade80;
+}
+.history-loser {
+  color: #f87171;
+}
+.history-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 20px;
+  font-size: 13px;
+}
 
 /* ─── Winner celebration flash ────────────────── */
 .win-flash {
@@ -1495,6 +1637,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Responsive tweak ───────────────────────── */
 @media (max-width: 400px) {
+  .brand-title { font-size: 28px; letter-spacing: 2px; }
+  .brand-logo { width: 40px; height: 40px; }
   .player-card { width: 90px; }
   .player-card .avatar { width: 40px; height: 40px; font-size: 15px; }
   .player-card .name { font-size: 10px; }
@@ -1536,8 +1680,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <img src="img/logo.png" alt="Pocket Pot" class="brand-logo">
     <div class="brand-title">Pocket Pot</div>
   </div>
-  <div class="setup-subtitle">テーブルに入る</div>
-
   <div class="setup-section">
     <div class="setup-label">あなたの名前</div>
     <div class="room-panel">
@@ -1632,11 +1774,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── SETTINGS SCREEN ───────────────────────── -->
 <div id="settings-screen" class="screen hidden">
+  <div class="screen-header">
+    <button class="room-btn back-btn" id="settings-back-btn">← 戻る</button>
+  </div>
   <div class="brand-header">
     <img src="img/logo.png" alt="Pocket Pot" class="brand-logo">
     <div class="brand-title">Pocket Pot</div>
   </div>
-  <div class="setup-subtitle">ホストが設定を確定します</div>
+  <div class="setup-subtitle">ゲーム設定</div>
 
   <div id="settings-host-panel">
     <div class="setup-section">
@@ -1651,7 +1796,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
           <input type="number" id="bb-input" value="20" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
         </div>
       </div>
-      <div class="blind-row" style="margin-top: 12px;">
+      <div class="blind-row" id="initial-chips-row" style="margin-top: 12px;">
         <div class="blind-input-wrap" style="flex: 1;">
           <span class="blind-input-label">初期チップ</span>
           <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
@@ -1770,6 +1915,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <button class="header-btn" id="menu-btn">⋯</button>
       <div class="header-menu" id="header-menu" style="display:none;">
         <button class="header-menu-item" id="menu-display-toggle">表記切替: CHIP</button>
+        <button class="header-menu-item" id="menu-history-btn">履歴を表示</button>
         <button class="header-menu-item" id="menu-reset-btn">ゲーム終了して戻る</button>
       </div>
     </div>
@@ -1828,10 +1974,31 @@ summary.setup-label::-webkit-details-marker { display: none; }
 <!-- ─── NEXT HAND ─────────────────────────────── -->
 <div class="next-hand-overlay" id="next-hand-overlay">
   <div class="next-hand-card">
-    <div class="next-hand-title" id="next-hand-winner-name">—</div>
+    <div class="next-hand-winners" id="next-hand-winners"></div>
     <div class="next-hand-sub">の勝ち！</div>
     <div class="next-hand-gain" id="next-hand-gain"></div>
-    <button class="next-hand-btn" onclick="nextHand()">次のハンド</button>
+    <div class="next-hand-buttons">
+      <button class="next-hand-btn secondary" onclick="showChipStatus()">チップ状況</button>
+      <button class="next-hand-btn" onclick="nextHand()">次のハンド</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CHIP STATUS OVERLAY ───────────────────── -->
+<div class="chip-status-overlay" id="chip-status-overlay">
+  <div class="chip-status-card">
+    <div class="chip-status-title">チップ状況</div>
+    <div class="chip-status-table" id="chip-status-table"></div>
+    <button class="next-hand-btn" onclick="hideChipStatus(); nextHand();">次のハンド</button>
+  </div>
+</div>
+
+<!-- ─── HAND HISTORY OVERLAY ─────────────────── -->
+<div class="chip-status-overlay" id="history-overlay">
+  <div class="chip-status-card" style="max-width: 400px;">
+    <div class="chip-status-title">ハンド履歴</div>
+    <div class="history-list" id="history-list"></div>
+    <button class="next-hand-btn" onclick="hideHistory()">閉じる</button>
   </div>
 </div>
 
@@ -2155,6 +2322,8 @@ let gameState = null;
 let raiseValue = 0;           // 現在のレイズ額（絶対値）
 let selectedWinners = [];     // showdown時の勝者選択
 let isSplitMode = false;
+let handHistory = [];         // ハンド履歴
+let chipsBeforeHand = {};     // ハンド開始時のチップ
 let lastCommunityCount = 0;
 let lastPhase = null;
 let confirmLock = false;
@@ -3019,6 +3188,10 @@ function renderPerPlayerStackList() {
   if (!listEl) return;
   const enabled = getPerPlayerStackEnabled();
   listEl.style.display = enabled ? 'flex' : 'none';
+  const initialChipsRow = document.getElementById('initial-chips-row');
+  if (initialChipsRow) {
+    initialChipsRow.style.display = enabled ? 'none' : 'flex';
+  }
   if (!enabled) return;
 
   const settings = collectSettingsFromForm();
@@ -3078,7 +3251,9 @@ function startGameWithPlayers(players, settings) {
   gameState = initGame(playersWithStacks, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
+  handHistory = [];
   gameState = startHand(gameState);
+  saveChipsBeforeHand();
 
   setUiState('playing');
 
@@ -3737,8 +3912,12 @@ function confirmWinner() {
   const per = selectedWinners.length ? Math.floor(totalPot / selectedWinners.length) : 0;
   const rem = totalPot - per * selectedWinners.length;
 
-  const winnerNames = selectedWinners.map(id => gameState.players.find(p => p.id === id)?.name || '—');
+  const winners = selectedWinners.map(id => {
+    const p = gameState.players.find(p => p.id === id);
+    return { name: p?.name || '—', icon: p?.icon || '' };
+  });
   gameState = distributePot(gameState, selectedWinners);
+  recordHandResult(winners, totalPot);
   document.getElementById('showdown-overlay').classList.remove('visible');
   render();
 
@@ -3750,7 +3929,7 @@ function confirmWinner() {
       ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
       : `各 +${per.toLocaleString()} チップ`;
   }
-  showNextHand(winnerNames.join(' & '), gainText);
+  showNextHand(winners, gainText);
 
   // Broadcast resolution so non-host clients can exit showdown
   if (onlineState.role === 'host' && roomChannel) {
@@ -3764,8 +3943,14 @@ function confirmWinner() {
 }
 
 // ─── NEXT HAND ────────────────────────────────
-function showNextHand(winnerName, gainText = '') {
-  document.getElementById('next-hand-winner-name').textContent = winnerName;
+function showNextHand(winners, gainText = '') {
+  const winnersEl = document.getElementById('next-hand-winners');
+  winnersEl.innerHTML = winners.map(w => `
+    <div class="next-hand-winner-item">
+      <div class="next-hand-winner-avatar">${w.icon || w.name.charAt(0).toUpperCase()}</div>
+      <div class="next-hand-winner-name">${w.name}</div>
+    </div>
+  `).join('');
   document.getElementById('next-hand-gain').textContent = gainText;
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
@@ -3786,6 +3971,85 @@ function showNextHand(winnerName, gainText = '') {
   setTimeout(() => flash.classList.remove('visible'), 600);
 }
 
+function showChipStatus() {
+  const tableEl = document.getElementById('chip-status-table');
+  if (!gameState || !gameState.players) return;
+
+  tableEl.innerHTML = gameState.players.map(p => {
+    const before = chipsBeforeHand[p.id] || p.chips;
+    const change = p.chips - before;
+    const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+    const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '±0';
+    return `
+      <div class="chip-status-row">
+        <div class="chip-status-avatar">${p.icon || p.name.charAt(0).toUpperCase()}</div>
+        <div class="chip-status-name">${p.name}</div>
+        <div class="chip-status-chips">${p.chips.toLocaleString()}</div>
+        <div class="chip-status-change ${changeClass}">${changeText}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('chip-status-overlay').classList.add('visible');
+}
+
+function hideChipStatus() {
+  document.getElementById('chip-status-overlay').classList.remove('visible');
+  document.getElementById('next-hand-overlay').classList.remove('visible');
+}
+
+function showHistory() {
+  const listEl = document.getElementById('history-list');
+  if (handHistory.length === 0) {
+    listEl.innerHTML = '<div class="history-empty">まだ履歴がありません</div>';
+  } else {
+    listEl.innerHTML = handHistory.map((h, i) => {
+      const winnerText = h.winners.map(w =>
+        `<span class="history-winner">${w.icon || ''} ${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span>`
+      ).join(' ');
+      const loserText = h.losers.map(l =>
+        `<span class="history-loser">${l.icon || ''} ${l.name} -${l.loss.toLocaleString()}</span>`
+      ).join(' ');
+      return `
+        <div class="history-item">
+          <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
+          <div class="history-result">
+            ${winnerText}
+            ${loserText}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  document.getElementById('history-overlay').classList.add('visible');
+  document.getElementById('header-menu').style.display = 'none';
+}
+
+function hideHistory() {
+  document.getElementById('history-overlay').classList.remove('visible');
+}
+
+function saveChipsBeforeHand() {
+  if (!gameState || !gameState.players) return;
+  chipsBeforeHand = {};
+  gameState.players.forEach(p => {
+    chipsBeforeHand[p.id] = p.chips;
+  });
+}
+
+function recordHandResult(winners, totalPot) {
+  if (!gameState || !gameState.players) return;
+  const losers = gameState.players.filter(p =>
+    !winners.some(w => w.name === p.name) && chipsBeforeHand[p.id] !== p.chips
+  );
+  handHistory.push({
+    hand: handHistory.length + 1,
+    winners: winners.map(w => ({ name: w.name, icon: w.icon })),
+    losers: losers.map(l => ({ name: l.name, icon: l.icon, loss: chipsBeforeHand[l.id] - l.chips })),
+    pot: totalPot
+  });
+}
+
 function nextHand() {
   if (nextHandLock) return;
   if (onlineState.role === 'player') return;
@@ -3798,7 +4062,19 @@ function nextHand() {
 function showGameOver() {
   const winner = gameState.players.find(p => p.chips > 0);
   const overlay = document.getElementById('next-hand-overlay');
-  document.getElementById('next-hand-winner-name').textContent = winner ? `${winner.name} が優勝！` : 'ゲーム終了';
+  const winnersEl = document.getElementById('next-hand-winners');
+  if (winner) {
+    winnersEl.innerHTML = `
+      <div class="next-hand-winner-item">
+        <div class="next-hand-winner-avatar">${winner.icon || winner.name.charAt(0).toUpperCase()}</div>
+        <div class="next-hand-winner-name">${winner.name}</div>
+      </div>
+    `;
+    document.querySelector('.next-hand-sub').textContent = 'が優勝！';
+  } else {
+    winnersEl.innerHTML = '<div class="next-hand-winner-name">ゲーム終了</div>';
+    document.querySelector('.next-hand-sub').textContent = '';
+  }
   document.getElementById('next-hand-gain').textContent = '';
   overlay.classList.add('visible');
   // ボタンを「新しいゲーム」に変更
@@ -3825,6 +4101,7 @@ function showGameOver() {
 function advanceToNextHandAndBroadcast() {
   gameState = advanceDealer(gameState);
   gameState = startHand(gameState);
+  saveChipsBeforeHand();
 
   if (gameState.phase === 'finished') {
     showGameOver();
@@ -3964,6 +4241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
   }
+  window.scrollTo(0, 0);
   loadSavedPlayerNames();
   refreshIconPickers();
   setUiState('room');
@@ -4088,6 +4366,16 @@ document.addEventListener('DOMContentLoaded', () => {
       leaveRoom();
     });
   }
+  const settingsBackBtn = document.getElementById('settings-back-btn');
+  if (settingsBackBtn) {
+    settingsBackBtn.addEventListener('click', () => {
+      if (onlineState.role === 'local') {
+        setUiState('room');
+      } else {
+        leaveRoom();
+      }
+    });
+  }
   if (startBtn) {
     startBtn.addEventListener('click', () => {
       startGame();
@@ -4136,6 +4424,12 @@ document.addEventListener('DOMContentLoaded', () => {
     displayToggleBtn.addEventListener('click', () => {
       applyDisplayMode(displayMode === 'bb' ? 'chips' : 'bb');
       if (menu) menu.style.display = 'none';
+    });
+  }
+  const menuHistoryBtn = document.getElementById('menu-history-btn');
+  if (menuHistoryBtn) {
+    menuHistoryBtn.addEventListener('click', () => {
+      showHistory();
     });
   }
   if (menuResetBtn) {
