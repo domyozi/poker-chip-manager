@@ -166,9 +166,12 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(255,255,255,0.06);
   color: var(--text-primary);
   font-family: 'Source Code Pro', monospace;
-  font-size: 13px; letter-spacing: 1px;
+  font-size: 12px; letter-spacing: 0.5px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .room-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
 .room-btn:active { transform: scale(0.97); }
@@ -176,7 +179,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(212,175,55,0.18);
   border-color: var(--gold-dim);
   color: var(--gold);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 .room-status {
@@ -222,7 +225,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   content: '👤';
   margin-right: 8px;
 }
-.participant-name { font-weight: 600; color: var(--chip-white); font-size: 14px; }
+.participant-name {
+  font-weight: 600;
+  color: var(--chip-white);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
 .participant-meta { font-size: 11px; color: var(--text-secondary); letter-spacing: 1px; margin-top: 2px; }
 .participant-role {
   padding: 2px 8px;
@@ -252,17 +263,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 16px;
-  padding: 12px;
+  padding: 10px 8px;
   background: rgba(255,255,255,0.03);
   border-radius: 12px;
+  flex-wrap: wrap;
 }
 .step-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 8px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
@@ -295,9 +307,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   content: '✓';
 }
 .step-text {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 .step-item.active .step-text {
   color: var(--gold);
@@ -1275,10 +1288,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
         <div class="blind-input-wrap">
           <span class="blind-input-label">アクションタイマー</span>
           <select id="timer-select">
+            <option value="0" selected>無制限</option>
             <option value="15">15秒</option>
-            <option value="30" selected>30秒</option>
+            <option value="30">30秒</option>
             <option value="60">60秒</option>
-            <option value="0">無制限</option>
           </select>
         </div>
         <div class="blind-input-wrap">
@@ -1665,7 +1678,7 @@ let selectedWinners = [];     // showdown時の勝者選択
 let isSplitMode = false;
 
 // Timer state
-let timerSettings = { duration: 30, soundEnabled: true };
+let timerSettings = { duration: 0, soundEnabled: true };
 let actionTimer = null;
 let timeRemaining = 0;
 let timerStartTime = 0;
@@ -2346,7 +2359,7 @@ function collectSettingsFromForm() {
     smallBlind: parseInt(document.getElementById('sb-input').value) || 10,
     bigBlind: parseInt(document.getElementById('bb-input').value) || 20,
     initialChips: parseInt(document.getElementById('initial-chips-input').value) || 1000,
-    timerDuration: parseInt(document.getElementById('timer-select').value) || 30,
+    timerDuration: parseInt(document.getElementById('timer-select').value) || 0,
     soundEnabled: document.getElementById('timer-sound-toggle').checked,
     tournamentEnabled: document.getElementById('tournament-mode-toggle').checked,
     levelDuration: parseInt(document.getElementById('blind-level-select').value) || 15
