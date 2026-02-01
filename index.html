@@ -721,22 +721,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
   min-height: 340px;
 }
 
-/* Table center image (card-back watermark) */
-.table-center-image {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.12;
-}
-.table-center-image img {
-  display: block;
-  width: 60%;
-  max-width: 280px;
-  height: auto;
-}
-
 /* Table felt oval */
 .table-felt {
   position: absolute;
@@ -861,7 +845,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* ─── Pot Center ─────────────────────────────── */
 .pot-center {
   position: absolute;
-  top: 50%; left: 50%;
+  top: calc(50% + 56px); left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   z-index: 3;
@@ -889,32 +873,36 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Community Cards ────────────────────────── */
 .community-cards {
-  position: absolute;
-  top: calc(50% - 58px);
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
-  gap: 8px;
-  z-index: 3;
-  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.6vw, 14px);
+  margin: 14px 0 10px;
 }
-.card-slot {
-  width: 42px; height: 60px;
-  border-radius: 9px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.04);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-  display: flex; align-items: center; justify-content: center;
+.community-slot {
+  width: clamp(44px, 7vw, 76px);
+  aspect-ratio: 2.5 / 3.5;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 0;
   position: relative;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.22);
 }
-.card-slot img {
-  width: 100%; height: 100%;
-  object-fit: contain;
+.community-slot img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.05) contrast(1.05);
 }
-.card-slot.empty {
-  border-style: dashed;
-  opacity: 0.35;
+.community-slot.empty {
+  background: rgba(255,255,255,0.03);
+  border: 1px dashed rgba(255,255,255,0.22);
   box-shadow: none;
+  opacity: 0.55;
 }
 
 /* ─── Action Panel ───────────────────────────── */
@@ -1323,10 +1311,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   .player-card .name { font-size: 10px; }
   .player-card .chips { font-size: 11px; }
   .pot-amount { font-size: 24px; }
-  .card-slot { width: 38px; height: 54px; }
   .action-btns { gap: 6px; }
   .action-btn { max-width: 90px; padding: 11px 6px; font-size: 11px; }
-  .table-center-image img { max-width: 200px; }
+}
+
+@media (max-width: 520px) {
+  .community-cards { gap: 10px; }
+  .community-slot { border-radius: 10px; }
 }
 
 /* スマホ横向き */
@@ -1576,9 +1567,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
   <div class="table-area">
     <div class="table-felt"></div>
-    <div class="table-center-image" aria-hidden="true">
-      <img src="img/trump.png" alt="" loading="lazy" onerror="this.style.display='none'">
-    </div>
     <div class="players-ring" id="players-ring"></div>
     <div class="community-cards" id="community-cards"></div>
     <div class="pot-center">
@@ -1650,7 +1638,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.4.0";
+const APP_VERSION = "v0.4.1";
 
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
@@ -2881,7 +2869,7 @@ function renderCommunityCards() {
   const count = gameState ? getCommunityCardCount(gameState.phase) : 0;
   for (let i = 0; i < 5; i++) {
     const slot = document.createElement('div');
-    slot.className = 'card-slot';
+    slot.className = 'community-slot';
     if (i < count) {
       const img = document.createElement('img');
       img.src = 'img/trump.png';

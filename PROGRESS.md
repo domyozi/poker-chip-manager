@@ -1,12 +1,13 @@
 # Progress
 
 ## Current Version
-- v0.4.0 (2026-02-01)
+- v0.4.1 (2026-02-01)
 
 ## ✅ Done
 - Added center table image (card-back watermark)
 - Added visible version label (top-right)
 - Phase indicator community cards: 5 slots always; fill 0→3→4→5 using img/trump.png
+- Fix: community slot image fit (cover) + removed trump watermark
 
 ## 🛠 In Progress
 - P0: Mobile room code input (typing/deleting breaks on iOS)
@@ -29,6 +30,9 @@
 - [ ] Flop/Turn/River: slots fill 3/4/5 with img/trump.png
 
 ## Release Notes
+### v0.4.1
+- Fix: community slot image fit (cover) + removed trump watermark
+
 ### v0.4.0
 - Phase indicator community cards: 5 slots always; fill 0→3→4→5 using img/trump.png
 
