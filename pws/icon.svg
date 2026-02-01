@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#1a3328"/>
+  
+  <!-- Outer ring - gold -->
+  <circle cx="256" cy="256" r="220" fill="#d4af37" stroke="#a08528" stroke-width="8"/>
+  
+  <!-- Inner felt -->
+  <circle cx="256" cy="256" r="180" fill="#1a3328"/>
+  
+  <!-- Edge markers (casino chip style) -->
+  <g fill="#d4af37">
+    <!-- Top -->
+    <rect x="246" y="56" width="20" height="30" rx="4"/>
+    <!-- Right -->
+    <rect x="426" y="246" width="30" height="20" rx="4"/>
+    <!-- Bottom -->
+    <rect x="246" y="426" width="20" height="30" rx="4"/>
+    <!-- Left -->
+    <rect x="56" y="246" width="30" height="20" rx="4"/>
+    
+    <!-- Diagonals -->
+    <rect x="360" y="125" width="20" height="30" rx="4" transform="rotate(45 370 140)"/>
+    <rect x="360" y="357" width="20" height="30" rx="4" transform="rotate(-45 370 372)"/>
+    <rect x="132" y="357" width="20" height="30" rx="4" transform="rotate(45 142 372)"/>
+    <rect x="132" y="125" width="20" height="30" rx="4" transform="rotate(-45 142 140)"/>
+  </g>
+  
+  <!-- Center symbol - Spade -->
+  <g fill="#d4af37">
+    <!-- Spade shape -->
+    <path d="M 256 180 Q 256 160 240 145 Q 224 130 210 130 Q 190 130 180 150 Q 170 170 180 190 Q 190 210 210 220 L 220 220 L 215 250 L 235 250 L 230 220 L 240 220 Q 260 210 270 190 Q 280 170 270 150 Q 260 130 240 130 Q 224 130 210 145 Q 194 160 194 180 Z" 
+          transform="translate(46 46)"/>
+    <path d="M 256 180 Q 256 160 272 145 Q 288 130 302 130 Q 322 130 332 150 Q 342 170 332 190 Q 322 210 302 220 L 292 220 L 297 250 L 277 250 L 282 220 L 272 220 Q 252 210 242 190 Q 232 170 242 150 Q 252 130 272 130 Q 288 130 302 145 Q 318 160 318 180 Z" 
+          transform="translate(-46 46)"/>
+  </g>
+  
+  <!-- Text "POKER" -->
+  <text x="256" y="330" font-family="'Playfair Display', serif" font-size="48" font-weight="700" fill="#d4af37" text-anchor="middle" letter-spacing="6">POKER</text>
+</svg>
