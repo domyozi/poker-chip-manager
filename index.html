@@ -2745,11 +2745,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSavedPlayerNames();
   setUiState('room');
 
-  // デフォルトでランダム名を設定
-  const nameInput = document.getElementById('display-name-input');
-  if (nameInput && !nameInput.value) {
-    nameInput.value = generateRandomName();
-  }
   const toggle = document.getElementById('tournament-mode-toggle');
   if (toggle) {
     toggle.addEventListener('change', syncTournamentOptions);
@@ -2765,6 +2760,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsLeaveBtn = document.getElementById('settings-leave-btn');
   const codeInput = document.getElementById('room-code-input');
   const nameInput = document.getElementById('display-name-input');
+
+  // デフォルトでランダム名を設定
+  if (nameInput && !nameInput.value) {
+    nameInput.value = generateRandomName();
+  }
   const startBtn = document.getElementById('start-btn');
   const menuBtn = document.getElementById('menu-btn');
   const menu = document.getElementById('header-menu');
