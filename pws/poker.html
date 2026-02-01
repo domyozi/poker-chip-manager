@@ -45,8 +45,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Setup Screen ───────────────────────────── */
-#setup-screen {
+/* ─── Screens ────────────────────────────────── */
+.screen {
   position: fixed; inset: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -55,7 +55,7 @@ body {
   padding: 32px 20px;
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
-#setup-screen.hidden { opacity: 0; transform: scale(0.96); pointer-events: none; }
+.screen.hidden { opacity: 0; transform: scale(0.96); pointer-events: none; }
 
 .setup-title {
   font-family: 'Playfair Display', serif;
@@ -81,6 +81,11 @@ body {
   color: var(--text-secondary);
   margin-bottom: 10px;
 }
+summary.setup-label {
+  list-style: none;
+  cursor: pointer;
+}
+summary.setup-label::-webkit-details-marker { display: none; }
 
 /* Player input rows */
 .player-inputs { display: flex; flex-direction: column; gap: 8px; }
@@ -180,6 +185,137 @@ body {
   color: var(--text-secondary);
   letter-spacing: 1px;
 }
+.room-code-display {
+  flex: 1;
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: var(--gold);
+}
+.participant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.participant-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.participant-name { font-weight: 600; color: var(--chip-white); }
+.participant-meta { font-size: 10px; color: var(--text-secondary); letter-spacing: 1px; }
+.participant-role {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.participant-role.host { color: var(--gold); border-color: var(--gold-dim); }
+.participant-role.player { color: var(--text-secondary); }
+.participant-role.offline { color: var(--text-muted); }
+.participant-ready {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+.participant-ready.ready { color: #2ecc71; }
+.waiting-self-panel {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.seat-ring {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  height: 200px;
+  margin: 8px auto 14px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(26,51,40,0.9) 0%, rgba(20,42,34,0.7) 70%, transparent 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 24px rgba(0,0,0,0.4);
+}
+.seat-node {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--chip-white);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, background 0.2s;
+}
+.seat-node:hover { transform: scale(1.05); border-color: rgba(212,175,55,0.5); }
+.seat-node.taken { opacity: 0.4; cursor: not-allowed; }
+.seat-node.active {
+  background: rgba(212,175,55,0.2);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 16px var(--gold-glow);
+}
+.seat-node .seat-label { font-size: 9px; color: var(--text-secondary); }
+.seat-center {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+}
+.ready-btn {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.ready-btn.on {
+  background: rgba(46,204,113,0.18);
+  border-color: rgba(46,204,113,0.5);
+  color: #2ecc71;
+}
+.ready-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.player-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+.player-badge .tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.player-badge .tag.host { color: var(--gold); border-color: var(--gold-dim); }
+.player-badge .tag.player { color: var(--text-secondary); }
 
 /* Blind row */
 .blind-row { display: flex; gap: 12px; }
@@ -314,7 +450,14 @@ body {
 .start-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ─── Game Screen ────────────────────────────── */
-#game-screen { min-height: 100vh; display: flex; flex-direction: column; }
+#game-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  background: #0f1a16;
+}
 
 /* Header */
 .game-header {
@@ -335,7 +478,7 @@ body {
   margin-right: 8px;
   box-shadow: 0 0 8px var(--gold-glow);
 }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 8px; position: relative; }
 .header-btn {
   padding: 6px 14px;
   border-radius: 20px;
@@ -348,6 +491,29 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 .header-btn:hover { background: rgba(255,255,255,0.13); color: var(--text-primary); }
+.header-menu {
+  position: absolute;
+  top: 48px; right: 16px;
+  background: rgba(20,32,26,0.95);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 120;
+}
+.header-menu-item {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.header-menu-item:hover { background: rgba(255,255,255,0.12); }
 
 /* Phase progress bar */
 .phase-bar {
@@ -537,6 +703,16 @@ body {
   transition: opacity 0.3s;
 }
 .action-panel.hidden { opacity: 0; pointer-events: none; }
+.action-panel.locked { opacity: 0.6; }
+.action-panel.locked .action-btns,
+.action-panel.locked .raise-area { display: none; }
+.action-lock-message {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
 
 .action-actor-label {
   text-align: center;
@@ -796,13 +972,20 @@ body {
 </head>
 <body>
 
-<!-- ─── SETUP SCREEN ──────────────────────────── -->
-<div id="setup-screen">
+<!-- ─── ROOM SCREEN ───────────────────────────── -->
+<div id="room-screen" class="screen">
   <div class="setup-title">POKER</div>
-  <div class="setup-subtitle">チップ管理テーブル</div>
+  <div class="setup-subtitle">テーブルに入る</div>
 
   <div class="setup-section">
-    <div class="setup-label">オンラインルーム</div>
+    <div class="setup-label">あなたの名前</div>
+    <div class="room-panel">
+      <input type="text" id="display-name-input" class="room-input" placeholder="表示名">
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="setup-label">ルーム</div>
     <div class="room-panel">
       <div class="room-row">
         <input type="text" id="room-code-input" class="room-input" placeholder="ルームコード" maxlength="6">
@@ -810,86 +993,159 @@ body {
       </div>
       <div class="room-row">
         <button class="room-btn" id="room-join-btn">参加</button>
-        <button class="room-btn" id="room-leave-btn" style="display:none;">退出</button>
+        <button class="room-btn" id="room-local-btn">ローカルで開始</button>
       </div>
       <div class="room-status" id="room-status">ローカルモード</div>
     </div>
   </div>
+</div>
+
+<!-- ─── WAITING SCREEN ────────────────────────── -->
+<div id="waiting-screen" class="screen hidden">
+  <div class="setup-title">WAITING</div>
+  <div class="setup-subtitle">参加者が揃うのを待っています</div>
 
   <div class="setup-section">
-    <div class="setup-label">プレイヤー</div>
-    <div class="player-inputs" id="player-inputs">
-      <div class="player-row">
-        <input type="text" class="player-name-input" placeholder="プレイヤー名">
-        <button class="remove-btn" onclick="removePlayer(this)">×</button>
-      </div>
-      <div class="player-row">
-        <input type="text" class="player-name-input" placeholder="プレイヤー名">
-        <button class="remove-btn" onclick="removePlayer(this)">×</button>
-      </div>
-    </div>
-    <button class="add-player-btn" onclick="addPlayer()">＋ プレイヤー追加</button>
-  </div>
-
-  <div class="setup-section">
-    <div class="setup-label">ブラインド設定</div>
-    <div class="blind-row">
-      <div class="blind-input-wrap">
-        <span class="blind-input-label">Small Blind</span>
-        <input type="number" id="sb-input" value="10" min="1">
-      </div>
-      <div class="blind-input-wrap">
-        <span class="blind-input-label">Big Blind</span>
-        <input type="number" id="bb-input" value="20" min="1">
+    <div class="setup-label">ルームコード</div>
+    <div class="room-panel">
+      <div class="room-row">
+        <div class="room-code-display" id="room-code-display">—</div>
+        <button class="room-btn" id="room-copy-btn">COPY</button>
       </div>
     </div>
   </div>
 
   <div class="setup-section">
-    <div class="setup-label">アクションタイマー</div>
-    <div class="blind-row">
-      <div class="blind-input-wrap">
-        <span class="blind-input-label">制限時間</span>
-        <select id="timer-select">
-          <option value="15">15秒</option>
-          <option value="30" selected>30秒</option>
-          <option value="60">60秒</option>
-          <option value="0">無制限</option>
-        </select>
-      </div>
-      <div class="blind-input-wrap">
-        <label class="toggle-label">
-          <input type="checkbox" id="timer-sound-toggle" checked>
-          <span class="toggle-text">効果音</span>
-        </label>
-      </div>
+    <div class="setup-label">参加者</div>
+    <div class="room-panel">
+      <div class="participant-list" id="participant-list"></div>
     </div>
   </div>
 
   <div class="setup-section">
-    <label class="toggle-label tournament-toggle">
-      <input type="checkbox" id="tournament-mode-toggle">
-      <span class="toggle-text">トーナメントモード</span>
-    </label>
-    <div class="tournament-options" id="tournament-options" style="display: none;">
+    <div class="setup-label">席を選ぶ</div>
+    <div class="room-panel">
+      <div class="seat-ring" id="seat-ring"></div>
+      <div class="waiting-self-panel">
+        <div class="room-status" id="seat-help-text">空席をタップして席を決める</div>
+        <button class="ready-btn" id="ready-toggle-btn">WAIT</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-section" id="waiting-host-controls" style="display:none;">
+    <button class="start-btn" id="waiting-start-btn">設定へ進む</button>
+    <div class="room-status" id="waiting-host-status">2人以上で開始できます</div>
+  </div>
+
+  <div class="setup-section" id="waiting-guest-controls">
+    <div class="room-panel">
+      <div class="room-status">ホストが開始するのを待っています</div>
+      <button class="room-btn reconnect-btn" style="display:none;">再接続</button>
+      <button class="room-btn" id="room-leave-btn">退出</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SETTINGS SCREEN ───────────────────────── -->
+<div id="settings-screen" class="screen hidden">
+  <div class="setup-title">SETTINGS</div>
+  <div class="setup-subtitle">ホストが設定を確定します</div>
+
+  <div id="settings-host-panel">
+    <div class="setup-section">
+      <div class="setup-label">基本設定</div>
+      <div class="blind-row">
+        <div class="blind-input-wrap">
+          <span class="blind-input-label">Small Blind</span>
+          <input type="number" id="sb-input" value="10" min="1">
+        </div>
+        <div class="blind-input-wrap">
+          <span class="blind-input-label">Big Blind</span>
+          <input type="number" id="bb-input" value="20" min="1">
+        </div>
+      </div>
       <div class="blind-row" style="margin-top: 12px;">
         <div class="blind-input-wrap" style="flex: 1;">
-          <span class="blind-input-label">ブラインドレベル時間</span>
-          <select id="blind-level-select">
-            <option value="10">10分</option>
-            <option value="15" selected>15分</option>
-            <option value="20">20分</option>
-          </select>
+          <span class="blind-input-label">初期チップ</span>
+          <input type="number" id="initial-chips-input" value="1000" min="1">
         </div>
       </div>
     </div>
+
+    <div class="setup-section" id="online-player-summary" style="display:none;">
+      <div class="setup-label">参加者</div>
+      <div class="room-panel">
+        <div class="participant-list" id="participant-summary"></div>
+      </div>
+    </div>
+
+    <div class="setup-section" id="local-player-settings">
+      <div class="setup-label">ローカル参加者</div>
+      <div class="player-inputs" id="player-inputs">
+        <div class="player-row">
+          <input type="text" class="player-name-input" placeholder="プレイヤー名">
+          <button class="remove-btn" onclick="removePlayer(this)">×</button>
+        </div>
+        <div class="player-row">
+          <input type="text" class="player-name-input" placeholder="プレイヤー名">
+          <button class="remove-btn" onclick="removePlayer(this)">×</button>
+        </div>
+      </div>
+      <button class="add-player-btn" onclick="addPlayer()">＋ プレイヤー追加</button>
+    </div>
+
+    <details class="setup-section">
+      <summary class="setup-label">詳細設定</summary>
+      <div class="blind-row" style="margin-top: 12px;">
+        <div class="blind-input-wrap">
+          <span class="blind-input-label">アクションタイマー</span>
+          <select id="timer-select">
+            <option value="15">15秒</option>
+            <option value="30" selected>30秒</option>
+            <option value="60">60秒</option>
+            <option value="0">無制限</option>
+          </select>
+        </div>
+        <div class="blind-input-wrap">
+          <label class="toggle-label">
+            <input type="checkbox" id="timer-sound-toggle" checked>
+            <span class="toggle-text">効果音</span>
+          </label>
+        </div>
+      </div>
+      <label class="toggle-label tournament-toggle">
+        <input type="checkbox" id="tournament-mode-toggle">
+        <span class="toggle-text">トーナメントモード</span>
+      </label>
+      <div class="tournament-options" id="tournament-options" style="display: none;">
+        <div class="blind-row" style="margin-top: 12px;">
+          <div class="blind-input-wrap" style="flex: 1;">
+            <span class="blind-input-label">ブラインドレベル時間</span>
+            <select id="blind-level-select">
+              <option value="10">10分</option>
+              <option value="15" selected>15分</option>
+              <option value="20">20分</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <button class="start-btn" id="start-btn">確定して開始</button>
   </div>
 
-  <button class="start-btn" id="start-btn" onclick="startGame()">テーブルに着席</button>
+  <div id="settings-guest-panel" style="display:none;">
+    <div class="room-panel">
+      <div class="room-status">ホストが設定中です。しばらくお待ちください。</div>
+      <button class="room-btn reconnect-btn" style="display:none;">再接続</button>
+      <button class="room-btn" id="settings-leave-btn">退出</button>
+    </div>
+  </div>
 </div>
 
 <!-- ─── GAME SCREEN ───────────────────────────── -->
-<div id="game-screen" style="display:none;">
+<div id="game-screen" class="screen hidden">
   <div class="tournament-bar" id="tournament-bar" style="display: none;">
     <div class="level">Level 1</div>
     <div class="blinds">10 / 20</div>
@@ -899,9 +1155,16 @@ body {
     <div>
       <span class="header-phase-dot"></span>
       <span class="header-phase" id="phase-label">PREFLOP</span>
+      <div class="player-badge" id="player-badge">
+        <span class="tag" id="player-role-tag">PLAYER</span>
+        <span id="player-name-tag">—</span>
+      </div>
     </div>
     <div class="header-actions">
-      <button class="header-btn" onclick="resetToSetup()">← 戻る</button>
+      <button class="header-btn" id="menu-btn">⋯</button>
+      <div class="header-menu" id="header-menu" style="display:none;">
+        <button class="header-menu-item" id="menu-reset-btn">終了して戻る</button>
+      </div>
     </div>
   </div>
 
@@ -925,6 +1188,7 @@ body {
     <div class="action-actor-label" id="actor-label">
       <strong>—</strong>のターン
     </div>
+    <div class="action-lock-message" id="action-lock-message" style="display:none;">あなたの番になるまでお待ちください</div>
     <div class="action-btns" id="action-btns"></div>
     <div class="raise-area" id="raise-area">
       <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
@@ -1204,21 +1468,88 @@ const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ZU269gj6MzgeSra0gUeQ-A_I_9v2giq";
 let supabaseClient = null;
 let roomChannel = null;
+let reconnectTimer = null;
 let onlineState = {
   role: "local", // local | host | player
   roomCode: "",
-  connected: false
+  connected: false,
+  displayName: "",
+  seat: "",
+  ready: false
 };
 let onlineReady = false;
+let uiState = 'room'; // room | waiting | settings | playing
 
 function initSupabase() {
   if (!window.supabase || supabaseClient) return;
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
+function setUiState(state) {
+  uiState = state;
+  const screenMap = {
+    room: 'room-screen',
+    waiting: 'waiting-screen',
+    settings: 'settings-screen',
+    playing: 'game-screen'
+  };
+  const screens = Object.values(screenMap);
+  screens.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('hidden', id !== screenMap[state]);
+  });
+  if (state !== 'playing') {
+    document.getElementById('showdown-overlay').classList.remove('visible');
+    document.getElementById('next-hand-overlay').classList.remove('visible');
+  }
+  if (state === 'waiting' || state === 'settings') {
+    updateParticipantList();
+  }
+  if (state === 'settings') {
+    updateSettingsPanels();
+  }
+  updateHeaderMenuVisibility();
+  updatePlayerBadge();
+}
+
 function setRoomStatus(text) {
   const el = document.getElementById('room-status');
   if (el) el.textContent = text;
+  updateReconnectButtons();
+}
+
+function updateReconnectButtons() {
+  const btns = document.querySelectorAll('.reconnect-btn');
+  const show = onlineState.role !== 'local' && !onlineState.connected;
+  btns.forEach(btn => {
+    btn.style.display = show ? 'inline-flex' : 'none';
+  });
+}
+
+function updatePresence(extra = {}) {
+  if (!roomChannel) return;
+  const payload = {
+    role: onlineState.role,
+    name: onlineState.displayName,
+    joinedAt: onlineState.joinedAt || Date.now(),
+    seat: onlineState.seat || "",
+    ready: !!onlineState.ready,
+    ...extra
+  };
+  onlineState.joinedAt = payload.joinedAt;
+  roomChannel.track(payload);
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  if (!onlineState.roomCode || onlineState.role === 'local') return;
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    const role = onlineState.role;
+    const code = onlineState.roomCode;
+    await joinRoom(role, code);
+  }, 1500);
 }
 
 function setRoomControls(connected) {
@@ -1239,15 +1570,173 @@ function generateRoomCode() {
   return out;
 }
 
+function getPresenceList() {
+  if (!roomChannel) return [];
+  const presenceState = roomChannel.presenceState();
+  const list = Object.values(presenceState).flat().map(p => ({ ...p, online: true }));
+  return list.sort((a, b) => {
+    const seatA = parseInt(a.seat || '0', 10) || 0;
+    const seatB = parseInt(b.seat || '0', 10) || 0;
+    if (seatA && seatB) return seatA - seatB;
+    if (seatA && !seatB) return -1;
+    if (!seatA && seatB) return 1;
+    return (a.joinedAt || 0) - (b.joinedAt || 0);
+  });
+}
+
+function renderSeatRing(list) {
+  const ring = document.getElementById('seat-ring');
+  if (!ring) return;
+  ring.innerHTML = '<div class="seat-center">TABLE</div>';
+  const seats = 8;
+  const cx = 50;
+  const cy = 50;
+  const rx = 42;
+  const ry = 36;
+  const used = new Map();
+  list.forEach(p => {
+    if (p.seat) used.set(String(p.seat), p);
+  });
+  for (let i = 1; i <= seats; i++) {
+    const angle = ((i - 1) / seats) * 2 * Math.PI - Math.PI / 2;
+    const x = cx + rx * Math.cos(angle);
+    const y = cy + ry * Math.sin(angle);
+    const seat = document.createElement('button');
+    seat.className = 'seat-node';
+    seat.style.left = `${x}%`;
+    seat.style.top = `${y}%`;
+    seat.style.transform = 'translate(-50%, -50%)';
+    const occupant = used.get(String(i));
+    if (occupant) {
+      seat.classList.add('taken');
+      seat.innerHTML = `<div>${occupant.name || 'Guest'}</div><div class="seat-label">Seat ${i}</div>`;
+      if (occupant.name === onlineState.displayName) {
+        seat.classList.remove('taken');
+        seat.classList.add('active');
+      }
+    } else {
+      seat.innerHTML = `<div>Seat ${i}</div>`;
+    }
+    seat.dataset.seat = String(i);
+    seat.addEventListener('click', () => {
+      if (occupant && occupant.name !== onlineState.displayName) return;
+      onlineState.seat = String(i);
+      onlineState.ready = false;
+      updatePresence({ seat: onlineState.seat, ready: onlineState.ready });
+      updateParticipantList();
+    });
+    ring.appendChild(seat);
+  }
+}
+
+function updateParticipantList() {
+  const list = getPresenceList();
+  const el = document.getElementById('participant-list');
+  const summaryEl = document.getElementById('participant-summary');
+  const roomCodeDisplay = document.getElementById('room-code-display');
+  if (roomCodeDisplay) roomCodeDisplay.textContent = onlineState.roomCode || '—';
+  if (el) {
+    el.innerHTML = '';
+    list.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'participant-item';
+      item.innerHTML = `
+        <div>
+          <div class="participant-name">${p.name || 'Guest'} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
+          <div class="participant-meta">${p.online ? 'ONLINE' : 'OFFLINE'}</div>
+        </div>
+        <div>
+          <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
+          <div class="participant-ready ${p.ready ? 'ready' : ''}">${p.ready ? 'READY' : 'NOT READY'}</div>
+        </div>
+      `;
+      el.appendChild(item);
+    });
+  }
+  if (summaryEl) {
+    summaryEl.innerHTML = '';
+    list.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'participant-item';
+      item.innerHTML = `
+        <div class="participant-name">${p.name || 'Guest'} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
+        <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
+      `;
+      summaryEl.appendChild(item);
+    });
+  }
+
+  const hostControls = document.getElementById('waiting-host-controls');
+  const hostStatus = document.getElementById('waiting-host-status');
+  const startBtn = document.getElementById('waiting-start-btn');
+  const guestControls = document.getElementById('waiting-guest-controls');
+  if (onlineState.role === 'host' && hostControls) {
+    hostControls.style.display = 'block';
+    const canStart = list.length >= 2 && list.every(p => p.ready);
+    if (startBtn) startBtn.disabled = !canStart;
+    if (hostStatus) hostStatus.textContent = canStart ? '全員準備OK。設定へ進めます' : '全員の準備完了を待っています';
+    if (guestControls) guestControls.style.display = 'none';
+  } else if (guestControls) {
+    guestControls.style.display = 'block';
+    if (hostControls) hostControls.style.display = 'none';
+  }
+
+  renderSeatRing(list);
+  const readyBtn = document.getElementById('ready-toggle-btn');
+  const seatHelp = document.getElementById('seat-help-text');
+  const seatConflict = list.some(p => p.seat && p.seat === onlineState.seat && p.name !== onlineState.displayName);
+  if (seatConflict) {
+    onlineState.seat = '';
+    onlineState.ready = false;
+    updatePresence({ seat: "", ready: false });
+  }
+  if (readyBtn) {
+    readyBtn.classList.toggle('on', onlineState.ready);
+    readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
+    readyBtn.disabled = !onlineState.seat;
+  }
+  if (seatHelp) {
+    seatHelp.textContent = onlineState.seat ? `Seat ${onlineState.seat} を選択中` : '空席をタップして席を決める';
+  }
+}
+
+function updateHeaderMenuVisibility() {
+  const menuBtn = document.getElementById('menu-btn');
+  if (!menuBtn) return;
+  const show = onlineState.role !== 'player';
+  menuBtn.style.display = show ? 'inline-flex' : 'none';
+}
+
+function updatePlayerBadge() {
+  const nameEl = document.getElementById('player-name-tag');
+  const roleEl = document.getElementById('player-role-tag');
+  if (!nameEl || !roleEl) return;
+  const name = onlineState.displayName || '—';
+  const role = onlineState.role === 'host' ? 'HOST' : onlineState.role === 'player' ? 'PLAYER' : 'LOCAL';
+  nameEl.textContent = name;
+  roleEl.textContent = role;
+  roleEl.classList.toggle('host', onlineState.role === 'host');
+  roleEl.classList.toggle('player', onlineState.role !== 'host');
+}
+
 async function leaveRoom() {
   if (roomChannel) {
     roomChannel.unsubscribe();
     roomChannel = null;
   }
-  onlineState = { role: "local", roomCode: "", connected: false };
+  onlineState = {
+    role: "local",
+    roomCode: "",
+    connected: false,
+    displayName: onlineState.displayName,
+    seat: "",
+    ready: false
+  };
   onlineReady = false;
   setRoomControls(false);
   setRoomStatus('ローカルモード');
+  setUiState('room');
+  updatePlayerBadge();
 }
 
 async function createRoomWithUniqueCode(maxAttempts = 5) {
@@ -1271,6 +1760,11 @@ async function joinRoom(role, code, isAuto = false) {
   initSupabase();
   if (!supabaseClient) return false;
 
+  if (!onlineState.displayName) {
+    if (!isAuto) setRoomStatus('名前を入力してください');
+    return false;
+  }
+
   const roomCode = normalizeRoomCode(code);
   if (!roomCode) {
     if (!isAuto) setRoomStatus('コードを入力してください');
@@ -1281,7 +1775,15 @@ async function joinRoom(role, code, isAuto = false) {
     await leaveRoom();
   }
 
-  onlineState = { role, roomCode, connected: false };
+  onlineState = {
+    role,
+    roomCode,
+    connected: false,
+    displayName: onlineState.displayName,
+    seat: onlineState.seat,
+    ready: onlineState.ready,
+    joinedAt: onlineState.joinedAt
+  };
   setRoomStatus(`接続中: ${roomCode}`);
 
   const channelName = `room_${roomCode}`;
@@ -1292,7 +1794,24 @@ async function joinRoom(role, code, isAuto = false) {
   roomChannel
     .on('presence', { event: 'sync' }, () => {
       const presenceState = roomChannel.presenceState();
-      const hosts = Object.values(presenceState).flat().filter(p => p.role === 'host');
+      const list = Object.values(presenceState).flat();
+      const hosts = list.filter(p => p.role === 'host');
+      const nameDupes = list.filter(p => p.name === onlineState.displayName);
+      if (nameDupes.length > 1) {
+        leaveRoom();
+        setRoomStatus('同じ名前の参加者がいます');
+        return;
+      }
+      if (list.length > 8 && onlineState.role !== 'host') {
+        leaveRoom();
+        setRoomStatus('満席です');
+        return;
+      }
+      if (onlineState.role !== 'host' && hosts.length === 0 && onlineReady) {
+        leaveRoom();
+        setRoomStatus('ホストが退出しました');
+        return;
+      }
       if (onlineState.role === 'host') {
         // If another host already exists, back out and let caller retry
         if (hosts.length > 1) {
@@ -1303,17 +1822,50 @@ async function joinRoom(role, code, isAuto = false) {
         onlineReady = true;
         setRoomStatus(`ホスト中: ${roomCode}`);
         broadcastState();
+        updateParticipantList();
       } else {
         onlineReady = true;
         setRoomStatus(`参加中: ${roomCode}`);
         requestState();
+        updateParticipantList();
       }
+    })
+    .on('presence', { event: 'join' }, () => {
+      updateParticipantList();
+    })
+    .on('presence', { event: 'leave' }, () => {
+      updateParticipantList();
     })
     .on('broadcast', { event: 'state-sync' }, payload => {
       if (onlineState.role === 'host') return;
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
       render();
+      if (gameState.isHandActive) startActionTimer();
+    })
+    .on('broadcast', { event: 'ui-phase' }, payload => {
+      const phase = payload?.payload?.phase;
+      if (!phase) return;
+      setUiState(phase);
+      if (phase === 'settings') updateParticipantList();
+    })
+    .on('broadcast', { event: 'start-game' }, payload => {
+      if (onlineState.role === 'host') return;
+      const settings = payload?.payload?.settings;
+      const state = payload?.payload?.state;
+      if (settings) applySettings(settings);
+      if (state) gameState = state;
+      setUiState('playing');
+      const tournamentBar = document.getElementById('tournament-bar');
+      if (tournamentSettings.enabled) {
+        tournamentBar.style.display = 'flex';
+        tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
+        updateTournamentDisplay();
+      } else {
+        tournamentBar.style.display = 'none';
+      }
+      render();
+      if (gameState?.isHandActive) startActionTimer();
     })
     .on('broadcast', { event: 'state-request' }, () => {
       if (onlineState.role === 'host') broadcastState();
@@ -1326,9 +1878,20 @@ async function joinRoom(role, code, isAuto = false) {
     })
     .subscribe(async status => {
       if (status === 'SUBSCRIBED') {
-        await roomChannel.track({ role: onlineState.role });
+        updatePresence({ joinedAt: Date.now() });
         onlineState.connected = true;
         setRoomControls(true);
+        updateParticipantList();
+        setRoomStatus(`${onlineState.role === 'host' ? 'ホスト中' : '参加中'}: ${onlineState.roomCode}`);
+      }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        onlineState.connected = false;
+        setRoomStatus('再接続中...');
+        scheduleReconnect();
+      }
+      if (status === 'CLOSED') {
+        onlineState.connected = false;
+        setRoomStatus('接続が終了しました');
       }
     });
 
@@ -1375,6 +1938,11 @@ function applyRemoteAction(type, amount) {
 function startActionTimer() {
   stopActionTimer();
   if (timerSettings.duration === 0) return; // 無制限
+  if (onlineState.role === 'player') {
+    if (!gameState) return;
+    const actor = gameState.players[gameState.currentPlayerIndex];
+    if (!actor || actor.name !== onlineState.displayName) return;
+  }
 
   timeRemaining = timerSettings.duration;
   timerStartTime = Date.now();
@@ -1480,6 +2048,7 @@ function playTimeoutSound() {
 function startTournamentTimer() {
   stopTournamentTimer();
   if (!tournamentSettings.enabled) return;
+  if (onlineState.role === 'player') return;
 
   tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
   updateTournamentDisplay();
@@ -1540,6 +2109,81 @@ function advanceBlindLevel() {
       setTimeout(() => { osc.frequency.value = 880; }, 150);
       osc.stop(ctx.currentTime + 0.3);
     } catch (e) {}
+  }
+}
+
+function collectSettingsFromForm() {
+  return {
+    smallBlind: parseInt(document.getElementById('sb-input').value) || 10,
+    bigBlind: parseInt(document.getElementById('bb-input').value) || 20,
+    initialChips: parseInt(document.getElementById('initial-chips-input').value) || 1000,
+    timerDuration: parseInt(document.getElementById('timer-select').value) || 30,
+    soundEnabled: document.getElementById('timer-sound-toggle').checked,
+    tournamentEnabled: document.getElementById('tournament-mode-toggle').checked,
+    levelDuration: parseInt(document.getElementById('blind-level-select').value) || 15
+  };
+}
+
+function applySettings(settings) {
+  timerSettings.duration = settings.timerDuration;
+  timerSettings.soundEnabled = settings.soundEnabled;
+  tournamentSettings.enabled = settings.tournamentEnabled;
+  tournamentSettings.levelDuration = settings.levelDuration;
+  currentBlindLevel = 1;
+}
+
+function getLocalPlayerNames() {
+  const inputs = document.querySelectorAll('.player-name-input');
+  const names = [];
+  inputs.forEach(input => {
+    const val = input.value.trim();
+    if (val) names.push(val);
+  });
+  return names;
+}
+
+function getOnlinePlayerNames() {
+  const list = getPresenceList();
+  return list.map((p, i) => p.name || `Player ${i + 1}`);
+}
+
+function startGameWithNames(names, settings) {
+  applySettings(settings);
+  gameState = initGame(names, settings.smallBlind, settings.bigBlind, settings.initialChips);
+  gameState.timerSettings = { ...timerSettings };
+  gameState.tournamentSettings = { ...tournamentSettings };
+  gameState = startHand(gameState);
+
+  setUiState('playing');
+
+  const tournamentBar = document.getElementById('tournament-bar');
+  if (tournamentSettings.enabled) {
+    tournamentBar.style.display = 'flex';
+    startTournamentTimer();
+  } else {
+    tournamentBar.style.display = 'none';
+  }
+
+  render();
+  startActionTimer();
+}
+
+function updateSettingsPanels() {
+  const hostPanel = document.getElementById('settings-host-panel');
+  const guestPanel = document.getElementById('settings-guest-panel');
+  const onlineSummary = document.getElementById('online-player-summary');
+  const localSettings = document.getElementById('local-player-settings');
+  if (onlineState.role === 'player') {
+    if (hostPanel) hostPanel.style.display = 'none';
+    if (guestPanel) guestPanel.style.display = 'block';
+  } else {
+    if (hostPanel) hostPanel.style.display = 'block';
+    if (guestPanel) guestPanel.style.display = 'none';
+  }
+  if (onlineSummary && localSettings) {
+    const isOnlineHost = onlineState.role === 'host';
+    onlineSummary.style.display = isOnlineHost ? 'block' : 'none';
+    localSettings.style.display = isOnlineHost ? 'none' : 'block';
   }
 }
 
@@ -1649,6 +2293,7 @@ function renderPhase() {
 function renderActionPanel() {
   const panel = document.getElementById('action-panel');
   const btnsEl = document.getElementById('action-btns');
+  const lockMessage = document.getElementById('action-lock-message');
   btnsEl.innerHTML = '';
 
   if (!gameState || !gameState.isHandActive) {
@@ -1660,9 +2305,17 @@ function renderActionPanel() {
   const actor = gameState.players[actorIdx];
   if (actor.status !== 'active') { panel.classList.add('hidden'); return; }
   panel.classList.remove('hidden');
+  panel.classList.remove('locked');
+  if (lockMessage) lockMessage.style.display = 'none';
 
   // Actor label
   document.getElementById('actor-label').innerHTML = `<strong>${actor.name}</strong> のターン`;
+
+  if (onlineState.role === 'player' && actor.name !== onlineState.displayName) {
+    panel.classList.add('locked');
+    if (lockMessage) lockMessage.style.display = 'block';
+    return;
+  }
 
   const callAmt = gameState.currentMaxBet - actor.currentBet;
   const canCheck = callAmt === 0;
@@ -1886,55 +2539,42 @@ function startGame() {
     setRoomStatus('ホストが開始します');
     return;
   }
-  const inputs = document.querySelectorAll('.player-name-input');
-  const names = [];
-  inputs.forEach(input => {
-    const val = input.value.trim();
-    if (val) names.push(val);
-  });
-  if (names.length < 2) return;
-
-  const sb = parseInt(document.getElementById('sb-input').value) || 10;
-  const bb = parseInt(document.getElementById('bb-input').value) || 20;
-
-  // Timer settings
-  timerSettings.duration = parseInt(document.getElementById('timer-select').value) || 30;
-  timerSettings.soundEnabled = document.getElementById('timer-sound-toggle').checked;
-
-  // Tournament settings
-  tournamentSettings.enabled = document.getElementById('tournament-mode-toggle').checked;
-  tournamentSettings.levelDuration = parseInt(document.getElementById('blind-level-select').value) || 15;
-  currentBlindLevel = 1;
-
-  gameState = initGame(names, sb, bb);
-  gameState.timerSettings = { ...timerSettings };
-  gameState = startHand(gameState);
-
-  document.getElementById('setup-screen').classList.add('hidden');
-  document.getElementById('game-screen').style.display = 'flex';
-
-  // Show/hide tournament bar
-  const tournamentBar = document.getElementById('tournament-bar');
-  if (tournamentSettings.enabled) {
-    tournamentBar.style.display = 'flex';
-    startTournamentTimer();
+  const settings = collectSettingsFromForm();
+  let names = [];
+  if (onlineState.role === 'host') {
+    names = getOnlinePlayerNames();
+    if (names.length < 2) {
+      const hostStatus = document.getElementById('waiting-host-status');
+      if (hostStatus) hostStatus.textContent = '参加者が足りません';
+      return;
+    }
   } else {
-    tournamentBar.style.display = 'none';
+    names = getLocalPlayerNames();
+    if (names.length < 2) return;
   }
 
-  render();
-  startActionTimer();
+  startGameWithNames(names, settings);
+
+  if (onlineState.role === 'host' && roomChannel) {
+    broadcastState();
+    roomChannel.send({ type: 'broadcast', event: 'start-game', payload: { settings, state: gameState } });
+    roomChannel.send({ type: 'broadcast', event: 'ui-phase', payload: { phase: 'playing' } });
+  }
+  updatePlayerBadge();
 }
 
 function resetToSetup() {
-  document.getElementById('setup-screen').classList.remove('hidden');
-  document.getElementById('game-screen').style.display = 'none';
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('tournament-bar').style.display = 'none';
   stopTournamentTimer();
   stopActionTimer();
   gameState = null;
+  if (onlineState.role !== 'local') {
+    leaveRoom();
+  } else {
+    setUiState('room');
+  }
 }
 
 function syncTournamentOptions() {
@@ -1946,6 +2586,7 @@ function syncTournamentOptions() {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+  setUiState('room');
   const toggle = document.getElementById('tournament-mode-toggle');
   if (toggle) {
     toggle.addEventListener('change', syncTournamentOptions);
@@ -1954,20 +2595,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const hostBtn = document.getElementById('room-host-btn');
   const joinBtn = document.getElementById('room-join-btn');
+  const localBtn = document.getElementById('room-local-btn');
   const leaveBtn = document.getElementById('room-leave-btn');
+  const waitingStartBtn = document.getElementById('waiting-start-btn');
+  const copyBtn = document.getElementById('room-copy-btn');
+  const settingsLeaveBtn = document.getElementById('settings-leave-btn');
   const codeInput = document.getElementById('room-code-input');
+  const nameInput = document.getElementById('display-name-input');
+  const startBtn = document.getElementById('start-btn');
+  const menuBtn = document.getElementById('menu-btn');
+  const menu = document.getElementById('header-menu');
+  const menuResetBtn = document.getElementById('menu-reset-btn');
+  const reconnectBtns = document.querySelectorAll('.reconnect-btn');
   if (hostBtn) {
     hostBtn.addEventListener('click', async () => {
+      onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+      onlineState.ready = false;
+      onlineState.seat = '';
+      updatePlayerBadge();
+      if (!onlineState.displayName) {
+        setRoomStatus('名前を入力してください');
+        return;
+      }
       if (codeInput) codeInput.value = '';
-      await createRoomWithUniqueCode();
-      onlineState.role = 'host';
+      const ok = await createRoomWithUniqueCode();
+      if (ok) {
+        onlineState.role = 'host';
+        setUiState('waiting');
+        updateParticipantList();
+      }
     });
   }
   if (joinBtn) {
     joinBtn.addEventListener('click', async () => {
+      onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+      onlineState.ready = false;
+      onlineState.seat = '';
+      updatePlayerBadge();
+      if (!onlineState.displayName) {
+        setRoomStatus('名前を入力してください');
+        return;
+      }
       const code = codeInput ? codeInput.value : '';
-      await joinRoom('player', code);
-      onlineState.role = 'player';
+      const ok = await joinRoom('player', code);
+      if (ok) {
+        onlineState.role = 'player';
+        setUiState('waiting');
+        updateParticipantList();
+      }
+    });
+  }
+  if (localBtn) {
+    localBtn.addEventListener('click', () => {
+      onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+      onlineState.role = 'local';
+      updatePlayerBadge();
+      setUiState('settings');
+      updateSettingsPanels();
     });
   }
   if (leaveBtn) {
@@ -1975,9 +2659,80 @@ document.addEventListener('DOMContentLoaded', () => {
       leaveRoom();
     });
   }
+  if (settingsLeaveBtn) {
+    settingsLeaveBtn.addEventListener('click', () => {
+      leaveRoom();
+    });
+  }
+  if (waitingStartBtn) {
+    waitingStartBtn.addEventListener('click', () => {
+      if (onlineState.role !== 'host') return;
+      setUiState('settings');
+      updateSettingsPanels();
+      if (roomChannel) {
+        roomChannel.send({ type: 'broadcast', event: 'ui-phase', payload: { phase: 'settings' } });
+      }
+    });
+  }
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
+      startGame();
+    });
+  }
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const code = onlineState.roomCode || '';
+      if (!code) return;
+      try {
+        await navigator.clipboard.writeText(code);
+        copyBtn.textContent = 'COPIED';
+        setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
+      } catch (e) {}
+    });
+  }
   if (codeInput) {
     codeInput.addEventListener('input', () => {
       codeInput.value = normalizeRoomCode(codeInput.value);
+    });
+  }
+  if (menuBtn && menu) {
+    menuBtn.addEventListener('click', () => {
+      const open = menu.style.display === 'flex';
+      menu.style.display = open ? 'none' : 'flex';
+    });
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && e.target !== menuBtn) {
+        menu.style.display = 'none';
+      }
+    });
+  }
+  if (menuResetBtn) {
+    menuResetBtn.addEventListener('click', () => {
+      if (menu) menu.style.display = 'none';
+      resetToSetup();
+    });
+  }
+
+  reconnectBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!onlineState.roomCode || onlineState.role === 'local') return;
+      await joinRoom(onlineState.role, onlineState.roomCode);
+    });
+  });
+
+  const readyBtn = document.getElementById('ready-toggle-btn');
+  if (readyBtn) {
+    readyBtn.addEventListener('click', () => {
+      if (!onlineState.seat) {
+        const seatHelp = document.getElementById('seat-help-text');
+        if (seatHelp) seatHelp.textContent = '先に席を選んでください';
+        return;
+      }
+      onlineState.ready = !onlineState.ready;
+      readyBtn.classList.toggle('on', onlineState.ready);
+      readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
+      updatePresence({ ready: onlineState.ready });
+      updateParticipantList();
     });
   }
 });
