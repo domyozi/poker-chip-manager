@@ -229,16 +229,50 @@ summary.setup-label::-webkit-details-marker { display: none; }
   align-items: center;
   justify-content: space-between;
 }
-.seat-select {
-  flex: 1;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
-  color: var(--chip-white);
-  font-family: 'Source Code Pro', monospace;
+.seat-ring {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  height: 200px;
+  margin: 8px auto 14px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(26,51,40,0.9) 0%, rgba(20,42,34,0.7) 70%, transparent 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 24px rgba(0,0,0,0.4);
+}
+.seat-node {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
   font-size: 12px;
-  padding: 8px 10px;
-  outline: none;
+  letter-spacing: 1px;
+  color: var(--chip-white);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, background 0.2s;
+}
+.seat-node:hover { transform: scale(1.05); border-color: rgba(212,175,55,0.5); }
+.seat-node.taken { opacity: 0.4; cursor: not-allowed; }
+.seat-node.active {
+  background: rgba(212,175,55,0.2);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 16px var(--gold-glow);
+}
+.seat-node .seat-label { font-size: 9px; color: var(--text-secondary); }
+.seat-center {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
 }
 .ready-btn {
   padding: 8px 12px;
@@ -255,6 +289,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(46,204,113,0.18);
   border-color: rgba(46,204,113,0.5);
   color: #2ecc71;
+}
+.ready-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .player-badge {
   display: flex;
@@ -408,7 +446,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .start-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ─── Game Screen ────────────────────────────── */
-#game-screen { min-height: 100vh; display: flex; flex-direction: column; }
+#game-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  background: #0f1a16;
+}
 
 /* Header */
 .game-header {
@@ -988,20 +1033,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   </div>
 
   <div class="setup-section">
-    <div class="setup-label">あなたの席</div>
-    <div class="room-panel waiting-self-panel">
-      <select id="seat-select" class="seat-select">
-        <option value="">未選択</option>
-        <option value="1">Seat 1</option>
-        <option value="2">Seat 2</option>
-        <option value="3">Seat 3</option>
-        <option value="4">Seat 4</option>
-        <option value="5">Seat 5</option>
-        <option value="6">Seat 6</option>
-        <option value="7">Seat 7</option>
-        <option value="8">Seat 8</option>
-      </select>
-      <button class="ready-btn" id="ready-toggle-btn">READY</button>
+    <div class="setup-label">席を選ぶ</div>
+    <div class="room-panel">
+      <div class="seat-ring" id="seat-ring"></div>
+      <div class="waiting-self-panel">
+        <div class="room-status" id="seat-help-text">空席をタップして席を決める</div>
+        <button class="ready-btn" id="ready-toggle-btn">WAIT</button>
+      </div>
     </div>
   </div>
 
@@ -1438,6 +1476,7 @@ const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ZU269gj6MzgeSra0gUeQ-A_I_9v2giq";
 let supabaseClient = null;
 let roomChannel = null;
+let reconnectTimer = null;
 let onlineState = {
   role: "local", // local | host | player
   roomCode: "",
@@ -1468,13 +1507,30 @@ function updatePresence(extra = {}) {
   roomChannel.track(payload);
 }
 
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  if (!onlineState.roomCode || onlineState.role === 'local') return;
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    const role = onlineState.role;
+    const code = onlineState.roomCode;
+    await joinRoom(role, code);
+  }, 1500);
+}
+
 function setUiState(state) {
   uiState = state;
-  const screens = ['room-screen', 'waiting-screen', 'settings-screen', 'game-screen'];
+  const screenMap = {
+    room: 'room-screen',
+    waiting: 'waiting-screen',
+    settings: 'settings-screen',
+    playing: 'game-screen'
+  };
+  const screens = Object.values(screenMap);
   screens.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.toggle('hidden', id !== `${state}-screen`);
+    el.classList.toggle('hidden', id !== screenMap[state]);
   });
   if (state !== 'playing') {
     document.getElementById('showdown-overlay').classList.remove('visible');
@@ -1546,6 +1602,51 @@ function getPresenceList() {
   });
 }
 
+function renderSeatRing(list) {
+  const ring = document.getElementById('seat-ring');
+  if (!ring) return;
+  ring.innerHTML = '<div class="seat-center">TABLE</div>';
+  const seats = 8;
+  const cx = 50;
+  const cy = 50;
+  const rx = 42;
+  const ry = 36;
+  const used = new Map();
+  list.forEach(p => {
+    if (p.seat) used.set(String(p.seat), p);
+  });
+  for (let i = 1; i <= seats; i++) {
+    const angle = ((i - 1) / seats) * 2 * Math.PI - Math.PI / 2;
+    const x = cx + rx * Math.cos(angle);
+    const y = cy + ry * Math.sin(angle);
+    const seat = document.createElement('button');
+    seat.className = 'seat-node';
+    seat.style.left = `${x}%`;
+    seat.style.top = `${y}%`;
+    seat.style.transform = 'translate(-50%, -50%)';
+    const occupant = used.get(String(i));
+    if (occupant) {
+      seat.classList.add('taken');
+      seat.innerHTML = `<div>${occupant.name || 'Guest'}</div><div class="seat-label">Seat ${i}</div>`;
+      if (occupant.name === onlineState.displayName) {
+        seat.classList.remove('taken');
+        seat.classList.add('active');
+      }
+    } else {
+      seat.innerHTML = `<div>Seat ${i}</div>`;
+    }
+    seat.dataset.seat = String(i);
+    seat.addEventListener('click', () => {
+      if (occupant && occupant.name !== onlineState.displayName) return;
+      onlineState.seat = String(i);
+      onlineState.ready = false;
+      updatePresence({ seat: onlineState.seat, ready: onlineState.ready });
+      updateParticipantList();
+    });
+    ring.appendChild(seat);
+  }
+}
+
 function updateParticipantList() {
   const list = getPresenceList();
   const el = document.getElementById('participant-list');
@@ -1598,19 +1699,22 @@ function updateParticipantList() {
     if (hostControls) hostControls.style.display = 'none';
   }
 
-  const seatSelect = document.getElementById('seat-select');
-  if (seatSelect) {
-    const usedSeats = list.filter(p => p.seat && p.name !== onlineState.displayName).map(p => String(p.seat));
-    Array.from(seatSelect.options).forEach(opt => {
-      if (!opt.value) return;
-      opt.disabled = usedSeats.includes(opt.value);
-    });
-    seatSelect.value = onlineState.seat || '';
-  }
+  renderSeatRing(list);
   const readyBtn = document.getElementById('ready-toggle-btn');
+  const seatHelp = document.getElementById('seat-help-text');
+  const seatConflict = list.some(p => p.seat && p.seat === onlineState.seat && p.name !== onlineState.displayName);
+  if (seatConflict) {
+    onlineState.seat = '';
+    onlineState.ready = false;
+    updatePresence({ seat: "", ready: false });
+  }
   if (readyBtn) {
     readyBtn.classList.toggle('on', onlineState.ready);
     readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
+    readyBtn.disabled = !onlineState.seat;
+  }
+  if (seatHelp) {
+    seatHelp.textContent = onlineState.seat ? `Seat ${onlineState.seat} を選択中` : '空席をタップして席を決める';
   }
 }
 
@@ -1689,7 +1793,24 @@ async function joinRoom(role, code, isAuto = false) {
   roomChannel
     .on('presence', { event: 'sync' }, () => {
       const presenceState = roomChannel.presenceState();
-      const hosts = Object.values(presenceState).flat().filter(p => p.role === 'host');
+      const list = Object.values(presenceState).flat();
+      const hosts = list.filter(p => p.role === 'host');
+      const nameDupes = list.filter(p => p.name === onlineState.displayName);
+      if (nameDupes.length > 1) {
+        leaveRoom();
+        setRoomStatus('同じ名前の参加者がいます');
+        return;
+      }
+      if (list.length > 8 && onlineState.role !== 'host') {
+        leaveRoom();
+        setRoomStatus('満席です');
+        return;
+      }
+      if (onlineState.role !== 'host' && hosts.length === 0 && onlineReady) {
+        leaveRoom();
+        setRoomStatus('ホストが退出しました');
+        return;
+      }
       if (onlineState.role === 'host') {
         // If another host already exists, back out and let caller retry
         if (hosts.length > 1) {
@@ -1760,6 +1881,16 @@ async function joinRoom(role, code, isAuto = false) {
         onlineState.connected = true;
         setRoomControls(true);
         updateParticipantList();
+        setRoomStatus(`${onlineState.role === 'host' ? 'ホスト中' : '参加中'}: ${onlineState.roomCode}`);
+      }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        onlineState.connected = false;
+        setRoomStatus('再接続中...');
+        scheduleReconnect();
+      }
+      if (status === 'CLOSED') {
+        onlineState.connected = false;
+        setRoomStatus('接続が終了しました');
       }
     });
 
@@ -2513,6 +2644,11 @@ document.addEventListener('DOMContentLoaded', () => {
       onlineState.displayName = nameInput ? nameInput.value.trim() : '';
       onlineState.ready = false;
       onlineState.seat = '';
+      updatePlayerBadge();
+      if (!onlineState.displayName) {
+        setRoomStatus('名前を入力してください');
+        return;
+      }
       if (codeInput) codeInput.value = '';
       const ok = await createRoomWithUniqueCode();
       if (ok) {
@@ -2527,6 +2663,11 @@ document.addEventListener('DOMContentLoaded', () => {
       onlineState.displayName = nameInput ? nameInput.value.trim() : '';
       onlineState.ready = false;
       onlineState.seat = '';
+      updatePlayerBadge();
+      if (!onlineState.displayName) {
+        setRoomStatus('名前を入力してください');
+        return;
+      }
       const code = codeInput ? codeInput.value : '';
       const ok = await joinRoom('player', code);
       if (ok) {
@@ -2540,6 +2681,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localBtn.addEventListener('click', () => {
       onlineState.displayName = nameInput ? nameInput.value.trim() : '';
       onlineState.role = 'local';
+      updatePlayerBadge();
       setUiState('settings');
       updateSettingsPanels();
     });
@@ -2603,17 +2745,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const seatSelect = document.getElementById('seat-select');
   const readyBtn = document.getElementById('ready-toggle-btn');
-  if (seatSelect) {
-    seatSelect.addEventListener('change', () => {
-      onlineState.seat = seatSelect.value;
-      updatePresence({ seat: onlineState.seat });
-      updateParticipantList();
-    });
-  }
   if (readyBtn) {
     readyBtn.addEventListener('click', () => {
+      if (!onlineState.seat) {
+        const seatHelp = document.getElementById('seat-help-text');
+        if (seatHelp) seatHelp.textContent = '先に席を選んでください';
+        return;
+      }
       onlineState.ready = !onlineState.ready;
       readyBtn.classList.toggle('on', onlineState.ready);
       readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
