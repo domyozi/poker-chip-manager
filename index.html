@@ -2159,7 +2159,7 @@ let lastCommunityCount = 0;
 let lastPhase = null;
 let confirmLock = false;
 let nextHandLock = false;
-let perPlayerStackBB = {};
+let perPlayerStackChips = {};
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -3024,7 +3024,7 @@ function renderPerPlayerStackList() {
   const settings = collectSettingsFromForm();
   const players = onlineState.role === 'host' ? getOnlinePlayers() : getLocalPlayers();
   listEl.innerHTML = '';
-  const defaultBB = Math.max(1, Math.floor(settings.initialChips / settings.bigBlind));
+  const defaultChips = settings.initialChips;
 
   players.forEach((p, i) => {
     const row = document.createElement('div');
@@ -3036,20 +3036,24 @@ function renderPerPlayerStackList() {
     input.inputMode = 'numeric';
     input.className = 'stack-input';
     input.dataset.index = String(i);
-    const saved = perPlayerStackBB[i];
-    input.value = String(saved || defaultBB);
-    input.addEventListener('input', () => {
-      const val = parseInt(input.value, 10);
-      perPlayerStackBB[i] = Number.isFinite(val) ? val : defaultBB;
-    });
+    const saved = perPlayerStackChips[i];
+    input.value = String(saved || defaultChips);
 
-    const chips = (Number.isFinite(parseInt(input.value, 10)) ? parseInt(input.value, 10) : defaultBB) * settings.bigBlind;
-    row.innerHTML = `
-      <div class="stack-name">${p.name}</div>
-      <div class="stack-suffix">BB</div>
-      <div class="stack-meta">= ${chips.toLocaleString()} チップ</div>
-    `;
+    const bbDisplay = document.createElement('div');
+    bbDisplay.className = 'stack-meta';
+    const updateBBDisplay = () => {
+      const chips = parseInt(input.value, 10);
+      const validChips = Number.isFinite(chips) && chips >= 1 ? chips : defaultChips;
+      const bb = settings.bigBlind > 0 ? Math.floor(validChips / settings.bigBlind) : 0;
+      bbDisplay.textContent = `= ${bb.toLocaleString()} BB`;
+      perPlayerStackChips[i] = validChips;
+    };
+    updateBBDisplay();
+    input.addEventListener('input', updateBBDisplay);
+
+    row.innerHTML = `<div class="stack-name">${p.name}</div>`;
     row.appendChild(input);
+    row.appendChild(bbDisplay);
     listEl.appendChild(row);
   });
 }
@@ -3062,9 +3066,9 @@ function startGameWithPlayers(players, settings) {
   if (perPlayerEnabled) {
     stackInputs.forEach(input => {
       const idx = parseInt(input.dataset.index || '0', 10);
-      const bb = parseInt(input.value, 10);
-      const validBB = Number.isFinite(bb) && bb >= 1 ? bb : 1;
-      stacksByIndex.set(idx, validBB * settings.bigBlind);
+      const chips = parseInt(input.value, 10);
+      const validChips = Number.isFinite(chips) && chips >= 1 ? chips : settings.initialChips;
+      stacksByIndex.set(idx, validChips);
     });
   }
   const playersWithStacks = players.map((p, i) => ({
@@ -3633,7 +3637,7 @@ function showShowdown() {
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
 
-  if (onlineState.role !== 'host') {
+  if (onlineState.role === 'player') {
     const card = document.querySelector('#showdown-overlay .showdown-card');
     if (card) {
       card.innerHTML = `
@@ -3692,7 +3696,7 @@ function showShowdown() {
 }
 
 function selectWinner(btn, playerId) {
-  if (onlineState.role !== 'host') return;
+  if (onlineState.role === 'player') return;
   if (isSplitMode) {
     btn.classList.toggle('selected');
     if (selectedWinners.includes(playerId)) {
@@ -3710,7 +3714,7 @@ function selectWinner(btn, playerId) {
 }
 
 function toggleSplit() {
-  if (onlineState.role !== 'host') return;
+  if (onlineState.role === 'player') return;
   isSplitMode = !isSplitMode;
   document.getElementById('split-toggle').classList.toggle('on', isSplitMode);
   if (!isSplitMode) {
@@ -3725,7 +3729,7 @@ function toggleSplit() {
 }
 
 function confirmWinner() {
-  if (onlineState.role !== 'host') return;
+  if (onlineState.role === 'player') return;
   if (confirmLock || selectedWinners.length === 0) return;
   confirmLock = true;
   setTimeout(() => { confirmLock = false; }, 200);
@@ -3768,7 +3772,7 @@ function showNextHand(winnerName, gainText = '') {
   document.getElementById('next-hand-overlay').classList.add('visible');
   const btn = document.querySelector('.next-hand-btn');
   if (btn) {
-    if (onlineState.role === 'host') {
+    if (onlineState.role !== 'player') {
       btn.disabled = false;
       btn.textContent = '次のハンド';
     } else {
@@ -3784,7 +3788,7 @@ function showNextHand(winnerName, gainText = '') {
 
 function nextHand() {
   if (nextHandLock) return;
-  if (onlineState.role !== 'host') return;
+  if (onlineState.role === 'player') return;
   nextHandLock = true;
   setTimeout(() => { nextHandLock = false; }, 200);
   document.getElementById('next-hand-overlay').classList.remove('visible');
@@ -3800,7 +3804,7 @@ function showGameOver() {
   // ボタンを「新しいゲーム」に変更
   const btn = overlay.querySelector('.next-hand-btn');
   if (btn) {
-    if (onlineState.role === 'host') {
+    if (onlineState.role !== 'player') {
       btn.disabled = false;
       btn.textContent = '新しいゲーム';
       btn.onclick = () => {
