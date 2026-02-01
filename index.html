@@ -151,6 +151,96 @@ body {
   transition: border-color 0.2s;
 }
 .blind-input-wrap input:focus { border-color: var(--gold-dim); }
+.blind-input-wrap select {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: var(--gold);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 16px; font-weight: 600;
+  padding: 10px 14px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4af37'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.blind-input-wrap select:focus { border-color: var(--gold-dim); }
+.blind-input-wrap select option { background: #1a3328; color: var(--chip-white); }
+
+/* Toggle label */
+.toggle-label {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; padding: 8px 0;
+}
+.toggle-label input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.toggle-text {
+  font-size: 13px; color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+.tournament-toggle { margin-bottom: 8px; }
+.tournament-options { padding-left: 28px; }
+
+/* Timer progress ring */
+.timer-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.timer-ring circle {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 0.2s linear, stroke 0.3s;
+}
+.timer-ring .bg { stroke: rgba(255,255,255,0.1); }
+.timer-ring .progress { stroke: var(--gold); }
+.timer-ring .progress.warning { stroke: #f1c40f; }
+.timer-ring .progress.danger { stroke: #e74c3c; }
+
+/* Timer text display */
+.timer-text {
+  position: absolute;
+  bottom: -24px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; font-weight: 600;
+  color: var(--gold);
+  font-family: 'Source Code Pro', monospace;
+  white-space: nowrap;
+}
+.timer-text.warning { color: #f1c40f; }
+.timer-text.danger { color: #e74c3c; animation: timer-blink 0.5s ease-in-out infinite; }
+@keyframes timer-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Tournament info bar */
+.tournament-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: linear-gradient(180deg, rgba(26,51,40,0.95), rgba(26,51,40,0.8));
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  z-index: 100;
+  border-bottom: 1px solid rgba(212,175,55,0.2);
+}
+.tournament-bar .level { color: var(--gold); font-weight: 600; }
+.tournament-bar .blinds { color: var(--text-secondary); }
+.tournament-bar .next-level { color: var(--chip-white); }
+.tournament-bar .next-level span { color: var(--gold); font-weight: 600; }
 
 /* Start button */
 .start-btn {
@@ -712,11 +802,56 @@ body {
     </div>
   </div>
 
+  <div class="setup-section">
+    <div class="setup-label">アクションタイマー</div>
+    <div class="blind-row">
+      <div class="blind-input-wrap">
+        <span class="blind-input-label">制限時間</span>
+        <select id="timer-select">
+          <option value="15">15秒</option>
+          <option value="30" selected>30秒</option>
+          <option value="60">60秒</option>
+          <option value="0">無制限</option>
+        </select>
+      </div>
+      <div class="blind-input-wrap">
+        <label class="toggle-label">
+          <input type="checkbox" id="timer-sound-toggle" checked>
+          <span class="toggle-text">効果音</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <label class="toggle-label tournament-toggle">
+      <input type="checkbox" id="tournament-mode-toggle">
+      <span class="toggle-text">トーナメントモード</span>
+    </label>
+    <div class="tournament-options" id="tournament-options" style="display: none;">
+      <div class="blind-row" style="margin-top: 12px;">
+        <div class="blind-input-wrap" style="flex: 1;">
+          <span class="blind-input-label">ブラインドレベル時間</span>
+          <select id="blind-level-select">
+            <option value="10">10分</option>
+            <option value="15" selected>15分</option>
+            <option value="20">20分</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <button class="start-btn" id="start-btn" onclick="startGame()">テーブルに着席</button>
 </div>
 
 <!-- ─── GAME SCREEN ───────────────────────────── -->
 <div id="game-screen" style="display:none;">
+  <div class="tournament-bar" id="tournament-bar" style="display: none;">
+    <div class="level">Level 1</div>
+    <div class="blinds">10 / 20</div>
+    <div class="next-level">次のレベルまで: <span>15:00</span></div>
+  </div>
   <div class="game-header">
     <div>
       <span class="header-phase-dot"></span>
@@ -1008,6 +1143,187 @@ let raiseValue = 0;           // 現在のレイズ額（絶対値）
 let selectedWinners = [];     // showdown時の勝者選択
 let isSplitMode = false;
 
+// Timer state
+let timerSettings = { duration: 30, soundEnabled: true };
+let actionTimer = null;
+let timeRemaining = 0;
+let timerStartTime = 0;
+
+// Tournament state
+let tournamentSettings = { enabled: false, levelDuration: 15 };
+let tournamentTimer = null;
+let tournamentTimeRemaining = 0;
+let currentBlindLevel = 1;
+
+// ─── TIMER FUNCTIONS ─────────────────────────────
+function startActionTimer() {
+  stopActionTimer();
+  if (timerSettings.duration === 0) return; // 無制限
+
+  timeRemaining = timerSettings.duration;
+  timerStartTime = Date.now();
+  updateTimerDisplay();
+
+  actionTimer = setInterval(() => {
+    const elapsed = (Date.now() - timerStartTime) / 1000;
+    timeRemaining = Math.max(0, timerSettings.duration - elapsed);
+
+    updateTimerDisplay();
+
+    // 残り5秒で警告音
+    if (timerSettings.soundEnabled && Math.ceil(timeRemaining) === 5) {
+      playTimerWarning();
+    }
+
+    if (timeRemaining <= 0) {
+      handleTimeOut();
+    }
+  }, 100);
+}
+
+function stopActionTimer() {
+  if (actionTimer) {
+    clearInterval(actionTimer);
+    actionTimer = null;
+  }
+  timeRemaining = 0;
+}
+
+function updateTimerDisplay() {
+  const ring = document.querySelector('.player-card.is-actor .timer-ring .progress');
+  const text = document.querySelector('.player-card.is-actor .timer-text');
+  if (!ring || !text) return;
+
+  const pct = timerSettings.duration > 0 ? timeRemaining / timerSettings.duration : 1;
+  const circumference = 2 * Math.PI * 28;
+  ring.style.strokeDashoffset = circumference * (1 - pct);
+
+  const secs = Math.ceil(timeRemaining);
+  text.textContent = `0:${secs.toString().padStart(2, '0')}`;
+
+  // Color states
+  ring.classList.remove('warning', 'danger');
+  text.classList.remove('warning', 'danger');
+  if (secs <= 5) {
+    ring.classList.add('danger');
+    text.classList.add('danger');
+  } else if (secs <= 10) {
+    ring.classList.add('warning');
+    text.classList.add('warning');
+  }
+}
+
+function handleTimeOut() {
+  stopActionTimer();
+  if (!gameState || !gameState.isHandActive) return;
+
+  const actor = gameState.players[gameState.currentPlayerIndex];
+  if (actor.status !== 'active') return;
+
+  // Play timeout sound
+  if (timerSettings.soundEnabled) playTimeoutSound();
+
+  // Auto action: check if possible, otherwise fold
+  const callAmt = gameState.currentMaxBet - actor.currentBet;
+  if (callAmt === 0) {
+    doAction('check');
+  } else {
+    doAction('fold');
+  }
+}
+
+function playTimerWarning() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.1;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch (e) {}
+}
+
+function playTimeoutSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 440;
+    gain.gain.value = 0.15;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {}
+}
+
+// ─── TOURNAMENT FUNCTIONS ────────────────────────
+function startTournamentTimer() {
+  stopTournamentTimer();
+  if (!tournamentSettings.enabled) return;
+
+  tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
+  updateTournamentDisplay();
+
+  tournamentTimer = setInterval(() => {
+    tournamentTimeRemaining--;
+    updateTournamentDisplay();
+
+    if (tournamentTimeRemaining <= 0) {
+      advanceBlindLevel();
+    }
+  }, 1000);
+}
+
+function stopTournamentTimer() {
+  if (tournamentTimer) {
+    clearInterval(tournamentTimer);
+    tournamentTimer = null;
+  }
+}
+
+function updateTournamentDisplay() {
+  const bar = document.getElementById('tournament-bar');
+  if (!bar || !tournamentSettings.enabled) return;
+
+  const mins = Math.floor(tournamentTimeRemaining / 60);
+  const secs = tournamentTimeRemaining % 60;
+
+  bar.querySelector('.next-level span').textContent =
+    `${mins}:${secs.toString().padStart(2, '0')}`;
+  bar.querySelector('.level').textContent = `Level ${currentBlindLevel}`;
+  bar.querySelector('.blinds').textContent =
+    `${gameState.smallBlind} / ${gameState.bigBlind}`;
+}
+
+function advanceBlindLevel() {
+  if (!gameState) return;
+  currentBlindLevel++;
+  gameState.smallBlind *= 2;
+  gameState.bigBlind *= 2;
+  tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
+  updateTournamentDisplay();
+
+  // Play level up sound
+  if (timerSettings.soundEnabled) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 660;
+      gain.gain.value = 0.15;
+      osc.start();
+      setTimeout(() => { osc.frequency.value = 880; }, 150);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {}
+  }
+}
+
 // Player positions (ellipse ring). index → {x%, y%}
 function calcPositions(n) {
   const positions = [];
@@ -1071,9 +1387,23 @@ function renderPlayers() {
     card.className = classes;
     card.style.left = pos.x + '%';
     card.style.top = pos.y + '%';
+
+    // Timer ring for active player (only if timer is enabled)
+    const showTimer = isActor && timerSettings.duration > 0;
+    const circumference = 2 * Math.PI * 28;
+    const timerRingHtml = showTimer ? `
+      <svg class="timer-ring" width="64" height="64" viewBox="0 0 64 64">
+        <circle class="bg" cx="32" cy="32" r="28"/>
+        <circle class="progress" cx="32" cy="32" r="28"
+          style="stroke-dasharray: ${circumference}; stroke-dashoffset: 0"/>
+      </svg>
+      <div class="timer-text">0:${timerSettings.duration.toString().padStart(2, '0')}</div>
+    ` : '';
+
     card.innerHTML = `
       <div class="allin-badge">ALL IN</div>
       <div class="avatar">
+        ${timerRingHtml}
         ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
         ${initial}
         ${hasBet ? `<div class="bet-badge">${player.currentBet}</div>` : ''}
@@ -1218,6 +1548,7 @@ function doAction(type, amount = 0) {
 
   // Showdown check
   if (gameState.phase === 'showdown') {
+    stopActionTimer();
     // 1人残し（自動勝ち）の場合はポットが既に配分済み
     const totalPot = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
     if (totalPot === 0) {
@@ -1228,6 +1559,9 @@ function doAction(type, amount = 0) {
       // showdown → 勝者選択
       setTimeout(() => showShowdown(), 300);
     }
+  } else if (gameState.isHandActive) {
+    // Restart timer for next player
+    startActionTimer();
   }
 }
 
@@ -1321,6 +1655,7 @@ function nextHand() {
   gameState = advanceDealer(gameState);
   gameState = startHand(gameState);
   render();
+  startActionTimer();
 }
 
 // ─── SETUP SCREEN LOGIC ───────────────────────
@@ -1356,12 +1691,32 @@ function startGame() {
   const bb = parseInt(document.getElementById('bb-input').value) || 20;
   const initialChips = parseInt(document.getElementById('initial-chips-input').value) || 1000;
 
+  // Timer settings
+  timerSettings.duration = parseInt(document.getElementById('timer-select').value) || 30;
+  timerSettings.soundEnabled = document.getElementById('timer-sound-toggle').checked;
+
+  // Tournament settings
+  tournamentSettings.enabled = document.getElementById('tournament-mode-toggle').checked;
+  tournamentSettings.levelDuration = parseInt(document.getElementById('blind-level-select').value) || 15;
+  currentBlindLevel = 1;
+
   gameState = initGame(names, sb, bb, initialChips);
   gameState = startHand(gameState);
 
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('game-screen').style.display = 'flex';
+
+  // Show/hide tournament bar
+  const tournamentBar = document.getElementById('tournament-bar');
+  if (tournamentSettings.enabled) {
+    tournamentBar.style.display = 'flex';
+    startTournamentTimer();
+  } else {
+    tournamentBar.style.display = 'none';
+  }
+
   render();
+  startActionTimer();
 }
 
 // Load saved player names on page load
@@ -1387,14 +1742,31 @@ function loadSavedPlayerNames() {
   }
 }
 
+function syncTournamentOptions() {
+  const toggle = document.getElementById('tournament-mode-toggle');
+  const options = document.getElementById('tournament-options');
+  if (!toggle || !options) return;
+  options.style.display = toggle.checked ? 'block' : 'none';
+}
+
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', loadSavedPlayerNames);
+document.addEventListener('DOMContentLoaded', () => {
+  loadSavedPlayerNames();
+  const toggle = document.getElementById('tournament-mode-toggle');
+  if (toggle) {
+    toggle.addEventListener('change', syncTournamentOptions);
+  }
+  syncTournamentOptions();
+});
 
 function resetToSetup() {
   document.getElementById('setup-screen').classList.remove('hidden');
   document.getElementById('game-screen').style.display = 'none';
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
+  document.getElementById('tournament-bar').style.display = 'none';
+  stopTournamentTimer();
+  stopActionTimer();
   gameState = null;
 }
 
