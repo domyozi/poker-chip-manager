@@ -391,10 +391,16 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--gold);
   margin-bottom: 8px;
 }
+.screen-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: env(safe-area-inset-top);
+  margin-bottom: 8px;
+}
 .back-btn {
-  position: absolute;
-  top: 14px; left: 14px;
-  z-index: 130;
+  position: static;
 }
 .waiting-subtext {
   font-size: 13px;
@@ -733,6 +739,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   flex-direction: column;
   gap: 6px;
   z-index: 120;
+  min-width: 180px;
 }
 .header-menu-item {
   background: rgba(255,255,255,0.06);
@@ -743,6 +750,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
   cursor: pointer;
   font-size: 11px;
   letter-spacing: 1px;
+  text-align: left;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
 }
 .header-menu-item:hover { background: rgba(255,255,255,0.12); }
 
@@ -887,8 +897,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .player-card .bet-badge {
   position: absolute;
-  bottom: -18px; left: 50%;
-  transform: translateX(-50%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(212,175,55,0.12);
   border: 1px solid var(--gold-dim);
   border-radius: 10px;
@@ -1053,10 +1063,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .action-actor-label strong { color: var(--gold); font-family: 'Playfair Display', serif; font-size: 16px; }
 
 /* Action buttons row */
-.action-btns { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
+.action-btns { display: flex; gap: 12px; justify-content: center; margin-bottom: 14px; }
 .action-btn {
   flex: 1; max-width: 120px;
-  padding: 14px 12px;
+  padding: 16px 12px;
+  min-height: 54px;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.06);
@@ -1067,6 +1078,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   cursor: pointer;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s, border-color 0.15s;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.25);
 }
 .action-btn .btn-sub {
   font-size: 11px; font-weight: 600;
@@ -1074,15 +1086,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   letter-spacing: 0;
 }
 .action-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
-.action-btn:active { transform: scale(0.94); }
+.action-btn:active { transform: translateY(1px) scale(0.98); box-shadow: 0 3px 8px rgba(0,0,0,0.25); }
 
-.action-btn.btn-fold { border-color: rgba(192,57,43,0.25); }
-.action-btn.btn-fold:hover { background: rgba(192,57,43,0.15); border-color: rgba(192,57,43,0.4); }
+.action-btn.btn-fold { border-color: rgba(192,57,43,0.2); background: rgba(192,57,43,0.06); }
+.action-btn.btn-fold:hover { background: rgba(192,57,43,0.12); border-color: rgba(192,57,43,0.35); }
 .action-btn.btn-fold .btn-label { color: var(--chip-red); }
 .action-btn.btn-fold .btn-sub { color: rgba(192,57,43,0.7); }
 
-.action-btn.btn-call { border-color: rgba(46,204,113,0.25); }
-.action-btn.btn-call:hover { background: rgba(46,204,113,0.12); border-color: rgba(46,204,113,0.4); }
+.action-btn.btn-call { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); }
+.action-btn.btn-call:hover { background: rgba(46,204,113,0.2); border-color: rgba(46,204,113,0.6); }
 .action-btn.btn-call .btn-label { color: #2ecc71; }
 .action-btn.btn-call .btn-sub { color: #2ecc71; }
 
@@ -1091,8 +1103,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .action-btn.btn-check .btn-label { color: #2ecc71; }
 .action-btn.btn-check .btn-sub { color: #2ecc71; }
 
-.action-btn.btn-raise { border-color: var(--gold-dim); background: rgba(212,175,55,0.08); }
-.action-btn.btn-raise:hover { background: rgba(212,175,55,0.18); border-color: var(--gold); }
+.action-btn.btn-raise { border-color: var(--gold); background: rgba(212,175,55,0.16); }
+.action-btn.btn-raise:hover { background: rgba(212,175,55,0.26); border-color: var(--gold); }
 .action-btn.btn-raise .btn-label { color: var(--gold); }
 .action-btn.btn-raise .btn-sub { color: var(--gold); }
 
@@ -1507,7 +1519,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── WAITING SCREEN ────────────────────────── -->
 <div id="waiting-screen" class="screen hidden">
-  <button class="room-btn back-btn" id="waiting-back-btn">← 戻る</button>
+  <div class="screen-header">
+    <button class="room-btn back-btn" id="waiting-back-btn">← 戻る</button>
+  </div>
   <div class="setup-title">WAITING</div>
   <div class="setup-subtitle">参加者が揃うのを待っています</div>
 
@@ -1698,7 +1712,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="header-actions">
       <button class="header-btn" id="menu-btn">⋯</button>
       <div class="header-menu" id="header-menu" style="display:none;">
-        <button class="header-menu-item" id="menu-reset-btn">終了して戻る</button>
+        <button class="header-menu-item" id="menu-display-toggle">表記切替: CHIP</button>
+        <button class="header-menu-item" id="menu-reset-btn">ゲーム終了して戻る</button>
       </div>
     </div>
   </div>
@@ -1783,7 +1798,37 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.4.3";
+const APP_VERSION = "v0.4.4";
+let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
+
+function getBigBlindValue() {
+  return gameState?.bigBlind
+    || parseInt(document.getElementById('bb-input')?.value || '0', 10)
+    || 20;
+}
+
+function formatBB(amount) {
+  const bb = getBigBlindValue();
+  if (!bb) return '0';
+  const value = amount / bb;
+  const rounded = Math.abs(value - Math.round(value)) < 0.01
+    ? Math.round(value)
+    : Math.round(value * 10) / 10;
+  return String(rounded);
+}
+
+function formatAmount(amount) {
+  if (displayMode === 'bb') return `${formatBB(amount)}BB`;
+  return amount.toLocaleString();
+}
+
+function applyDisplayMode(mode) {
+  displayMode = mode;
+  localStorage.setItem('pokerDisplayMode', mode);
+  const toggleBtn = document.getElementById('menu-display-toggle');
+  if (toggleBtn) toggleBtn.textContent = `表記切替: ${displayMode === 'bb' ? 'BB' : 'CHIP'}`;
+  render();
+}
 
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
@@ -2370,6 +2415,7 @@ function updateParticipantList() {
   if (stepSeat && stepReady) {
     stepSeat.classList.remove('active', 'done');
     stepReady.classList.remove('active', 'done');
+    stepReady.style.display = onlineState.role === 'host' ? 'none' : 'flex';
     if (!onlineState.seat) {
       stepSeat.classList.add('active');
     } else if (!(onlineState.role === 'host' ? !!onlineState.seat : onlineState.ready)) {
@@ -2403,7 +2449,8 @@ function updateParticipantList() {
 
 async function leaveRoom() {
   if (roomChannel) {
-    roomChannel.unsubscribe();
+    try { await roomChannel.untrack?.(); } catch (e) {}
+    try { await roomChannel.unsubscribe(); } catch (e) {}
     roomChannel = null;
   }
   onlineState = {
@@ -2412,8 +2459,11 @@ async function leaveRoom() {
     connected: false,
     displayName: onlineState.displayName,
     seat: "",
-    ready: false
+    ready: false,
+    joinedAt: 0
   };
+  gameState = null;
+  stopTournamentTimer();
   onlineReady = false;
   setRoomControls(false);
   setRoomStatus('ローカルモード');
@@ -2522,6 +2572,9 @@ async function joinRoom(role, code, isAuto = false) {
       if (onlineState.role === 'host') return;
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
+      if (gameState?.isHandActive) {
+        document.getElementById('next-hand-overlay').classList.remove('visible');
+      }
       render();
       if (gameState.isHandActive) startActionTimer();
     })
@@ -2577,6 +2630,10 @@ async function joinRoom(role, code, isAuto = false) {
           : `各 +${per.toLocaleString()} チップ`;
       }
       showNextHand(winnerNames.join(' & '), gainText);
+    })
+    .on('broadcast', { event: 'next-hand-request' }, () => {
+      if (onlineState.role !== 'host') return;
+      advanceToNextHandAndBroadcast();
     })
     .subscribe(async status => {
       if (status === 'SUBSCRIBED') {
@@ -3068,12 +3125,12 @@ function renderPlayers() {
         ${timerRingHtml}
         ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
         ${avatarSymbol}
-        ${hasBet ? `<div class="bet-badge">${player.currentBet}</div>` : ''}
+        ${hasBet ? `<div class="bet-badge">${formatAmount(player.currentBet)}</div>` : ''}
       </div>
       <div class="info-line">
         <span class="player-icon${player.icon ? '' : ' is-empty'}" aria-hidden="true">${displayIcon}</span>
         <div class="name${showName ? '' : ' is-empty'}">${showName ? player.name : ''}</div>
-        <div class="chips">${player.chips.toLocaleString()}</div>
+        <div class="chips">${formatAmount(player.chips)}</div>
       </div>
     `;
     ring.appendChild(card);
@@ -3082,7 +3139,16 @@ function renderPlayers() {
     if (hasBet) {
       setTimeout(() => {
         const badge = card.querySelector('.bet-badge');
-        if (badge) badge.style.opacity = '1';
+        if (badge) {
+          const dx = 50 - pos.x;
+          const dy = 50 - pos.y;
+          const mag = Math.hypot(dx, dy) || 1;
+          const offset = 26;
+          const ox = (dx / mag) * offset;
+          const oy = (dy / mag) * offset;
+          badge.style.opacity = '1';
+          badge.style.transform = `translate(-50%, -50%) translate(${ox}px, ${oy}px)`;
+        }
       }, 50);
     }
   });
@@ -3091,8 +3157,9 @@ function renderPlayers() {
 function renderPot() {
   const total = (gameState.pots||[]).reduce((s, p) => s + p.amount, 0);
   const el = document.getElementById('pot-amount');
-  const prev = parseInt(el.textContent) || 0;
-  el.textContent = total.toLocaleString();
+  const prev = parseInt(el.dataset.value || '0', 10) || 0;
+  el.dataset.value = String(total);
+  el.textContent = formatAmount(total);
   if (total !== prev && total > 0) {
     el.classList.remove('bump');
     void el.offsetWidth; // reflow
@@ -3190,11 +3257,11 @@ function renderActionPanel() {
 
   // Check or Call
   if (canCheck) {
-    btnsEl.appendChild(makeActionBtn('btn-check', 'CHECK', '0', () => doAction('check')));
+    btnsEl.appendChild(makeActionBtn('btn-check', 'CHECK', formatAmount(0), () => doAction('check')));
   } else {
     const actualCall = Math.min(callAmt, actor.chips);
     const isAllInCall = actualCall >= actor.chips;
-    btnsEl.appendChild(makeActionBtn('btn-call', 'CALL', isAllInCall ? 'ALL IN' : actualCall.toLocaleString(), () => doAction('call')));
+    btnsEl.appendChild(makeActionBtn('btn-call', 'CALL', isAllInCall ? 'ALL IN' : formatAmount(actualCall), () => doAction('call')));
   }
 
   // Raise (only if chips remain after a potential call)
@@ -3202,7 +3269,7 @@ function renderActionPanel() {
   const maxRaise = actor.chips + actor.currentBet;
   if (maxRaise >= minRaise) {
     setRaiseValue(minRaise);
-    btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', raiseValue.toLocaleString(), () => toggleRaiseArea()));
+    btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', formatAmount(raiseValue), () => toggleRaiseArea()));
     setupRaiseSlider(minRaise, maxRaise);
   }
 
@@ -3249,14 +3316,14 @@ function setRaiseValue(value) {
   const clamped = Math.max(raiseMin, Math.min(raiseMax, Math.round(value)));
   raiseValue = clamped;
   const display = document.getElementById('raise-amount-display');
-  if (display) display.textContent = raiseValue.toLocaleString();
+  if (display) display.textContent = formatAmount(raiseValue);
   const slider = document.getElementById('raise-slider');
   if (slider && raiseMax > raiseMin) {
     const pct = (raiseValue - raiseMin) / (raiseMax - raiseMin);
     slider.value = Math.round(pct * 100);
   }
   const raiseBtn = document.querySelector('.btn-raise .btn-sub');
-  if (raiseBtn) raiseBtn.textContent = raiseValue.toLocaleString();
+  if (raiseBtn) raiseBtn.textContent = formatAmount(raiseValue);
   updateActivePreset();
 }
 
@@ -3403,7 +3470,7 @@ function render() {
 // ─── SHOWDOWN ─────────────────────────────────
 function showShowdown() {
   const total = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
-  document.getElementById('showdown-pot-amount').textContent = total.toLocaleString();
+  document.getElementById('showdown-pot-amount').textContent = formatAmount(total);
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   const emergencyBtn = document.getElementById('showdown-emergency-btn');
@@ -3429,25 +3496,18 @@ function showShowdown() {
   // 1人しかいない場合は自動選択
   if (eligible.length === 1) {
     selectedWinners = [eligible[0].id];
-    const btn = document.createElement('button');
-    btn.className = 'winner-btn selected';
-    btn.dataset.playerId = eligible[0].id;
-    btn.innerHTML = `
-      <div class="w-avatar">${eligible[0].name.charAt(0).toUpperCase()}</div>
-      <span class="w-name">${eligible[0].name}</span>
-      <span class="w-chips">${eligible[0].chips.toLocaleString()}</span>
-    `;
-    selectEl.appendChild(btn);
     if (confirmBtn) confirmBtn.disabled = false;
+    confirmWinner();
+    return;
   } else {
     eligible.forEach(player => {
       const btn = document.createElement('button');
       btn.className = 'winner-btn';
       btn.dataset.playerId = player.id;
       btn.innerHTML = `
-        <div class="w-avatar">${player.name.charAt(0).toUpperCase()}</div>
-        <span class="w-name">${player.name}</span>
-        <span class="w-chips">${player.chips.toLocaleString()}</span>
+      <div class="w-avatar">${player.name.charAt(0).toUpperCase()}</div>
+      <span class="w-name">${player.name}</span>
+      <span class="w-chips">${formatAmount(player.chips)}</span>
       `;
       // タッチとクリック両対応
       const handleSelect = (e) => {
@@ -3575,19 +3635,12 @@ function nextHand() {
   nextHandLock = true;
   setTimeout(() => { nextHandLock = false; }, 200);
   document.getElementById('next-hand-overlay').classList.remove('visible');
-  gameState = advanceDealer(gameState);
-  gameState = startHand(gameState);
-
-  // ゲーム終了チェック（1人だけ残っている場合）
-  if (gameState.phase === 'finished') {
-    showGameOver();
-    return;
-  }
-
-  render();
-  startActionTimer();
   if (onlineState.role === 'host') {
-    broadcastState();
+    advanceToNextHandAndBroadcast();
+  } else if (roomChannel) {
+    roomChannel.send({ type: 'broadcast', event: 'next-hand-request', payload: {} });
+  } else {
+    advanceToNextHandAndBroadcast();
   }
 }
 
@@ -3605,6 +3658,22 @@ function showGameOver() {
       overlay.classList.remove('visible');
       setUiState('room');
     };
+  }
+}
+
+function advanceToNextHandAndBroadcast() {
+  gameState = advanceDealer(gameState);
+  gameState = startHand(gameState);
+
+  if (gameState.phase === 'finished') {
+    showGameOver();
+    return;
+  }
+
+  render();
+  startActionTimer();
+  if (onlineState.role === 'host') {
+    broadcastState();
   }
 }
 
@@ -3888,6 +3957,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!menu.contains(e.target) && e.target !== menuBtn) {
         menu.style.display = 'none';
       }
+    });
+  }
+  const displayToggleBtn = document.getElementById('menu-display-toggle');
+  if (displayToggleBtn) {
+    displayToggleBtn.textContent = `表記切替: ${displayMode === 'bb' ? 'BB' : 'CHIP'}`;
+    displayToggleBtn.addEventListener('click', () => {
+      applyDisplayMode(displayMode === 'bb' ? 'chips' : 'bb');
+      if (menu) menu.style.display = 'none';
     });
   }
   if (menuResetBtn) {
