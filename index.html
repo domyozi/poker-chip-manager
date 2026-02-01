@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POKER — チップ管理</title>
+<meta name="theme-color" content="#1a3328">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* ─── CSS Variables ──────────────────────────── */
@@ -1314,6 +1319,47 @@ function resetToSetup() {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
   gameState = null;
+}
+
+// ─── SERVICE WORKER & UPDATE NOTIFICATION ─────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(registration => {
+      console.log('SW registered:', registration.scope);
+
+      // Check for updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New version available
+            showUpdateNotification();
+          }
+        });
+      });
+    }).catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+function showUpdateNotification() {
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.innerHTML = `
+    <span>新しいバージョンが利用可能です</span>
+    <button onclick="location.reload()">更新</button>
+  `;
+  banner.style.cssText = `
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--gold); color: #0f1a16; padding: 12px 20px;
+    border-radius: 8px; font-family: inherit; font-size: 14px;
+    display: flex; align-items: center; gap: 12px; z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  `;
+  banner.querySelector('button').style.cssText = `
+    background: #0f1a16; color: var(--gold); border: none;
+    padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;
+  `;
+  document.body.appendChild(banner);
 }
 </script>
 </body>
