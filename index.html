@@ -1177,6 +1177,16 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .raise-slider-row {
   display: flex; align-items: center; gap: 12px;
 }
+.raise-min {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+.raise-error {
+  font-size: 11px;
+  color: var(--chip-red);
+  text-align: right;
+}
 .raise-area input[type=range] {
   flex: 1;
   -webkit-appearance: none;
@@ -1316,21 +1326,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .confirm-winner-btn:active { transform: translateY(0); }
 .confirm-winner-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
 
-.showdown-emergency {
-  margin-top: 12px;
-  width: 100%;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px dashed rgba(255,255,255,0.2);
-  background: rgba(255,255,255,0.06);
-  color: var(--text-secondary);
-  font-family: 'Source Code Pro', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  display: none;
-}
-.showdown-emergency.visible { display: block; }
 
 /* ─── Next hand prompt ────────────────────────── */
 .next-hand-overlay {
@@ -1765,6 +1760,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="action-btns" id="action-btns"></div>
     <div class="raise-area" id="raise-area">
       <div class="raise-presets" id="raise-presets"></div>
+      <div class="raise-min" id="raise-min-label"></div>
+      <div class="raise-error" id="raise-error" style="display:none;"></div>
       <div class="raise-slider-row">
         <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
         <div class="raise-amount" id="raise-amount-display">0</div>
@@ -1785,7 +1782,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="toggle-switch" id="split-toggle" onclick="toggleSplit()"></div>
     </div>
     <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>確定</button>
-    <button class="showdown-emergency" id="showdown-emergency-btn">Continue / Next Hand</button>
   </div>
 </div>
 
@@ -1820,7 +1816,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.4.4";
+const APP_VERSION = "v0.4.5";
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
 
 function getBigBlindValue() {
@@ -1881,7 +1877,7 @@ function initGame(playerInput, smallBlind, bigBlind, initialChips = 1000) {
   return {
     players, smallBlind, bigBlind,
     phase: "preflop", currentPlayerIndex: 0, dealerIndex: 0,
-    pots: [], currentMaxBet: 0, actionHistory: [],
+    pots: [], currentMaxBet: 0, lastRaiseSize: bigBlind, actionHistory: [],
     isHandActive: false
   };
 }
@@ -1937,6 +1933,7 @@ function startHand(state) {
   s = postBlind(s, sbIdx, s.smallBlind);
   s = postBlind(s, bbIdx, s.bigBlind);
   s.currentMaxBet = s.bigBlind;
+  s.lastRaiseSize = s.bigBlind;
 
   // BBの次のアクティブプレイヤーを探す
   const firstToAct = findNextWithChips(bbIdx);
@@ -1957,9 +1954,16 @@ function validateAction(state, type, amount) {
       if (callAmt === 0) return { error: "コールする必要がありません" };
       return { resolvedAmount: Math.min(callAmt, player.chips) };
     case "raise": {
+      // Min raise: previous bet/raise size. All-in below min does not reopen action.
+      // Sources: https://oag.ca.gov/sites/all/files/agweb/pdfs/gambling/oceans-eleven.pdf
+      //          https://www.pokerstars.com/help/articles/poker-rules-master/
       const need = amount - player.currentBet;
-      if (amount < state.currentMaxBet + state.bigBlind) return { error: `レイズ額は最低 ${state.currentMaxBet + state.bigBlind}` };
-      if (need > player.chips) return { resolvedAmount: player.chips };
+      const minRaiseTo = state.currentMaxBet + state.lastRaiseSize;
+      const allInTo = player.currentBet + player.chips;
+      if (amount < minRaiseTo && amount < allInTo) {
+        return { error: `レイズ額は最低 ${minRaiseTo}` };
+      }
+      if (amount >= allInTo) return { resolvedAmount: player.chips, isShortAllIn: amount < minRaiseTo };
       return { resolvedAmount: need };
     }
     default: return { error: "不明" };
@@ -1971,9 +1975,10 @@ function addToMainPot(pots, amount) {
   return pots.map((p, i) => i === 0 ? { ...p, amount: p.amount + amount } : p);
 }
 
-function applyAction(state, playerIdx, type, amount) {
+function applyAction(state, playerIdx, type, amount, meta = {}) {
   const s = { ...state, players: state.players.map(p => ({...p})), pots: state.pots.map(p => ({...p})) };
   const player = s.players[playerIdx];
+  const prevMax = s.currentMaxBet;
   
   // ★ アクション済みフラグをセット
   player.actedThisRound = true;
@@ -1998,10 +2003,17 @@ function applyAction(state, playerIdx, type, amount) {
       s.currentMaxBet = player.currentBet;
       if (player.chips === 0) player.status = "allIn";
       s.pots = addToMainPot(s.pots, amount);
-      // ★ レイズ時: 他の全アクティブプレイヤーのactedをfalseにリセット
-      s.players.forEach((p, i) => {
-        if (i !== playerIdx && p.status === "active") p.actedThisRound = false;
-      });
+      {
+        const raiseSize = player.currentBet - prevMax;
+        const isFullRaise = raiseSize >= s.lastRaiseSize;
+        if (isFullRaise) {
+          s.lastRaiseSize = raiseSize;
+          // ★ フルレイズ時: 他の全アクティブプレイヤーのactedをfalseにリセット
+          s.players.forEach((p, i) => {
+            if (i !== playerIdx && p.status === "active") p.actedThisRound = false;
+          });
+        }
+      }
       break;
   }
   const next = findNextActivePlayer(s, playerIdx);
@@ -2018,6 +2030,7 @@ function advanceToNextPhase(state) {
   if (s.phase === "showdown") { s.isHandActive = false; return s; }
   // ★ 新しいラウンド初期化
   s.currentMaxBet = 0;
+  s.lastRaiseSize = s.bigBlind;
   s.players = s.players.map(p => ({ ...p, currentBet: 0, actedThisRound: false }));
   const first = findNextActivePlayer(s, s.dealerIndex);
   s.currentPlayerIndex = first !== -1 ? first : s.currentPlayerIndex;
@@ -2065,7 +2078,7 @@ function processAction(state, actionType, amount = 0) {
   if (player.status !== "active") return { error: "アクション不可" };
   const v = validateAction(state, actionType, amount);
   if (v.error) return { error: v.error };
-  let s = applyAction(state, playerIdx, actionType, v.resolvedAmount);
+  let s = applyAction(state, playerIdx, actionType, v.resolvedAmount, v);
   s.actionHistory = [...(s.actionHistory||[]), {
     id: newActionId(), type: actionType, playerId: player.id,
     amount: v.resolvedAmount, timestamp: Date.now()
@@ -2106,7 +2119,6 @@ let lastCommunityCount = 0;
 let lastPhase = null;
 let confirmLock = false;
 let nextHandLock = false;
-let showdownEmergencyTimer = null;
 let perPlayerStackBB = {};
 
 // Timer state
@@ -2486,6 +2498,7 @@ async function leaveRoom() {
   };
   gameState = null;
   stopTournamentTimer();
+  stopActionTimer();
   onlineReady = false;
   setRoomControls(false);
   setRoomStatus('ローカルモード');
@@ -2697,7 +2710,7 @@ function sendActionRequest(type, amount) {
 
 function applyRemoteAction(type, amount) {
   const result = processAction(gameState, type, amount);
-  if (result.error) { console.warn(result.error); return; }
+  if (result.error) { console.warn(result.error); actionLock = false; return; }
   gameState = result;
   render();
   if (gameState.isHandActive) {
@@ -3248,6 +3261,11 @@ function renderActionPanel() {
 
   const actorIdx = gameState.currentPlayerIndex;
   const actor = gameState.players[actorIdx];
+  const turnKey = `${actor.id}:${gameState.currentMaxBet}:${gameState.phase}`;
+  if (turnKey !== lastTurnKey) {
+    lastTurnKey = turnKey;
+    lastActionId = null;
+  }
 
   // アクティブなプレイヤーがいない場合（全員オールインまたはフォールド）
   if (actor.status !== 'active') {
@@ -3287,7 +3305,7 @@ function renderActionPanel() {
   }
 
   // Raise (only if chips remain after a potential call)
-  const minRaise = gameState.currentMaxBet + gameState.bigBlind;
+  const minRaise = gameState.currentMaxBet + gameState.lastRaiseSize;
   const maxRaise = actor.chips + actor.currentBet;
   if (maxRaise >= minRaise) {
     setRaiseValue(minRaise);
@@ -3323,15 +3341,21 @@ function makeActionBtn(cls, label, sub, onClick) {
 }
 
 let raiseMin = 0, raiseMax = 0;
+let raiseMinTo = 0;
+let actionLock = false;
+let lastActionId = null;
+let lastTurnKey = null;
 function setupRaiseSlider(min, max) {
   raiseMin = min;
   raiseMax = max;
+  raiseMinTo = min;
   const slider = document.getElementById('raise-slider');
   slider.min = 0;
   slider.max = 100;
   slider.value = 0; // min position
   setRaiseValue(min);
   updateRaisePresets();
+  updateRaiseMinLabel();
 }
 
 function setRaiseValue(value) {
@@ -3347,6 +3371,8 @@ function setRaiseValue(value) {
   const raiseBtn = document.querySelector('.btn-raise .btn-sub');
   if (raiseBtn) raiseBtn.textContent = formatAmount(raiseValue);
   updateActivePreset();
+  updateRaiseMinLabel();
+  updateRaiseError();
 }
 
 function onRaiseSlide() {
@@ -3395,6 +3421,30 @@ function updateRaisePresets() {
   }
   addPreset('ALL IN', actor.currentBet + actor.chips);
   updateActivePreset();
+  updateRaiseMinLabel();
+  updateRaiseError();
+}
+
+function updateRaiseMinLabel() {
+  const el = document.getElementById('raise-min-label');
+  if (!el || !gameState) return;
+  const minRaiseTo = gameState.currentMaxBet + gameState.lastRaiseSize;
+  raiseMinTo = minRaiseTo;
+  el.textContent = `Min Raise: ${formatAmount(minRaiseTo)}`;
+}
+
+function updateRaiseError() {
+  const el = document.getElementById('raise-error');
+  if (!el || !gameState) return;
+  const actor = gameState.players[gameState.currentPlayerIndex];
+  const allInTo = actor.currentBet + actor.chips;
+  if (raiseValue < raiseMinTo && raiseValue < allInTo) {
+    el.style.display = 'block';
+    el.textContent = `レイズは ${formatAmount(raiseMinTo)} 以上`;
+  } else {
+    el.style.display = 'none';
+    el.textContent = '';
+  }
 }
 
 function updateActivePreset() {
@@ -3409,6 +3459,12 @@ function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
   if (area.classList.contains('visible')) {
     // Second tap → execute raise
+    const actor = gameState?.players?.[gameState.currentPlayerIndex];
+    const allInTo = actor ? actor.currentBet + actor.chips : raiseValue;
+    if (raiseValue < raiseMinTo && raiseValue < allInTo) {
+      updateRaiseError();
+      return;
+    }
     doAction('raise', raiseValue);
   } else {
     area.classList.add('visible');
@@ -3457,14 +3513,20 @@ function handlePhaseTransition() {
 }
 
 function doAction(type, amount = 0) {
+  if (actionLock) return;
   if (onlineState.role === 'player') {
     sendActionRequest(type, amount);
     return;
   }
   if (!gameState) return;
+  const actorId = gameState.players[gameState.currentPlayerIndex]?.id;
+  const actionKey = `${actorId}:${gameState.currentPlayerIndex}:${gameState.currentMaxBet}:${gameState.phase}`;
+  if (lastActionId === actionKey) return;
+  actionLock = true;
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
+  lastActionId = actionKey;
 
   // Hide raise area after action
   document.getElementById('raise-area').classList.remove('visible');
@@ -3478,6 +3540,7 @@ function doAction(type, amount = 0) {
   if (onlineState.role === 'host') {
     broadcastState();
   }
+  actionLock = false;
 }
 
 function render() {
@@ -3495,12 +3558,7 @@ function showShowdown() {
   document.getElementById('showdown-pot-amount').textContent = formatAmount(total);
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
-  const emergencyBtn = document.getElementById('showdown-emergency-btn');
-  if (emergencyBtn) emergencyBtn.classList.remove('visible');
-  if (showdownEmergencyTimer) {
-    clearTimeout(showdownEmergencyTimer);
-    showdownEmergencyTimer = null;
-  }
+ 
 
   // Eligible players (not folded AND not out)
   const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
@@ -3544,15 +3602,6 @@ function showShowdown() {
   }
 
   document.getElementById('showdown-overlay').classList.add('visible');
-
-  // Emergency: if still in showdown after 3s without confirmation, allow host to proceed
-  if (onlineState.role !== 'player') {
-    showdownEmergencyTimer = setTimeout(() => {
-      const overlayVisible = document.getElementById('showdown-overlay').classList.contains('visible');
-      if (!overlayVisible || gameState?.phase !== 'showdown') return;
-      if (emergencyBtn) emergencyBtn.classList.add('visible');
-    }, 3000);
-  }
 }
 
 function selectWinner(btn, playerId) {
@@ -3586,29 +3635,10 @@ function toggleSplit() {
   }
 }
 
-function emergencyContinue() {
-  if (!gameState || gameState.phase !== 'showdown') return;
-  if (selectedWinners.length === 0) {
-    const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
-    if (eligible.length > 0) {
-      selectedWinners = [eligible[0].id]; // Fallback: first eligible
-    }
-  }
-  if (selectedWinners.length > 0) {
-    confirmWinner();
-  }
-}
-
 function confirmWinner() {
   if (confirmLock || selectedWinners.length === 0) return;
   confirmLock = true;
   setTimeout(() => { confirmLock = false; }, 200);
-  if (showdownEmergencyTimer) {
-    clearTimeout(showdownEmergencyTimer);
-    showdownEmergencyTimer = null;
-  }
-  const emergencyBtn = document.getElementById('showdown-emergency-btn');
-  if (emergencyBtn) emergencyBtn.classList.remove('visible');
   const totalPot = getPotTotal(gameState);
   const per = selectedWinners.length ? Math.floor(totalPot / selectedWinners.length) : 0;
   const rem = totalPot - per * selectedWinners.length;
@@ -3784,12 +3814,10 @@ function syncTournamentOptions() {
 
 // ランダム表示名生成（ポーカー風のニックネーム）
 function generateRandomName() {
-  const adjectives = ['Lucky', 'Royal', 'Wild', 'Cool', 'Swift', 'Ace', 'King', 'Queen', 'Jack', 'Brave'];
-  const nouns = ['Shark', 'Tiger', 'Eagle', 'Wolf', 'Fox', 'Bear', 'Lion', 'Hawk', 'Ace', 'Pro'];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(Math.random() * 100);
-  return `${adj}${noun}${num}`;
+  const animals = ['Fox', 'Wolf', 'Bear', 'Lion', 'Hawk', 'Owl', 'Cat', 'Dog'];
+  const animal = animals[Math.floor(Math.random() * animals.length)];
+  const num = Math.floor(10 + Math.random() * 90);
+  return `${animal}${num}`;
 }
 
 const ICON_OPTIONS = ['🦖', '🐱', '🐶', '🐼', '🐸', '🐵', '🦊', '🐯'];
@@ -3856,7 +3884,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsLeaveBtn = document.getElementById('settings-leave-btn');
   const codeInput = document.getElementById('room-code-input');
   const nameInput = document.getElementById('display-name-input');
-  const emergencyBtn = document.getElementById('showdown-emergency-btn');
 
   // デフォルトでランダム名を設定
   if (nameInput && !nameInput.value) {
