@@ -721,6 +721,22 @@ summary.setup-label::-webkit-details-marker { display: none; }
   min-height: 340px;
 }
 
+/* Table center image (card-back watermark) */
+.table-center-image {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.12;
+}
+.table-center-image img {
+  display: block;
+  width: 60%;
+  max-width: 280px;
+  height: auto;
+}
+
 /* Table felt oval */
 .table-felt {
   position: absolute;
@@ -1317,6 +1333,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   .community-card { width: 38px; height: 54px; }
   .action-btns { gap: 6px; }
   .action-btn { max-width: 90px; padding: 11px 6px; font-size: 11px; }
+  .table-center-image img { max-width: 200px; }
 }
 
 /* スマホ横向き */
@@ -1566,6 +1583,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
   <div class="table-area">
     <div class="table-felt"></div>
+    <div class="table-center-image" aria-hidden="true">
+      <img src="img/trump.png" alt="" loading="lazy" onerror="this.style.display='none'">
+    </div>
     <div class="players-ring" id="players-ring"></div>
     <div class="community-cards" id="community-cards"></div>
     <div class="pot-center">
@@ -1637,7 +1657,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.1.0";
+const APP_VERSION = "v0.3.0";
 
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
