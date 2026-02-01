@@ -247,6 +247,99 @@ summary.setup-label::-webkit-details-marker { display: none; }
   align-items: center;
   justify-content: space-between;
 }
+/* Step guide */
+.step-guide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.3s;
+}
+.step-item.active {
+  background: rgba(212,175,55,0.15);
+  border-color: var(--gold);
+}
+.step-item.done {
+  background: rgba(46,204,113,0.15);
+  border-color: #2ecc71;
+}
+.step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1408;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.step-item.done .step-num {
+  background: #2ecc71;
+}
+.step-item.done .step-num::after {
+  content: '✓';
+}
+.step-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+.step-item.active .step-text {
+  color: var(--gold);
+}
+.step-item.done .step-text {
+  color: #2ecc71;
+}
+.step-arrow {
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* Waiting indicator for guest */
+.waiting-indicator {
+  text-align: center;
+  padding: 40px 20px;
+}
+.waiting-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(212,175,55,0.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.waiting-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.waiting-subtext {
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
 .seat-ring {
   position: relative;
   width: 100%;
@@ -645,16 +738,16 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .player-card .name {
   font-family: 'Playfair Display', serif;
-  font-size: 12px; font-weight: 600;
+  font-size: 13px; font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%;
   transition: color 0.3s;
 }
 .player-card .chips {
-  font-size: 13px; font-weight: 600;
+  font-size: 14px; font-weight: 700;
   color: var(--chip-white);
-  margin-top: 2px;
+  margin-top: 3px;
   letter-spacing: 0.5px;
 }
 .player-card .bet-badge {
@@ -729,14 +822,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
   pointer-events: none;
 }
 .pot-label {
-  font-size: 9px; font-weight: 600;
+  font-size: 11px; font-weight: 600;
   letter-spacing: 2.5px; text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .pot-amount {
   font-family: 'Playfair Display', serif;
-  font-size: 28px; font-weight: 700;
+  font-size: 32px; font-weight: 700;
   color: var(--gold);
   text-shadow: 0 0 20px var(--gold-glow);
   transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
@@ -769,31 +862,31 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 .action-actor-label {
   text-align: center;
-  font-size: 11px; font-weight: 600;
+  font-size: 13px; font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 1px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
-.action-actor-label strong { color: var(--gold); font-family: 'Playfair Display', serif; font-size: 13px; }
+.action-actor-label strong { color: var(--gold); font-family: 'Playfair Display', serif; font-size: 16px; }
 
 /* Action buttons row */
-.action-btns { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+.action-btns { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
 .action-btn {
-  flex: 1; max-width: 110px;
-  padding: 13px 10px;
+  flex: 1; max-width: 120px;
+  padding: 14px 12px;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.06);
   color: var(--text-primary);
   font-family: 'Source Code Pro', monospace;
-  font-size: 12px; font-weight: 600;
+  font-size: 14px; font-weight: 600;
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s, border-color 0.15s;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .action-btn .btn-sub {
-  font-size: 9px; font-weight: 400;
+  font-size: 11px; font-weight: 400;
   color: var(--text-muted);
   letter-spacing: 0;
 }
@@ -1094,12 +1187,23 @@ summary.setup-label::-webkit-details-marker { display: none; }
   </div>
 
   <div class="setup-section">
-    <div class="setup-label">席を選ぶ</div>
+    <div class="setup-label">ゲームを始める準備</div>
     <div class="room-panel">
+      <div class="step-guide">
+        <div class="step-item" id="step-seat">
+          <span class="step-num">1</span>
+          <span class="step-text">テーブルの空席をタップ</span>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-item" id="step-ready">
+          <span class="step-num">2</span>
+          <span class="step-text">READYボタンを押す</span>
+        </div>
+      </div>
       <div class="seat-ring" id="seat-ring"></div>
       <div class="waiting-self-panel">
-        <div class="room-status" id="seat-help-text">空席をタップして席を決める</div>
-        <button class="ready-btn" id="ready-toggle-btn">WAIT</button>
+        <div class="room-status" id="seat-help-text">👆 まず空席をタップしてね</div>
+        <button class="ready-btn" id="ready-toggle-btn" disabled>READY</button>
       </div>
     </div>
   </div>
@@ -1206,9 +1310,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
   </div>
 
   <div id="settings-guest-panel" style="display:none;">
-    <div class="room-panel">
-      <div class="room-status">ホストが設定中です。しばらくお待ちください。</div>
-      <button class="room-btn" id="settings-leave-btn">退出</button>
+    <div class="setup-section">
+      <div class="waiting-indicator">
+        <div class="waiting-spinner"></div>
+        <div class="waiting-text">ホストがゲーム設定中...</div>
+        <div class="waiting-subtext">まもなくゲームが始まります</div>
+      </div>
+    </div>
+    <div class="setup-section">
+      <div class="room-panel">
+        <div class="participant-list" id="guest-participant-summary"></div>
+      </div>
+    </div>
+    <div class="setup-section">
+      <button class="room-btn" id="settings-leave-btn" style="width:100%;">退出</button>
     </div>
   </div>
 </div>
@@ -1793,19 +1908,43 @@ function updateParticipantList() {
   renderSeatRing(list);
   const readyBtn = document.getElementById('ready-toggle-btn');
   const seatHelp = document.getElementById('seat-help-text');
+  const stepSeat = document.getElementById('step-seat');
+  const stepReady = document.getElementById('step-ready');
   const seatConflict = list.some(p => p.seat && p.seat === onlineState.seat && p.name !== onlineState.displayName);
   if (seatConflict) {
     onlineState.seat = '';
     onlineState.ready = false;
     updatePresence({ seat: "", ready: false });
   }
+
+  // Update step guide
+  if (stepSeat && stepReady) {
+    stepSeat.classList.remove('active', 'done');
+    stepReady.classList.remove('active', 'done');
+    if (!onlineState.seat) {
+      stepSeat.classList.add('active');
+    } else if (!onlineState.ready) {
+      stepSeat.classList.add('done');
+      stepReady.classList.add('active');
+    } else {
+      stepSeat.classList.add('done');
+      stepReady.classList.add('done');
+    }
+  }
+
   if (readyBtn) {
     readyBtn.classList.toggle('on', onlineState.ready);
-    readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
+    readyBtn.textContent = onlineState.ready ? '✓ READY' : 'READY';
     readyBtn.disabled = !onlineState.seat;
   }
   if (seatHelp) {
-    seatHelp.textContent = onlineState.seat ? `Seat ${onlineState.seat} を選択中` : '空席をタップして席を決める';
+    if (!onlineState.seat) {
+      seatHelp.textContent = '👆 まず空席をタップしてね';
+    } else if (!onlineState.ready) {
+      seatHelp.textContent = `Seat ${onlineState.seat} を選択中 → READYを押そう！`;
+    } else {
+      seatHelp.textContent = '✓ 準備完了！ホストの開始を待っています';
+    }
   }
 }
 
@@ -2263,9 +2402,26 @@ function updateSettingsPanels() {
   const guestPanel = document.getElementById('settings-guest-panel');
   const onlineSummary = document.getElementById('online-player-summary');
   const localSettings = document.getElementById('local-player-settings');
+  const guestSummary = document.getElementById('guest-participant-summary');
+
   if (onlineState.role === 'player') {
     if (hostPanel) hostPanel.style.display = 'none';
     if (guestPanel) guestPanel.style.display = 'block';
+    // ゲスト用に参加者リストを表示
+    if (guestSummary) {
+      const list = getPresenceList();
+      guestSummary.innerHTML = '';
+      list.forEach(p => {
+        const item = document.createElement('div');
+        const isSelf = p.name === onlineState.displayName;
+        item.className = 'participant-item' + (isSelf ? ' self' : '');
+        item.innerHTML = `
+          <div class="participant-name">${p.name || 'Guest'}${isSelf ? ' (あなた)' : ''}</div>
+          <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
+        `;
+        guestSummary.appendChild(item);
+      });
+    }
   } else {
     if (hostPanel) hostPanel.style.display = 'block';
     if (guestPanel) guestPanel.style.display = 'none';
@@ -2405,6 +2561,7 @@ function renderActionPanel() {
   const panel = document.getElementById('action-panel');
   const btnsEl = document.getElementById('action-btns');
   const lockMessage = document.getElementById('action-lock-message');
+  const actorLabel = document.getElementById('actor-label');
   btnsEl.innerHTML = '';
 
   if (!gameState || !gameState.isHandActive) {
@@ -2414,13 +2571,22 @@ function renderActionPanel() {
 
   const actorIdx = gameState.currentPlayerIndex;
   const actor = gameState.players[actorIdx];
-  if (actor.status !== 'active') { panel.classList.add('hidden'); return; }
+
+  // アクティブなプレイヤーがいない場合（全員オールインまたはフォールド）
+  if (actor.status !== 'active') {
+    panel.classList.remove('hidden');
+    panel.classList.add('locked');
+    if (actorLabel) actorLabel.innerHTML = '次のフェーズを待っています...';
+    if (lockMessage) lockMessage.style.display = 'none';
+    return;
+  }
+
   panel.classList.remove('hidden');
   panel.classList.remove('locked');
   if (lockMessage) lockMessage.style.display = 'none';
 
   // Actor label
-  document.getElementById('actor-label').innerHTML = `<strong>${actor.name}</strong> のターン`;
+  if (actorLabel) actorLabel.innerHTML = `<strong>${actor.name}</strong> のターン`;
 
   if (onlineState.role === 'player' && actor.name !== onlineState.displayName) {
     panel.classList.add('locked');
