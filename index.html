@@ -55,27 +55,28 @@ body {
 
 .setup-title {
   font-family: 'Playfair Display', serif;
-  font-size: 42px; font-weight: 700;
+  font-size: 48px; font-weight: 700;
   color: var(--gold);
   letter-spacing: 6px;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   text-shadow: 0 0 40px var(--gold-glow);
 }
 .setup-subtitle {
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
   letter-spacing: 3px;
   text-transform: uppercase;
   margin-bottom: 40px;
+  opacity: 0.8;
 }
 
-.setup-section { width: 100%; max-width: 360px; margin-bottom: 28px; }
+.setup-section { width: 100%; max-width: 400px; margin-bottom: 28px; }
 .setup-label {
-  font-size: 10px; font-weight: 600;
+  font-size: 13px; font-weight: 600;
   letter-spacing: 2.5px; text-transform: uppercase;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
+  color: var(--gold);
+  margin-bottom: 12px;
 }
 summary.setup-label {
   list-style: none;
@@ -159,13 +160,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   letter-spacing: 2px;
 }
 .room-btn {
-  padding: 10px 12px;
+  padding: 12px 16px;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.06);
   color: var(--text-primary);
   font-family: 'Source Code Pro', monospace;
-  font-size: 11px; letter-spacing: 1px;
+  font-size: 13px; letter-spacing: 1px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, transform 0.1s;
 }
@@ -175,11 +176,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(212,175,55,0.18);
   border-color: var(--gold-dim);
   color: var(--gold);
+  font-size: 14px;
+  font-weight: 600;
 }
 .room-status {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-secondary);
   letter-spacing: 1px;
+  margin-top: 8px;
 }
 .room-code-display {
   flex: 1;
@@ -203,9 +207,23 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 12px;
+  transition: all 0.3s ease;
 }
-.participant-name { font-weight: 600; color: var(--chip-white); }
-.participant-meta { font-size: 10px; color: var(--text-secondary); letter-spacing: 1px; }
+.participant-item.self {
+  background: rgba(212,175,55,0.15);
+  border-color: var(--gold);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+.participant-item.self .participant-name {
+  color: var(--gold);
+  font-weight: 700;
+}
+.participant-item.self::before {
+  content: '👤';
+  margin-right: 8px;
+}
+.participant-name { font-weight: 600; color: var(--chip-white); font-size: 14px; }
+.participant-meta { font-size: 11px; color: var(--text-secondary); letter-spacing: 1px; margin-top: 2px; }
 .participant-role {
   padding: 2px 8px;
   border-radius: 999px;
@@ -275,24 +293,61 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--text-muted);
 }
 .ready-btn {
-  padding: 8px 12px;
+  padding: 12px 24px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: var(--text-secondary);
+  border: 2px solid var(--gold);
+  background: rgba(212,175,55,0.15);
+  color: var(--gold);
   font-family: 'Source Code Pro', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  animation: ready-pulse 2s ease-in-out infinite;
+}
+.ready-btn::before {
+  content: '👆 TAP';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  opacity: 0;
+  animation: tap-hint 2s ease-in-out infinite;
+}
+.ready-btn:hover {
+  background: rgba(212,175,55,0.25);
+  box-shadow: 0 0 20px var(--gold-glow);
+  transform: scale(1.05);
 }
 .ready-btn.on {
-  background: rgba(46,204,113,0.18);
-  border-color: rgba(46,204,113,0.5);
+  background: rgba(46,204,113,0.25);
+  border-color: #2ecc71;
   color: #2ecc71;
+  animation: none;
+  box-shadow: 0 0 16px rgba(46,204,113,0.4);
+}
+.ready-btn.on::before {
+  display: none;
 }
 .ready-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  animation: none;
+}
+.ready-btn:disabled::before {
+  display: none;
+}
+@keyframes ready-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--gold-glow); }
+  50% { box-shadow: 0 0 24px var(--gold-glow), 0 0 48px rgba(212,175,55,0.2); }
+}
+@keyframes tap-hint {
+  0%, 40%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  50%, 90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 .player-badge {
   display: flex;
@@ -428,14 +483,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* Start button */
 .start-btn {
-  width: 100%; max-width: 360px;
-  padding: 16px;
+  width: 100%; max-width: 400px;
+  padding: 18px;
   border-radius: 14px;
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
   border: none;
   color: #1a1408;
   font-family: 'Playfair Display', serif;
-  font-size: 17px; font-weight: 700;
+  font-size: 18px; font-weight: 700;
   letter-spacing: 3px; text-transform: uppercase;
   cursor: pointer;
   box-shadow: 0 4px 24px var(--gold-glow);
@@ -995,17 +1050,23 @@ summary.setup-label::-webkit-details-marker { display: none; }
   </div>
 
   <div class="setup-section">
-    <div class="setup-label">ルーム</div>
+    <div class="setup-label">オンラインで遊ぶ</div>
     <div class="room-panel">
       <div class="room-row">
-        <input type="text" id="room-code-input" class="room-input" placeholder="ルームコード" maxlength="6">
-        <button class="room-btn primary" id="room-host-btn">ルーム作成</button>
+        <button class="room-btn primary" id="room-host-btn" style="flex:1;">🎲 新しいルーム作成</button>
       </div>
-      <div class="room-row">
+      <div class="room-row" style="margin-top:8px;">
+        <input type="text" id="room-code-input" class="room-input" placeholder="ルームコード" maxlength="6" style="text-align:center;">
         <button class="room-btn" id="room-join-btn">参加</button>
-        <button class="room-btn" id="room-local-btn">ローカルで開始</button>
       </div>
-      <div class="room-status" id="room-status">ローカルモード</div>
+      <div class="room-status" id="room-status"></div>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="setup-label">オフラインで遊ぶ</div>
+    <div class="room-panel">
+      <button class="room-btn" id="room-local-btn" style="width:100%;">📱 1端末で開始（複数人で画面を共有）</button>
     </div>
   </div>
 </div>
@@ -1280,19 +1341,48 @@ function postBlind(state, playerIndex, amount) {
 }
 
 function startHand(state) {
+  // チップ0のプレイヤーは "out" に、それ以外は "active" に
   let s = {
     ...state, isHandActive: true, phase: "preflop",
-    players: state.players.map(p => ({ ...p, status: "active", currentBet: 0, actedThisRound: false })),
-    pots: [{ amount: 0, eligiblePlayerIds: state.players.map(p => p.id) }],
+    players: state.players.map(p => ({
+      ...p,
+      status: p.chips > 0 ? "active" : "out",
+      currentBet: 0,
+      actedThisRound: false
+    })),
+    pots: [{ amount: 0, eligiblePlayerIds: state.players.filter(p => p.chips > 0).map(p => p.id) }],
     actionHistory: []
   };
+
+  // アクティブなプレイヤーが1人以下ならゲーム終了
+  const activePlayers = s.players.filter(p => p.status === "active");
+  if (activePlayers.length <= 1) {
+    s.isHandActive = false;
+    s.phase = "finished";
+    return s;
+  }
+
   const n = s.players.length;
-  const sbIdx = n === 2 ? s.dealerIndex : (s.dealerIndex + 1) % n;
-  const bbIdx = n === 2 ? (s.dealerIndex + 1) % n : (s.dealerIndex + 2) % n;
+
+  // チップがあるプレイヤーの中でディーラー/ブラインドを決める
+  const findNextWithChips = (fromIdx) => {
+    for (let i = 1; i <= n; i++) {
+      const idx = (fromIdx + i) % n;
+      if (s.players[idx].chips > 0) return idx;
+    }
+    return fromIdx;
+  };
+
+  const sbIdx = n === 2 ? s.dealerIndex : findNextWithChips(s.dealerIndex);
+  const bbIdx = findNextWithChips(sbIdx);
   s = postBlind(s, sbIdx, s.smallBlind);
   s = postBlind(s, bbIdx, s.bigBlind);
   s.currentMaxBet = s.bigBlind;
-  s.currentPlayerIndex = n === 2 ? sbIdx : (bbIdx + 1) % n;
+
+  // BBの次のアクティブプレイヤーを探す
+  const firstToAct = findNextWithChips(bbIdx);
+  s.currentPlayerIndex = firstToAct !== bbIdx ? firstToAct : findNextWithChips(firstToAct);
+
   return s;
 }
 
@@ -1657,10 +1747,11 @@ function updateParticipantList() {
     el.innerHTML = '';
     list.forEach(p => {
       const item = document.createElement('div');
-      item.className = 'participant-item';
+      const isSelf = p.name === onlineState.displayName;
+      item.className = 'participant-item' + (isSelf ? ' self' : '');
       item.innerHTML = `
         <div>
-          <div class="participant-name">${p.name || 'Guest'} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
+          <div class="participant-name">${p.name || 'Guest'}${isSelf ? ' (あなた)' : ''} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
           <div class="participant-meta">${p.online ? 'ONLINE' : 'OFFLINE'}</div>
         </div>
         <div>
@@ -2532,10 +2623,33 @@ function nextHand() {
   document.getElementById('next-hand-overlay').classList.remove('visible');
   gameState = advanceDealer(gameState);
   gameState = startHand(gameState);
+
+  // ゲーム終了チェック（1人だけ残っている場合）
+  if (gameState.phase === 'finished') {
+    showGameOver();
+    return;
+  }
+
   render();
   startActionTimer();
   if (onlineState.role === 'host') {
     broadcastState();
+  }
+}
+
+function showGameOver() {
+  const winner = gameState.players.find(p => p.chips > 0);
+  const overlay = document.getElementById('next-hand-overlay');
+  document.getElementById('next-hand-winner-name').textContent = winner ? `${winner.name} が優勝！` : 'ゲーム終了';
+  overlay.classList.add('visible');
+  // ボタンを「新しいゲーム」に変更
+  const btn = overlay.querySelector('.next-hand-btn');
+  if (btn) {
+    btn.textContent = '新しいゲーム';
+    btn.onclick = () => {
+      overlay.classList.remove('visible');
+      setUiState('room');
+    };
   }
 }
 
@@ -2616,10 +2730,26 @@ function syncTournamentOptions() {
   options.style.display = toggle.checked ? 'block' : 'none';
 }
 
+// ランダム表示名生成（ポーカー風のニックネーム）
+function generateRandomName() {
+  const adjectives = ['Lucky', 'Royal', 'Wild', 'Cool', 'Swift', 'Ace', 'King', 'Queen', 'Jack', 'Brave'];
+  const nouns = ['Shark', 'Tiger', 'Eagle', 'Wolf', 'Fox', 'Bear', 'Lion', 'Hawk', 'Ace', 'Pro'];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 100);
+  return `${adj}${noun}${num}`;
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   loadSavedPlayerNames();
   setUiState('room');
+
+  // デフォルトでランダム名を設定
+  const nameInput = document.getElementById('display-name-input');
+  if (nameInput && !nameInput.value) {
+    nameInput.value = generateRandomName();
+  }
   const toggle = document.getElementById('tournament-mode-toggle');
   if (toggle) {
     toggle.addEventListener('change', syncTournamentOptions);

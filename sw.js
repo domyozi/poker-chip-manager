@@ -1,4 +1,4 @@
-const CACHE_NAME = 'poker-v3';
+const CACHE_NAME = 'poker-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  // 即座にアクティベート
   self.skipWaiting();
 });
 
@@ -34,39 +35,68 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  // 即座にクライアントを制御
   self.clients.claim();
 });
 
-// フェッチ時の戦略: Cache First (オフライン優先)
+// フェッチ時の戦略: Network First (最新優先)
+// HTMLファイルはネットワーク優先、静的アセットはキャッシュ優先
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // HTMLファイルはネットワーク優先
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // ネットワーク成功: キャッシュを更新して返す
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // オフライン: キャッシュから返す
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // 静的アセット (フォント、画像) はキャッシュ優先
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // キャッシュにあればそれを返す
         if (response) {
+          // バックグラウンドでキャッシュを更新
+          fetch(event.request).then(networkResponse => {
+            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, networkResponse);
+              });
+            }
+          }).catch(() => {});
           return response;
         }
-        
-        // なければネットワークから取得
-        return fetch(event.request).then(response => {
-          // レスポンスが有効でない場合はそのまま返す
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+
+        return fetch(event.request).then(networkResponse => {
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+            return networkResponse;
           }
-          
-          // レスポンスをクローンしてキャッシュに保存
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
+
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+
+          return networkResponse;
         });
       })
       .catch(() => {
-        // オフラインで、キャッシュもない場合の fallback
-        // 必要に応じてオフライン用のページを返すこともできる
+        // オフラインでキャッシュもない場合
       })
   );
 });
