@@ -1,45 +1,86 @@
-# Progress
+# 進捗
 
-## Current Version
-- v0.4.1 (2026-02-01)
+## 現在のバージョン
+- v0.4.3 (2026-02-01)
 
-## ✅ Done
-- Added center table image (card-back watermark)
-- Added visible version label (top-right)
-- Phase indicator community cards: 5 slots always; fill 0→3→4→5 using img/trump.png
-- Fix: community slot image fit (cover) + removed trump watermark
+## ✅ 完了
+- テーブル中央の画像（カードバックの透かし）を追加
+- バージョン表示を画面右上に追加
+- フェーズ表示のコミュニティカードは常に5枠表示（0→3→4→5でimg/trump.pngを表示）
+- コミュニティカード画像の表示調整（cover）と透かし除去
+- プレイヤーのアイコン選択を追加（セットアップ画面）
+- プレイヤー情報の視認性を向上（ピル表示/強弱の調整）
+- フェーズ表示の見た目調整（アクティブ強調）
+- 設定画面のスクロール改善（上部の見切れ防止）
+- スマホ幅でのレイアウト崩れ修正（アイコン列の横スクロール化）
+- P0: モバイルのルームコード入力（iOSで入力/削除が不安定）
+- ✅ ホストのREADY不要（座席選択で暗黙READY）
+- ✅ 待機画面に戻るボタン追加
+- ✅ チョップ表示の条件修正（フォールド除外・2人以上のみ）
+- ✅ プレイヤー別の初期スタック設定
 
-## 🛠 In Progress
-- P0: Mobile room code input (typing/deleting breaks on iOS)
-- P0: Showdown freeze (overlay / state transition)
+## 🛠 進行中
+- P0: ショーダウンで画面がフリーズする問題（overlay / state遷移）
 
-## 🧭 Next Up
-- P1: Improve in-play status visibility (phase/pot/to-call/turn)
-- P2: Card visuals upgrade (deferred)
-- P2: Raise UI redesign (presets + adjust) (deferred)
+## 🧭 次の予定
+- P1: ゲーム中の状態表示の改善（フェーズ / ポット / to-call / ターン）
+- P0: チョップ表示のロジック修正（フォールド済みプレイヤーがチョップに含まれる）
+- P1: ホストではREADYボタンを非表示にする
+- P1: 戻るボタンの追加（フローを分かりやすく）
+- P1: 結果登録画面の追加
+- P1: プレイヤーごとの初期チップ設定（例: 200BBなど）
+- P2: カード見た目のアップグレード（保留）
+- P2: レイズUIの再設計（プリセット＋調整）（保留）
+- P1: 「今だれの番？」を迷わせないUI（アクティブ席の発光＋軽いズーム／上部に「◯◯の番です」）
+- P1: 「To Call」と「Pot」を常時表示のステータスバーに集約（Pot / Current bet / To Call / 最小レイズ）
+- P1: ミス防止UI（3秒以内Undo／All-in確認ダイアログ／Raiseは確定ボタンで送信）
+- P1: レイズUX（プリセット: 2.5BB/3BB/30%/50%/Pot＋調整ボタン／入力欄は詳細へ）
+- P1: 手動チップ管理の救済（ホストのチップ修正＋履歴＋修正モードは隠す）
+- P1: 同期体験の安定化（接続状態表示／ホストのフェーズ遷移の確実反映／再同期ボタン）
+- P2: 卓の演出（フェーズ移行アニメ／勝者へポット移動演出／ボイス）
+- P1: ショーダウンUX（勝者候補はアクティブのみ／チョップ自動Split／取り消し・確定を大きく）
 
-## ⚠️ Known Issues / Risks
-- iOS Safari keyboard + fixed layers can break input focus
-- Overlay stacking may block taps during showdown
+## ⚠️ 既知の問題 / リスク
+- iOS Safariでキーボードと固定レイヤーが干渉し、フォーカスが壊れることがある
+- オーバーレイの重なりでタップがブロックされる可能性
 
-## 🔎 Quick Verification Checklist
-- [ ] Play screen shows center logo, doesn’t block taps
-- [ ] Version is visible on top-right
-- [ ] No console errors when card-back.png is missing
-- [ ] Preflop: 5 empty slots visible
-- [ ] Flop/Turn/River: slots fill 3/4/5 with img/trump.png
+## 🔎 クイック確認リスト
+- [ ] プレイ画面に中央ロゴが表示され、タップを妨げない
+- [ ] バージョン表示が右上に出ている
+- [ ] card-back.png が無い場合でもコンソールエラーが出ない
+- [ ] プリフロップで5つの空スロットが表示される
+- [ ] フロップ/ターン/リバーで3/4/5枚が表示される
+- [ ] 設定画面が縦スクロールでき、上部が見切れない
+- [ ] スマホ幅でアイコン列が横スクロールできる
+- [ ] 待機画面でホストはREADYが表示されない
+- [ ] ホストは座席選択後、参加者がREADYになると「設定へ進む」が有効
+- [ ] 参加者は座席選択→READYの順で準備できる
+- [ ] 待機画面の戻るボタンでルーム退出できる
+- [ ] ショーダウンでチョップは有効プレイヤー2人以上のみ表示
+- [ ] フォールド済みプレイヤーは勝者/チョップに選べない
+- [ ] 初期チップをプレイヤー別BBで設定でき、BB×ビッグブラインドで反映される
 
-## Release Notes
+## リリースノート
+### v0.4.3
+- 待機画面のホストREADY不要化と戻るボタン追加
+- チョップ表示条件の修正（フォールド除外・2人以上のみ）
+- プレイヤー別初期チップ（BB指定）に対応
+
+### v0.4.2
+- プレイヤーのアイコン選択を追加（セットアップ画面）
+- 設定画面のスクロール改善とスマホ幅のレイアウト修正
+- フェーズ表示とプレイヤー情報の見た目を調整
+
 ### v0.4.1
-- Fix: community slot image fit (cover) + removed trump watermark
+- コミュニティカード画像の表示調整（cover）と透かし除去
 
 ### v0.4.0
-- Phase indicator community cards: 5 slots always; fill 0→3→4→5 using img/trump.png
+- フェーズ表示のコミュニティカードは常に5枠表示（0→3→4→5でimg/trump.pngを表示）
 
 ### v0.3.0
-- Added center table image (card-back watermark) using img/trump.png
+- テーブル中央の画像（カードバックの透かし）を追加（img/trump.png）
 
 ### v0.2.0
-- Added center logo card-back watermark
-- Added PROGRESS.md for tracking
-- Added version label for deployment verification
+- テーブル中央のロゴ（カードバック透かし）を追加
+- 進捗管理用のPROGRESS.mdを追加
+- デプロイ確認用のバージョン表示を追加

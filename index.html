@@ -391,6 +391,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--gold);
   margin-bottom: 8px;
 }
+.back-btn {
+  position: absolute;
+  top: 14px; left: 14px;
+  z-index: 130;
+}
 .waiting-subtext {
   font-size: 13px;
   color: var(--text-secondary);
@@ -490,6 +495,37 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .ready-btn:disabled::before {
   display: none;
+}
+
+.per-player-stack-list {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 12px;
+}
+.stack-row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+.stack-name {
+  font-size: 12px; color: var(--text-secondary);
+  min-width: 80px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stack-input {
+  width: 80px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: var(--chip-white);
+  padding: 6px 8px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px; font-weight: 600;
+  text-align: right;
+}
+.stack-suffix {
+  font-size: 11px; color: var(--text-muted);
 }
 @keyframes ready-pulse {
   0%, 100% { box-shadow: 0 0 8px var(--gold-glow); }
@@ -1471,6 +1507,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── WAITING SCREEN ────────────────────────── -->
 <div id="waiting-screen" class="screen hidden">
+  <button class="room-btn back-btn" id="waiting-back-btn">← 戻る</button>
   <div class="setup-title">WAITING</div>
   <div class="setup-subtitle">参加者が揃うのを待っています</div>
 
@@ -1544,13 +1581,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
           <input type="number" id="bb-input" value="20" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
         </div>
       </div>
-      <div class="blind-row" style="margin-top: 12px;">
-        <div class="blind-input-wrap" style="flex: 1;">
-          <span class="blind-input-label">初期チップ</span>
-          <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
-        </div>
+    <div class="blind-row" style="margin-top: 12px;">
+      <div class="blind-input-wrap" style="flex: 1;">
+        <span class="blind-input-label">初期チップ</span>
+        <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
       </div>
     </div>
+    <div class="blind-row" style="margin-top: 12px;">
+      <label class="toggle-label" style="width:100%;">
+        <input type="checkbox" id="per-player-stack-toggle">
+        <span class="toggle-text">プレイヤー別に初期チップを設定</span>
+      </label>
+    </div>
+    <div class="per-player-stack-list" id="per-player-stack-list" style="display:none;"></div>
+  </div>
 
     <div class="setup-section" id="online-player-summary" style="display:none;">
       <div class="setup-label">参加者</div>
@@ -1739,7 +1783,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.4.1";
+const APP_VERSION = "v0.4.3";
 
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
@@ -1760,10 +1804,11 @@ function initGame(playerInput, smallBlind, bigBlind, initialChips = 1000) {
     const name = typeof entry === 'string' ? entry : (entry?.name || '');
     const icon = typeof entry === 'string' ? '' : (entry?.icon || '');
     const finalName = name || icon || `プレイヤー${i + 1}`;
+    const stack = typeof entry === 'string' ? initialChips : (entry?.startingChips || initialChips);
     return {
-      id: `player_${i}`, name: finalName, icon, chips: initialChips,
-    status: "waiting", currentBet: 0, totalBet: 0,
-    actedThisRound: false  // ★ ラウンド内アクション済みフラグ
+      id: `player_${i}`, name: finalName, icon, chips: stack,
+      status: "waiting", currentBet: 0, totalBet: 0,
+      actedThisRound: false  // ★ ラウンド内アクション済みフラグ
     };
   });
   return {
@@ -1995,6 +2040,7 @@ let lastPhase = null;
 let confirmLock = false;
 let nextHandLock = false;
 let showdownEmergencyTimer = null;
+let perPlayerStackBB = {};
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -2247,7 +2293,7 @@ function renderSeatRing(list) {
     seat.addEventListener('click', () => {
       if (occupant && occupant.name !== onlineState.displayName) return;
       onlineState.seat = String(i);
-      onlineState.ready = false;
+      onlineState.ready = onlineState.role === 'host' ? true : false;
       updatePresence({ seat: onlineState.seat, ready: onlineState.ready });
       updateParticipantList();
     });
@@ -2299,7 +2345,7 @@ function updateParticipantList() {
   const guestControls = document.getElementById('waiting-guest-controls');
   if (onlineState.role === 'host' && hostControls) {
     hostControls.style.display = 'block';
-    const canStart = list.length >= 2 && list.every(p => p.ready);
+    const canStart = list.length >= 2 && list.every(p => p.role === 'host' ? !!p.seat : p.ready);
     if (startBtn) startBtn.disabled = !canStart;
     if (hostStatus) hostStatus.textContent = canStart ? '全員準備OK。設定へ進めます' : '全員の準備完了を待っています';
     if (guestControls) guestControls.style.display = 'none';
@@ -2326,7 +2372,7 @@ function updateParticipantList() {
     stepReady.classList.remove('active', 'done');
     if (!onlineState.seat) {
       stepSeat.classList.add('active');
-    } else if (!onlineState.ready) {
+    } else if (!(onlineState.role === 'host' ? !!onlineState.seat : onlineState.ready)) {
       stepSeat.classList.add('done');
       stepReady.classList.add('active');
     } else {
@@ -2335,7 +2381,9 @@ function updateParticipantList() {
     }
   }
 
+  const effectiveReady = onlineState.role === 'host' ? !!onlineState.seat : onlineState.ready;
   if (readyBtn) {
+    readyBtn.style.display = onlineState.role === 'host' ? 'none' : 'inline-flex';
     readyBtn.classList.toggle('on', onlineState.ready);
     readyBtn.textContent = onlineState.ready ? '✓ READY' : 'READY';
     readyBtn.disabled = !onlineState.seat;
@@ -2343,10 +2391,12 @@ function updateParticipantList() {
   if (seatHelp) {
     if (!onlineState.seat) {
       seatHelp.textContent = '👆 まず空席をタップしてね';
-    } else if (!onlineState.ready) {
+    } else if (!effectiveReady) {
       seatHelp.textContent = `Seat ${onlineState.seat} を選択中 → READYを押そう！`;
     } else {
-      seatHelp.textContent = '✓ 準備完了！ホストの開始を待っています';
+      seatHelp.textContent = onlineState.role === 'host'
+        ? '✓ ホスト準備完了。参加者のREADYを待っています'
+        : '✓ 準備完了！ホストの開始を待っています';
     }
   }
 }
@@ -2807,9 +2857,76 @@ function getOnlinePlayerNames() {
   return list.map((p, i) => p.name || `Player ${i + 1}`);
 }
 
+function getOnlinePlayers() {
+  const list = getPresenceList();
+  return list.map((p, i) => ({ name: p.name || `Player ${i + 1}`, icon: '' }));
+}
+
+function getPerPlayerStackEnabled() {
+  const toggle = document.getElementById('per-player-stack-toggle');
+  return !!toggle && toggle.checked;
+}
+
+function getPerPlayerStackInputs() {
+  return Array.from(document.querySelectorAll('.stack-row input[data-index]'));
+}
+
+function renderPerPlayerStackList() {
+  const listEl = document.getElementById('per-player-stack-list');
+  if (!listEl) return;
+  const enabled = getPerPlayerStackEnabled();
+  listEl.style.display = enabled ? 'flex' : 'none';
+  if (!enabled) return;
+
+  const settings = collectSettingsFromForm();
+  const players = onlineState.role === 'host' ? getOnlinePlayers() : getLocalPlayers();
+  listEl.innerHTML = '';
+  const defaultBB = Math.max(1, Math.floor(settings.initialChips / settings.bigBlind));
+
+  players.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'stack-row';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '1';
+    input.step = '1';
+    input.inputMode = 'numeric';
+    input.className = 'stack-input';
+    input.dataset.index = String(i);
+    const saved = perPlayerStackBB[i];
+    input.value = String(saved || defaultBB);
+    input.addEventListener('input', () => {
+      const val = parseInt(input.value, 10);
+      perPlayerStackBB[i] = Number.isFinite(val) ? val : defaultBB;
+    });
+
+    row.innerHTML = `
+      <div class="stack-name">${p.name}</div>
+      <div class="stack-suffix">BB</div>
+    `;
+    row.appendChild(input);
+    listEl.appendChild(row);
+  });
+}
+
 function startGameWithPlayers(players, settings) {
   applySettings(settings);
-  gameState = initGame(players, settings.smallBlind, settings.bigBlind, settings.initialChips);
+  const perPlayerEnabled = getPerPlayerStackEnabled();
+  const stackInputs = getPerPlayerStackInputs();
+  const stacksByIndex = new Map();
+  if (perPlayerEnabled) {
+    stackInputs.forEach(input => {
+      const idx = parseInt(input.dataset.index || '0', 10);
+      const bb = parseInt(input.value, 10);
+      const validBB = Number.isFinite(bb) && bb >= 1 ? bb : 1;
+      stacksByIndex.set(idx, validBB * settings.bigBlind);
+    });
+  }
+  const playersWithStacks = players.map((p, i) => ({
+    ...p,
+    startingChips: perPlayerEnabled ? (stacksByIndex.get(i) || settings.initialChips) : settings.initialChips
+  }));
+  gameState = initGame(playersWithStacks, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
   gameState = startHand(gameState);
@@ -2862,6 +2979,7 @@ function updateSettingsPanels() {
     onlineSummary.style.display = isOnlineHost ? 'block' : 'none';
     localSettings.style.display = isOnlineHost ? 'none' : 'block';
   }
+  renderPerPlayerStackList();
 }
 
 // Player positions (ellipse ring). index → {x%, y%}
@@ -3302,8 +3420,10 @@ function showShowdown() {
   selectedWinners = [];
   isSplitMode = false;
   const splitToggle = document.getElementById('split-toggle');
+  const splitWrap = splitToggle ? splitToggle.closest('.split-toggle') : null;
   const confirmBtn = document.getElementById('confirm-winner-btn');
   if (splitToggle) splitToggle.classList.remove('on');
+  if (splitWrap) splitWrap.style.display = eligible.length >= 2 ? 'flex' : 'none';
   if (confirmBtn) confirmBtn.disabled = true;
 
   // 1人しかいない場合は自動選択
@@ -3515,7 +3635,7 @@ function startGame() {
   const settings = collectSettingsFromForm();
   let players = [];
   if (onlineState.role === 'host') {
-    players = getOnlinePlayerNames();
+    players = getOnlinePlayers();
     if (players.length < 2) {
       const hostStatus = document.getElementById('waiting-host-status');
       if (hostStatus) hostStatus.textContent = '参加者が足りません';
@@ -3627,6 +3747,14 @@ document.addEventListener('DOMContentLoaded', () => {
     bindOnce(toggle, 'change', syncTournamentOptions);
   }
   syncTournamentOptions();
+  const perPlayerToggle = document.getElementById('per-player-stack-toggle');
+  if (perPlayerToggle) {
+    bindOnce(perPlayerToggle, 'change', renderPerPlayerStackList);
+  }
+  const bbInput = document.getElementById('bb-input');
+  if (bbInput) {
+    bindOnce(bbInput, 'input', renderPerPlayerStackList);
+  }
 
   const hostBtn = document.getElementById('room-host-btn');
   const joinBtn = document.getElementById('room-join-btn');
@@ -3714,6 +3842,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+  const waitingBackBtn = document.getElementById('waiting-back-btn');
+  if (waitingBackBtn) {
+    waitingBackBtn.addEventListener('click', () => {
+      leaveRoom();
+    });
+  }
   if (startBtn) {
     startBtn.addEventListener('click', () => {
       startGame();
@@ -3766,6 +3900,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const readyBtn = document.getElementById('ready-toggle-btn');
   if (readyBtn) {
     readyBtn.addEventListener('click', () => {
+      if (onlineState.role === 'host') return;
       if (!onlineState.seat) {
         const seatHelp = document.getElementById('seat-help-text');
         if (seatHelp) seatHelp.textContent = '先に席を選んでください';
