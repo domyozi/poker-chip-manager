@@ -72,7 +72,7 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   content: "";
   position: fixed;
   inset: 0;
-  background: rgba(10, 14, 12, 0.55);
+  background: rgba(10, 14, 12, 0.7);
   z-index: 0;
   pointer-events: none;
 }
@@ -239,11 +239,12 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 
 .app-version {
-  position: absolute;
+  position: fixed;
   top: 10px; right: 14px;
   font-size: 11px;
   color: var(--text-muted);
   letter-spacing: 1px;
+  z-index: 101;
 }
 .room-btn {
   padding: 12px 16px;
@@ -751,8 +752,23 @@ summary.setup-label::-webkit-details-marker { display: none; }
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  background: #0f1a16;
+  background-image: url('img/backgroundimg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   padding: 0;
+}
+#game-screen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 12, 0.7);
+  z-index: 0;
+  pointer-events: none;
+}
+#game-screen > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Header */
@@ -1444,7 +1460,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.85);
   display: flex; align-items: center; justify-content: center;
-  z-index: 52;
+  z-index: 140;
   opacity: 0; pointer-events: none;
   transition: opacity 0.3s;
 }
@@ -1745,7 +1761,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
           <span class="step-num">1</span>
           <span class="step-text">テーブルの空席をタップ</span>
         </div>
-        <div class="step-arrow">→</div>
         <div class="step-item" id="step-ready">
           <span class="step-num">2</span>
           <span class="step-text">READYボタンを押す</span>
@@ -2013,6 +2028,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="confirm-dialog-buttons">
       <button class="confirm-dialog-btn cancel" id="fold-cancel-btn">キャンセル</button>
       <button class="confirm-dialog-btn danger" id="fold-confirm-btn">フォールドする</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── DISCONNECT DIALOG ────────────────────── -->
+<div class="confirm-dialog-overlay" id="disconnect-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">接続が切断されました</div>
+    <div class="confirm-dialog-message">サーバーとの接続が失われました。再接続を待つか、ゲームを終了してください。</div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="disconnect-wait-btn">再接続を待つ</button>
+      <button class="confirm-dialog-btn danger" id="disconnect-exit-btn">ゲームを終了</button>
     </div>
   </div>
 </div>
@@ -2501,7 +2528,8 @@ function setUiState(state) {
 function updateHeaderMenuVisibility() {
   const menuBtn = document.getElementById('menu-btn');
   if (!menuBtn) return;
-  const show = onlineState.role !== 'player';
+  // local, hostは表示、playerのみ非表示
+  const show = onlineState.role === 'local' || onlineState.role === 'host';
   menuBtn.style.display = show ? 'inline-flex' : 'none';
 }
 
@@ -2896,11 +2924,13 @@ async function joinRoom(role, code, isAuto = false) {
         onlineState.connected = true;
         setRoomControls(true);
         updateParticipantList();
+        hideDisconnectDialog();
         setRoomStatus(`${onlineState.role === 'host' ? 'ホスト中' : '参加中'}: ${onlineState.roomCode}`);
       }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         onlineState.connected = false;
         setRoomStatus('再接続中...');
+        showDisconnectDialog();
         scheduleReconnect();
       }
       if (status === 'CLOSED') {
@@ -3228,6 +3258,20 @@ function renderPerPlayerStackList() {
     row.appendChild(input);
     row.appendChild(bbDisplay);
     listEl.appendChild(row);
+  });
+}
+
+function updatePerPlayerBBDisplays() {
+  const settings = collectSettingsFromForm();
+  const rows = document.querySelectorAll('.stack-row');
+  rows.forEach(row => {
+    const input = row.querySelector('.stack-input');
+    const bbDisplay = row.querySelector('.stack-meta');
+    if (!input || !bbDisplay) return;
+    const chips = parseInt(input.value, 10);
+    const validChips = Number.isFinite(chips) && chips >= 1 ? chips : settings.initialChips;
+    const bb = settings.bigBlind > 0 ? Math.floor(validChips / settings.bigBlind) : 0;
+    bbDisplay.textContent = `= ${bb.toLocaleString()} BB`;
   });
 }
 
@@ -4029,6 +4073,14 @@ function hideHistory() {
   document.getElementById('history-overlay').classList.remove('visible');
 }
 
+function showDisconnectDialog() {
+  document.getElementById('disconnect-overlay').classList.add('visible');
+}
+
+function hideDisconnectDialog() {
+  document.getElementById('disconnect-overlay').classList.remove('visible');
+}
+
 function saveChipsBeforeHand() {
   if (!gameState || !gameState.players) return;
   chipsBeforeHand = {};
@@ -4263,9 +4315,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   const bbInput = document.getElementById('bb-input');
   if (bbInput) {
-    bindOnce(bbInput, 'input', renderPerPlayerStackList);
     bindOnce(bbInput, 'input', updateInitialChipsBB);
+    bindOnce(bbInput, 'input', updatePerPlayerBBDisplays);
     bindOnce(bbInput, 'change', updateInitialChipsBB);
+    bindOnce(bbInput, 'change', updatePerPlayerBBDisplays);
   }
   const chipsInput = document.getElementById('initial-chips-input');
   if (chipsInput) {
@@ -4470,6 +4523,22 @@ document.addEventListener('DOMContentLoaded', () => {
       doAction('fold');
     });
   }
+
+  // Disconnect dialog handlers
+  const disconnectWaitBtn = document.getElementById('disconnect-wait-btn');
+  const disconnectExitBtn = document.getElementById('disconnect-exit-btn');
+  if (disconnectWaitBtn) {
+    bindOnce(disconnectWaitBtn, 'click', () => {
+      hideDisconnectDialog();
+    });
+  }
+  if (disconnectExitBtn) {
+    bindOnce(disconnectExitBtn, 'click', () => {
+      hideDisconnectDialog();
+      leaveRoom();
+    });
+  }
+
   if (debugEnabled) {
     initDebugPanel();
     bindOnce(document, 'click', (e) => {
