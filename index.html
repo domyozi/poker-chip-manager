@@ -59,6 +59,7 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
 .screen.hidden { opacity: 0; transform: scale(0.96); pointer-events: none; }
+.screen { pointer-events: auto; }
 
 .setup-title {
   font-family: 'Playfair Display', serif;
@@ -165,6 +166,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   outline: none;
   text-transform: uppercase;
   letter-spacing: 2px;
+  pointer-events: auto;
+}
+
+.app-version {
+  position: absolute;
+  top: 10px; right: 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
 }
 .room-btn {
   padding: 12px 16px;
@@ -1035,7 +1045,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.75);
   backdrop-filter: blur(4px);
-  z-index: 50;
+  z-index: 140;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   padding: 24px;
@@ -1145,11 +1155,27 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .confirm-winner-btn:active { transform: translateY(0); }
 .confirm-winner-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
 
+.showdown-emergency {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: none;
+}
+.showdown-emergency.visible { display: block; }
+
 /* ─── Next hand prompt ────────────────────────── */
 .next-hand-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
-  z-index: 45;
+  z-index: 130;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
   transition: opacity 0.3s;
@@ -1198,11 +1224,38 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .win-flash.visible { opacity: 1; }
 
+/* ─── Debug Panel ────────────────────────────── */
+#debug-panel {
+  position: fixed;
+  bottom: 10px; right: 10px;
+  max-width: 90vw;
+  width: 300px;
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  font-size: 11px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  z-index: 9999;
+}
+#debug-panel header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+}
+#debug-panel .content {
+  max-height: 160px;
+  overflow: auto;
+  padding: 6px 8px;
+  font-family: 'Source Code Pro', monospace;
+}
+#debug-panel.collapsed .content { display: none; }
+
 /* ─── Confirm Dialog ─────────────────────────── */
 .confirm-dialog-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.7);
-  z-index: 60;
+  z-index: 150;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
   transition: opacity 0.3s;
@@ -1283,6 +1336,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── ROOM SCREEN ───────────────────────────── -->
 <div id="room-screen" class="screen">
+  <div class="app-version" id="app-version">v0.0.0</div>
   <div class="setup-title">POKER</div>
   <div class="setup-subtitle">テーブルに入る</div>
 
@@ -1548,6 +1602,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="toggle-switch" id="split-toggle" onclick="toggleSplit()"></div>
     </div>
     <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>確定</button>
+    <button class="showdown-emergency" id="showdown-emergency-btn">Continue / Next Hand</button>
   </div>
 </div>
 
@@ -1582,6 +1637,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
+const APP_VERSION = "v0.1.0";
+
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
 
@@ -1830,6 +1887,7 @@ let lastCommunityCount = 0;
 let lastPhase = null;
 let confirmLock = false;
 let nextHandLock = false;
+let showdownEmergencyTimer = null;
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -1897,6 +1955,37 @@ function setupNumericInput(el) {
 
 function getPotTotal(state) {
   return (state.pots || []).reduce((sum, p) => sum + p.amount, 0);
+}
+
+const debugEnabled = new URLSearchParams(window.location.search).get('debug') === '1';
+let debugPanel = null;
+let debugLogEl = null;
+function initDebugPanel() {
+  if (!debugEnabled || debugPanel) return;
+  debugPanel = document.createElement('div');
+  debugPanel.id = 'debug-panel';
+  debugPanel.innerHTML = `
+    <header>
+      <span>Debug</span>
+      <span id="debug-toggle">▾</span>
+    </header>
+    <div class="content" id="debug-content"></div>
+  `;
+  document.body.appendChild(debugPanel);
+  debugLogEl = debugPanel.querySelector('#debug-content');
+  const header = debugPanel.querySelector('header');
+  bindOnce(header, 'click', () => {
+    debugPanel.classList.toggle('collapsed');
+  });
+}
+function debugLog(msg) {
+  if (!debugEnabled) return;
+  if (!debugPanel) initDebugPanel();
+  if (!debugLogEl) return;
+  const line = document.createElement('div');
+  line.textContent = msg;
+  debugLogEl.appendChild(line);
+  debugLogEl.scrollTop = debugLogEl.scrollHeight;
 }
 
 function initSupabase() {
@@ -2311,6 +2400,26 @@ async function joinRoom(role, code, isAuto = false) {
       const { type, amount } = payload?.payload || {};
       if (!type) return;
       applyRemoteAction(type, amount || 0);
+    })
+    .on('broadcast', { event: 'showdown-resolved' }, payload => {
+      if (onlineState.role === 'host') return;
+      const winnerIds = payload?.payload?.winnerIds || [];
+      if (!gameState || winnerIds.length === 0) return;
+      const totalPot = getPotTotal(gameState);
+      const per = Math.floor(totalPot / winnerIds.length);
+      const rem = totalPot - per * winnerIds.length;
+      const winnerNames = winnerIds.map(id => gameState.players.find(p => p.id === id)?.name || '—');
+      gameState = distributePot(gameState, winnerIds);
+      render();
+      let gainText = '';
+      if (winnerIds.length === 1) {
+        gainText = `+${totalPot.toLocaleString()} チップ`;
+      } else {
+        gainText = rem > 0
+          ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
+          : `各 +${per.toLocaleString()} チップ`;
+      }
+      showNextHand(winnerNames.join(' & '), gainText);
     })
     .subscribe(async status => {
       if (status === 'SUBSCRIBED') {
@@ -3053,6 +3162,12 @@ function showShowdown() {
   document.getElementById('showdown-pot-amount').textContent = total.toLocaleString();
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
+  const emergencyBtn = document.getElementById('showdown-emergency-btn');
+  if (emergencyBtn) emergencyBtn.classList.remove('visible');
+  if (showdownEmergencyTimer) {
+    clearTimeout(showdownEmergencyTimer);
+    showdownEmergencyTimer = null;
+  }
 
   // Eligible players (not folded AND not out)
   const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
@@ -3101,6 +3216,15 @@ function showShowdown() {
   }
 
   document.getElementById('showdown-overlay').classList.add('visible');
+
+  // Emergency: if still in showdown after 3s without confirmation, allow host to proceed
+  if (onlineState.role !== 'player') {
+    showdownEmergencyTimer = setTimeout(() => {
+      const overlayVisible = document.getElementById('showdown-overlay').classList.contains('visible');
+      if (!overlayVisible || gameState?.phase !== 'showdown') return;
+      if (emergencyBtn) emergencyBtn.classList.add('visible');
+    }, 3000);
+  }
 }
 
 function selectWinner(btn, playerId) {
@@ -3134,10 +3258,29 @@ function toggleSplit() {
   }
 }
 
+function emergencyContinue() {
+  if (!gameState || gameState.phase !== 'showdown') return;
+  if (selectedWinners.length === 0) {
+    const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
+    if (eligible.length > 0) {
+      selectedWinners = [eligible[0].id]; // Fallback: first eligible
+    }
+  }
+  if (selectedWinners.length > 0) {
+    confirmWinner();
+  }
+}
+
 function confirmWinner() {
   if (confirmLock || selectedWinners.length === 0) return;
   confirmLock = true;
   setTimeout(() => { confirmLock = false; }, 200);
+  if (showdownEmergencyTimer) {
+    clearTimeout(showdownEmergencyTimer);
+    showdownEmergencyTimer = null;
+  }
+  const emergencyBtn = document.getElementById('showdown-emergency-btn');
+  if (emergencyBtn) emergencyBtn.classList.remove('visible');
   const totalPot = getPotTotal(gameState);
   const per = selectedWinners.length ? Math.floor(totalPot / selectedWinners.length) : 0;
   const rem = totalPot - per * selectedWinners.length;
@@ -3156,6 +3299,16 @@ function confirmWinner() {
       : `各 +${per.toLocaleString()} チップ`;
   }
   showNextHand(winnerNames.join(' & '), gainText);
+
+  // Broadcast resolution so non-host clients can exit showdown
+  if (onlineState.role === 'host' && roomChannel) {
+    roomChannel.send({
+      type: 'broadcast',
+      event: 'showdown-resolved',
+      payload: { winnerIds: selectedWinners }
+    });
+    broadcastState();
+  }
 }
 
 // ─── NEXT HAND ────────────────────────────────
@@ -3300,6 +3453,8 @@ function generateRandomName() {
 document.addEventListener('DOMContentLoaded', () => {
   loadSavedPlayerNames();
   setUiState('room');
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) versionEl.textContent = APP_VERSION;
   setupNumericInput(document.getElementById('sb-input'));
   setupNumericInput(document.getElementById('bb-input'));
   setupNumericInput(document.getElementById('initial-chips-input'));
@@ -3319,6 +3474,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsLeaveBtn = document.getElementById('settings-leave-btn');
   const codeInput = document.getElementById('room-code-input');
   const nameInput = document.getElementById('display-name-input');
+  const emergencyBtn = document.getElementById('showdown-emergency-btn');
 
   // デフォルトでランダム名を設定
   if (nameInput && !nameInput.value) {
@@ -3416,6 +3572,16 @@ document.addEventListener('DOMContentLoaded', () => {
       codeInput.value = normalizeRoomCode(codeInput.value);
     }, 80);
     bindOnce(codeInput, 'input', normalizeInput);
+    const focusRoomInput = () => setTimeout(() => codeInput.focus(), 0);
+    bindOnce(codeInput, 'click', focusRoomInput, { passive: true });
+    bindOnce(codeInput, 'touchstart', focusRoomInput, { passive: true });
+    const roomRow = codeInput.parentElement;
+    if (roomRow) {
+      bindOnce(roomRow, 'click', focusRoomInput, { passive: true });
+      bindOnce(roomRow, 'touchstart', focusRoomInput, { passive: true });
+    }
+    bindOnce(codeInput, 'focus', () => debugLog('room-code: focus'), { passive: true });
+    bindOnce(codeInput, 'blur', () => debugLog('room-code: blur'), { passive: true });
   }
   if (menuBtn && menu) {
     bindOnce(menuBtn, 'click', () => {
@@ -3464,6 +3630,25 @@ document.addEventListener('DOMContentLoaded', () => {
       hideFoldConfirm();
       doAction('fold');
     });
+  }
+  if (emergencyBtn) {
+    bindOnce(emergencyBtn, 'click', () => emergencyContinue());
+  }
+
+  if (debugEnabled) {
+    initDebugPanel();
+    bindOnce(document, 'click', (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      const hit = document.elementFromPoint(x, y);
+      debugLog(`click @${x},${y} -> ${hit?.id || hit?.className || hit?.tagName}`);
+    }, { passive: true });
+    bindOnce(document, 'touchstart', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      const hit = document.elementFromPoint(t.clientX, t.clientY);
+      debugLog(`touch @${t.clientX},${t.clientY} -> ${hit?.id || hit?.className || hit?.tagName}`);
+    }, { passive: true });
   }
 });
 
