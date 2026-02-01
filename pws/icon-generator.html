@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icon Generator - SVG to PNG</title>
+<style>
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 800px;
+  margin: 50px auto;
+  padding: 20px;
+  background: #f5f5f5;
+}
+.container {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+h1 { color: #1a3328; margin-top: 0; }
+.preview {
+  display: flex;
+  gap: 20px;
+  margin: 30px 0;
+  flex-wrap: wrap;
+}
+.preview-item {
+  text-align: center;
+}
+.preview-item img {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+button {
+  background: #1a3328;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 5px;
+}
+button:hover { background: #2a4338; }
+.instructions {
+  background: #f0f7f4;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 30px;
+  border-left: 4px solid #1a3328;
+}
+.instructions h3 { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎨 アイコン生成ツール</h1>
+  <p>icon.svgから192pxと512pxのPNG画像を生成します。</p>
+  
+  <button onclick="loadSVG()">SVGを読み込んで生成</button>
+  
+  <div class="preview" id="preview"></div>
+  
+  <div id="download-buttons" style="display:none; margin-top: 20px;">
+    <button onclick="downloadPNG(192)">📥 icon-192.png をダウンロード</button>
+    <button onclick="downloadPNG(512)">📥 icon-512.png をダウンロード</button>
+  </div>
+  
+  <div class="instructions">
+    <h3>📋 使い方</h3>
+    <ol>
+      <li><strong>「SVGを読み込んで生成」</strong>をクリック</li>
+      <li>プレビューが表示されたら、各ボタンで画像をダウンロード</li>
+      <li>ダウンロードした<code>icon-192.png</code>と<code>icon-512.png</code>をGitHubリポジトリに追加</li>
+      <li><code>git add icon-192.png icon-512.png</code></li>
+      <li><code>git commit -m "Add PWA icons"</code></li>
+      <li><code>git push</code></li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const svgContent = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#1a3328"/>
+  
+  <!-- Outer ring - gold -->
+  <circle cx="256" cy="256" r="220" fill="#d4af37" stroke="#a08528" stroke-width="8"/>
+  
+  <!-- Inner felt -->
+  <circle cx="256" cy="256" r="180" fill="#1a3328"/>
+  
+  <!-- Edge markers (casino chip style) -->
+  <g fill="#d4af37">
+    <!-- Top -->
+    <rect x="246" y="56" width="20" height="30" rx="4"/>
+    <!-- Right -->
+    <rect x="426" y="246" width="30" height="20" rx="4"/>
+    <!-- Bottom -->
+    <rect x="246" y="426" width="20" height="30" rx="4"/>
+    <!-- Left -->
+    <rect x="56" y="246" width="30" height="20" rx="4"/>
+    
+    <!-- Diagonals -->
+    <rect x="360" y="125" width="20" height="30" rx="4" transform="rotate(45 370 140)"/>
+    <rect x="360" y="357" width="20" height="30" rx="4" transform="rotate(-45 370 372)"/>
+    <rect x="132" y="357" width="20" height="30" rx="4" transform="rotate(45 142 372)"/>
+    <rect x="132" y="125" width="20" height="30" rx="4" transform="rotate(-45 142 140)"/>
+  </g>
+  
+  <!-- Center symbol - Spade -->
+  <g fill="#d4af37">
+    <!-- Spade shape -->
+    <path d="M 256 180 Q 256 160 240 145 Q 224 130 210 130 Q 190 130 180 150 Q 170 170 180 190 Q 190 210 210 220 L 220 220 L 215 250 L 235 250 L 230 220 L 240 220 Q 260 210 270 190 Q 280 170 270 150 Q 260 130 240 130 Q 224 130 210 145 Q 194 160 194 180 Z" 
+          transform="translate(46 46)"/>
+    <path d="M 256 180 Q 256 160 272 145 Q 288 130 302 130 Q 322 130 332 150 Q 342 170 332 190 Q 322 210 302 220 L 292 220 L 297 250 L 277 250 L 282 220 L 272 220 Q 252 210 242 190 Q 232 170 242 150 Q 252 130 272 130 Q 288 130 302 145 Q 318 160 318 180 Z" 
+          transform="translate(-46 46)"/>
+  </g>
+  
+  <!-- Text "POKER" -->
+  <text x="256" y="330" font-family="'Playfair Display', serif" font-size="48" font-weight="700" fill="#d4af37" text-anchor="middle" letter-spacing="6">POKER</text>
+</svg>`;
+
+let canvases = {};
+
+function loadSVG() {
+  const previewDiv = document.getElementById('preview');
+  previewDiv.innerHTML = '';
+  
+  [192, 512].forEach(size => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvases[size] = canvas;
+    
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      
+      const previewItem = document.createElement('div');
+      previewItem.className = 'preview-item';
+      previewItem.innerHTML = `
+        <div><strong>${size}×${size}px</strong></div>
+        <img src="${canvas.toDataURL()}" width="${size > 192 ? 192 : size}" style="margin: 10px 0;">
+      `;
+      previewDiv.appendChild(previewItem);
+    };
+    
+    img.src = url;
+  });
+  
+  document.getElementById('download-buttons').style.display = 'block';
+}
+
+function downloadPNG(size) {
+  const canvas = canvases[size];
+  if (!canvas) {
+    alert('まずSVGを読み込んでください');
+    return;
+  }
+  
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `icon-${size}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// ページ読み込み時に自動生成
+window.addEventListener('load', () => {
+  setTimeout(loadSVG, 500);
+});
+</script>
+</body>
+</html>

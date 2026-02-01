@@ -41,6 +41,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Prevent double-tap zoom on buttons */
+button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
 /* ─── Screens ────────────────────────────────── */
 .screen {
   position: fixed; inset: 0;
@@ -1117,6 +1124,62 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .win-flash.visible { opacity: 1; }
 
+/* ─── Confirm Dialog ─────────────────────────── */
+.confirm-dialog-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.confirm-dialog-overlay.visible { opacity: 1; pointer-events: auto; }
+.confirm-dialog {
+  background: var(--felt-edge);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%; max-width: 320px;
+  text-align: center;
+}
+.confirm-dialog-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px; font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.confirm-dialog-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.confirm-dialog-buttons {
+  display: flex; gap: 10px;
+}
+.confirm-dialog-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.confirm-dialog-btn.cancel {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-primary);
+}
+.confirm-dialog-btn.cancel:hover { background: rgba(255,255,255,0.15); }
+.confirm-dialog-btn.danger {
+  background: rgba(192,57,43,0.2);
+  border: 1px solid rgba(192,57,43,0.4);
+  color: var(--chip-red);
+}
+.confirm-dialog-btn.danger:hover { background: rgba(192,57,43,0.35); }
+.confirm-dialog-btn:active { transform: scale(0.97); }
+
 /* ─── Responsive tweak ───────────────────────── */
 @media (max-width: 400px) {
   .player-card { width: 90px; }
@@ -1245,17 +1308,17 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="blind-row">
         <div class="blind-input-wrap">
           <span class="blind-input-label">Small Blind</span>
-          <input type="number" id="sb-input" value="10" min="1">
+          <input type="number" id="sb-input" value="10" min="1" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="blind-input-wrap">
           <span class="blind-input-label">Big Blind</span>
-          <input type="number" id="bb-input" value="20" min="1">
+          <input type="number" id="bb-input" value="20" min="1" inputmode="numeric" pattern="[0-9]*">
         </div>
       </div>
       <div class="blind-row" style="margin-top: 12px;">
         <div class="blind-input-wrap" style="flex: 1;">
           <span class="blind-input-label">初期チップ</span>
-          <input type="number" id="initial-chips-input" value="1000" min="1">
+          <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*">
         </div>
       </div>
     </div>
@@ -1420,6 +1483,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── WIN FLASH ─────────────────────────────── -->
 <div class="win-flash" id="win-flash"></div>
+
+<!-- ─── FOLD CONFIRM DIALOG ───────────────────── -->
+<div class="confirm-dialog-overlay" id="fold-confirm-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">フォールドの確認</div>
+    <div class="confirm-dialog-message">チェックできますが、本当にフォールドしますか？</div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="fold-cancel-btn">キャンセル</button>
+      <button class="confirm-dialog-btn danger" id="fold-confirm-btn">フォールドする</button>
+    </div>
+  </div>
+</div>
 
 <!-- ─── SCRIPT ────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1595,14 +1670,9 @@ function advanceToNextPhase(state) {
 
 function endHand(state) {
   const s = { ...state, players: state.players.map(p => ({...p})), pots: [...(state.pots||[])] };
-  s.phase = "showdown"; 
+  s.phase = "showdown";
   s.isHandActive = false;
-  const winner = s.players.find(p => p.status !== "folded");
-  if (winner) {
-    const total = s.pots.reduce((sum, p) => sum + p.amount, 0);
-    s.players = s.players.map(p => p.id === winner.id ? { ...p, chips: p.chips + total } : p);
-    s.pots = [];
-  }
+  // ポットは配分しない（showShowdownで勝者確認後に配分）
   return s;
 }
 
@@ -2611,7 +2681,7 @@ function renderActionPanel() {
   const canCheck = callAmt === 0;
 
   // Fold
-  btnsEl.appendChild(makeActionBtn('btn-fold', 'FOLD', '', () => doAction('fold')));
+  btnsEl.appendChild(makeActionBtn('btn-fold', 'FOLD', '', () => handleFoldAttempt()));
 
   // Check or Call
   if (canCheck) {
@@ -2635,11 +2705,26 @@ function renderActionPanel() {
   document.getElementById('raise-area').classList.remove('visible');
 }
 
+let actionProcessing = false;
 function makeActionBtn(cls, label, sub, onClick) {
   const btn = document.createElement('button');
   btn.className = 'action-btn ' + cls;
   btn.innerHTML = `<span class="btn-label">${label}</span><span class="btn-sub">${sub}</span>`;
-  btn.addEventListener('click', onClick);
+
+  // デバウンス処理で二重発火防止
+  const handleClick = (e) => {
+    e.preventDefault();
+    if (actionProcessing) return;
+    actionProcessing = true;
+    setTimeout(() => { actionProcessing = false; }, 300);
+    onClick();
+  };
+
+  btn.addEventListener('click', handleClick);
+  btn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    handleClick(e);
+  });
   return btn;
 }
 
@@ -2675,6 +2760,34 @@ function toggleRaiseArea() {
   }
 }
 
+let foldConfirmShown = false; // フォールド確認済みフラグ
+
+function showFoldConfirm() {
+  const overlay = document.getElementById('fold-confirm-overlay');
+  overlay.classList.add('visible');
+}
+
+function hideFoldConfirm() {
+  const overlay = document.getElementById('fold-confirm-overlay');
+  overlay.classList.remove('visible');
+}
+
+function handleFoldAttempt() {
+  if (!gameState) return;
+  const actor = gameState.players[gameState.currentPlayerIndex];
+  const callAmt = gameState.currentMaxBet - actor.currentBet;
+
+  // チェックできる状況で、まだ確認していない場合
+  if (callAmt === 0 && !foldConfirmShown) {
+    showFoldConfirm();
+    return;
+  }
+
+  // 確認済みまたはコールが必要な場合は直接フォールド
+  foldConfirmShown = false;
+  doAction('fold');
+}
+
 function doAction(type, amount = 0) {
   if (onlineState.role === 'player') {
     sendActionRequest(type, amount);
@@ -2685,6 +2798,7 @@ function doAction(type, amount = 0) {
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
+  foldConfirmShown = false; // アクション後にリセット
 
   // Hide raise area after action
   document.getElementById('raise-area').classList.remove('visible');
@@ -2694,16 +2808,8 @@ function doAction(type, amount = 0) {
   // Showdown check
   if (gameState.phase === 'showdown') {
     stopActionTimer();
-    // 1人残し（自動勝ち）の場合はポットが既に配分済み
-    const totalPot = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
-    if (totalPot === 0) {
-      // 自動勝ち → next hand直接
-      const winner = gameState.players.find(p => p.status !== 'folded');
-      showNextHand(winner ? winner.name : '—');
-    } else {
-      // showdown → 勝者選択
-      setTimeout(() => showShowdown(), 300);
-    }
+    // 常に勝者選択画面を表示（フォールドで決着時も確認を促す）
+    setTimeout(() => showShowdown(), 300);
   } else if (gameState.isHandActive) {
     // Restart timer for next player
     startActionTimer();
@@ -2725,27 +2831,51 @@ function showShowdown() {
   const total = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
   document.getElementById('showdown-pot-amount').textContent = total.toLocaleString();
 
-  // Eligible players (not folded)
-  const eligible = gameState.players.filter(p => p.status !== 'folded');
+  // Eligible players (not folded AND not out)
+  const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
   const selectEl = document.getElementById('winner-select');
   selectEl.innerHTML = '';
   selectedWinners = [];
   isSplitMode = false;
-  document.getElementById('split-toggle').classList.remove('on');
-  document.getElementById('confirm-winner-btn').disabled = true;
+  const splitToggle = document.getElementById('split-toggle');
+  const confirmBtn = document.getElementById('confirm-winner-btn');
+  if (splitToggle) splitToggle.classList.remove('on');
+  if (confirmBtn) confirmBtn.disabled = true;
 
-  eligible.forEach(player => {
+  // 1人しかいない場合は自動選択
+  if (eligible.length === 1) {
+    selectedWinners = [eligible[0].id];
     const btn = document.createElement('button');
-    btn.className = 'winner-btn';
-    btn.dataset.playerId = player.id;
+    btn.className = 'winner-btn selected';
+    btn.dataset.playerId = eligible[0].id;
     btn.innerHTML = `
-      <div class="w-avatar">${player.name.charAt(0).toUpperCase()}</div>
-      <span class="w-name">${player.name}</span>
-      <span class="w-chips">${player.chips.toLocaleString()}</span>
+      <div class="w-avatar">${eligible[0].name.charAt(0).toUpperCase()}</div>
+      <span class="w-name">${eligible[0].name}</span>
+      <span class="w-chips">${eligible[0].chips.toLocaleString()}</span>
     `;
-    btn.addEventListener('click', () => selectWinner(btn, player.id));
     selectEl.appendChild(btn);
-  });
+    if (confirmBtn) confirmBtn.disabled = false;
+  } else {
+    eligible.forEach(player => {
+      const btn = document.createElement('button');
+      btn.className = 'winner-btn';
+      btn.dataset.playerId = player.id;
+      btn.innerHTML = `
+        <div class="w-avatar">${player.name.charAt(0).toUpperCase()}</div>
+        <span class="w-name">${player.name}</span>
+        <span class="w-chips">${player.chips.toLocaleString()}</span>
+      `;
+      // タッチとクリック両対応
+      const handleSelect = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectWinner(btn, player.id);
+      };
+      btn.addEventListener('click', handleSelect);
+      btn.addEventListener('touchend', handleSelect);
+      selectEl.appendChild(btn);
+    });
+  }
 
   document.getElementById('showdown-overlay').classList.add('visible');
 }
@@ -3067,6 +3197,22 @@ document.addEventListener('DOMContentLoaded', () => {
       readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
       updatePresence({ ready: onlineState.ready });
       updateParticipantList();
+    });
+  }
+
+  // Fold confirm dialog handlers
+  const foldCancelBtn = document.getElementById('fold-cancel-btn');
+  const foldConfirmBtn = document.getElementById('fold-confirm-btn');
+  if (foldCancelBtn) {
+    foldCancelBtn.addEventListener('click', () => {
+      hideFoldConfirm();
+    });
+  }
+  if (foldConfirmBtn) {
+    foldConfirmBtn.addEventListener('click', () => {
+      hideFoldConfirm();
+      foldConfirmShown = true;
+      handleFoldAttempt();
     });
   }
 });
