@@ -861,6 +861,43 @@ summary.setup-label::-webkit-details-marker { display: none; }
   100% { transform: scale(1); }
 }
 
+/* ─── Community Cards ────────────────────────── */
+.community-cards {
+  position: absolute;
+  top: calc(50% - 58px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 3;
+  pointer-events: none;
+}
+.community-card {
+  width: 42px; height: 60px;
+  background: #f6f6f3;
+  border-radius: 9px;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  color: #111;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  position: relative;
+  opacity: 1;
+}
+.community-card .suit { font-size: 18px; }
+.community-card .corner {
+  position: absolute;
+  font-size: 10px; font-weight: 700;
+}
+.community-card .corner.tl { top: 6px; left: 6px; }
+.community-card .corner.br { bottom: 6px; right: 6px; transform: rotate(180deg); }
+.community-card.deal-in { animation: deal-in 0.45s ease-out; }
+@keyframes deal-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── Action Panel ───────────────────────────── */
 .action-panel {
   background: var(--felt-edge);
@@ -932,11 +969,43 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* Raise slider area */
 .raise-area {
   display: none;
-  align-items: center; gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   padding: 0 4px;
   margin-top: 4px;
 }
 .raise-area.visible { display: flex; }
+.raise-presets {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.raise-presets::-webkit-scrollbar { display: none; }
+.raise-preset-btn {
+  border: 1px solid rgba(212,175,55,0.35);
+  background: rgba(212,175,55,0.08);
+  color: var(--gold);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+  font-family: 'Source Code Pro', monospace;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.12s, background 0.2s, border-color 0.2s;
+}
+.raise-preset-btn:hover { background: rgba(212,175,55,0.18); border-color: var(--gold); }
+.raise-preset-btn:active { transform: scale(0.96); }
+.raise-preset-btn.active {
+  background: rgba(212,175,55,0.22);
+  border-color: var(--gold);
+  color: #f6e3a8;
+}
+.raise-slider-row {
+  display: flex; align-items: center; gap: 12px;
+}
 .raise-area input[type=range] {
   flex: 1;
   -webkit-appearance: none;
@@ -1101,6 +1170,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin-bottom: 6px;
 }
 .next-hand-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 22px; }
+.next-hand-gain {
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
 .next-hand-btn {
   width: 100%; padding: 12px;
   border-radius: 12px;
@@ -1187,6 +1261,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   .player-card .name { font-size: 10px; }
   .player-card .chips { font-size: 11px; }
   .pot-amount { font-size: 24px; }
+  .community-card { width: 38px; height: 54px; }
   .action-btns { gap: 6px; }
   .action-btn { max-width: 90px; padding: 11px 6px; font-size: 11px; }
 }
@@ -1308,17 +1383,17 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="blind-row">
         <div class="blind-input-wrap">
           <span class="blind-input-label">Small Blind</span>
-          <input type="number" id="sb-input" value="10" min="1" inputmode="numeric" pattern="[0-9]*">
+          <input type="number" id="sb-input" value="10" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
         </div>
         <div class="blind-input-wrap">
           <span class="blind-input-label">Big Blind</span>
-          <input type="number" id="bb-input" value="20" min="1" inputmode="numeric" pattern="[0-9]*">
+          <input type="number" id="bb-input" value="20" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
         </div>
       </div>
       <div class="blind-row" style="margin-top: 12px;">
         <div class="blind-input-wrap" style="flex: 1;">
           <span class="blind-input-label">初期チップ</span>
-          <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*">
+          <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
         </div>
       </div>
     </div>
@@ -1438,6 +1513,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   <div class="table-area">
     <div class="table-felt"></div>
     <div class="players-ring" id="players-ring"></div>
+    <div class="community-cards" id="community-cards"></div>
     <div class="pot-center">
       <div class="pot-label">POT</div>
       <div class="pot-amount" id="pot-amount">0</div>
@@ -1451,8 +1527,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="action-lock-message" id="action-lock-message" style="display:none;">あなたの番になるまでお待ちください</div>
     <div class="action-btns" id="action-btns"></div>
     <div class="raise-area" id="raise-area">
-      <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
-      <div class="raise-amount" id="raise-amount-display">0</div>
+      <div class="raise-presets" id="raise-presets"></div>
+      <div class="raise-slider-row">
+        <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
+        <div class="raise-amount" id="raise-amount-display">0</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1460,15 +1539,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
 <!-- ─── SHOWDOWN OVERLAY ──────────────────────── -->
 <div class="showdown-overlay" id="showdown-overlay">
   <div class="showdown-card">
-    <div class="showdown-title">ショーダウン</div>
+    <div class="showdown-title">ショーダウン - 勝者を選択</div>
     <div class="showdown-pot" id="showdown-pot-amount">0</div>
     <div class="showdown-pot-label">TOTAL POT</div>
     <div class="winner-select" id="winner-select"></div>
     <div class="split-toggle">
-      <span class="split-label">スプリットポット</span>
+      <span class="split-label">チョップ（引き分け）</span>
       <div class="toggle-switch" id="split-toggle" onclick="toggleSplit()"></div>
     </div>
-    <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>勝者を確認</button>
+    <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>確定</button>
   </div>
 </div>
 
@@ -1477,6 +1556,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   <div class="next-hand-card">
     <div class="next-hand-title" id="next-hand-winner-name">—</div>
     <div class="next-hand-sub">の勝ち！</div>
+    <div class="next-hand-gain" id="next-hand-gain"></div>
     <button class="next-hand-btn" onclick="nextHand()">次のハンド</button>
   </div>
 </div>
@@ -1746,6 +1826,10 @@ let gameState = null;
 let raiseValue = 0;           // 現在のレイズ額（絶対値）
 let selectedWinners = [];     // showdown時の勝者選択
 let isSplitMode = false;
+let lastCommunityCount = 0;
+let lastPhase = null;
+let confirmLock = false;
+let nextHandLock = false;
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -1775,6 +1859,45 @@ let onlineState = {
 };
 let onlineReady = false;
 let uiState = 'room'; // room | waiting | settings | playing
+
+const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
+const boundEvents = new WeakMap();
+function bindOnce(el, type, handler, options) {
+  if (!el) return;
+  let map = boundEvents.get(el);
+  if (!map) {
+    map = {};
+    boundEvents.set(el, map);
+  }
+  if (map[type]) return;
+  map[type] = true;
+  el.addEventListener(type, handler, options);
+}
+
+function debounce(fn, wait = 120) {
+  let t = null;
+  return (...args) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
+function setupNumericInput(el) {
+  if (!el) return;
+  el.setAttribute('inputmode', 'numeric');
+  el.setAttribute('pattern', '[0-9]*');
+  el.setAttribute('enterkeyhint', 'done');
+  const normalize = debounce(() => {
+    const cleaned = (el.value || '').replace(/[^\d]/g, '');
+    if (el.value !== cleaned) el.value = cleaned;
+  }, 120);
+  bindOnce(el, 'input', normalize);
+  bindOnce(el, 'focus', () => el.select(), { passive: true });
+}
+
+function getPotTotal(state) {
+  return (state.pots || []).reduce((sum, p) => sum + p.amount, 0);
+}
 
 function initSupabase() {
   if (!window.supabase || supabaseClient) return;
@@ -1823,6 +1946,7 @@ function setUiState(state) {
   if (state !== 'playing') {
     document.getElementById('showdown-overlay').classList.remove('visible');
     document.getElementById('next-hand-overlay').classList.remove('visible');
+    document.getElementById('fold-confirm-overlay').classList.remove('visible');
   }
   if (state === 'waiting' || state === 'settings') {
     updateParticipantList();
@@ -2231,16 +2355,7 @@ function applyRemoteAction(type, amount) {
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
   render();
-  if (gameState.phase === 'showdown') {
-    stopActionTimer();
-    const totalPot = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
-    if (totalPot === 0) {
-      const winner = gameState.players.find(p => p.status !== 'folded');
-      showNextHand(winner ? winner.name : '—');
-    } else {
-      setTimeout(() => showShowdown(), 300);
-    }
-  } else if (gameState.isHandActive) {
+  if (gameState.isHandActive) {
     startActionTimer();
   }
   broadcastState();
@@ -2627,6 +2742,47 @@ function renderPot() {
   }
 }
 
+function getCommunityCardCount(phase) {
+  switch (phase) {
+    case 'flop': return 3;
+    case 'turn': return 4;
+    case 'river': return 5;
+    case 'showdown': return 5;
+    default: return 0;
+  }
+}
+
+function renderCommunityCards() {
+  const container = document.getElementById('community-cards');
+  if (!container) return;
+  if (!gameState) {
+    container.innerHTML = '';
+    lastCommunityCount = 0;
+    return;
+  }
+  const count = getCommunityCardCount(gameState.phase);
+  if (count === 0) {
+    container.innerHTML = '';
+    lastCommunityCount = 0;
+    return;
+  }
+  if (count === lastCommunityCount && container.children.length === count) return;
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const card = document.createElement('div');
+    card.className = 'community-card';
+    if (i >= lastCommunityCount) card.classList.add('deal-in');
+    const suit = COMMUNITY_SUITS[i % COMMUNITY_SUITS.length];
+    card.innerHTML = `
+      <div class="corner tl">${suit}</div>
+      <div class="suit">${suit}</div>
+      <div class="corner br">${suit}</div>
+    `;
+    container.appendChild(card);
+  }
+  lastCommunityCount = count;
+}
+
 function renderPhase() {
   const phase = gameState ? gameState.phase : 'preflop';
   document.getElementById('phase-label').textContent = phase.toUpperCase();
@@ -2696,7 +2852,7 @@ function renderActionPanel() {
   const minRaise = gameState.currentMaxBet + gameState.bigBlind;
   const maxRaise = actor.chips + actor.currentBet;
   if (maxRaise >= minRaise) {
-    raiseValue = minRaise;
+    setRaiseValue(minRaise);
     btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', raiseValue.toLocaleString(), () => toggleRaiseArea()));
     setupRaiseSlider(minRaise, maxRaise);
   }
@@ -2736,18 +2892,75 @@ function setupRaiseSlider(min, max) {
   slider.min = 0;
   slider.max = 100;
   slider.value = 0; // min position
-  raiseValue = min;
-  document.getElementById('raise-amount-display').textContent = raiseValue.toLocaleString();
+  setRaiseValue(min);
+  updateRaisePresets();
+}
+
+function setRaiseValue(value) {
+  const clamped = Math.max(raiseMin, Math.min(raiseMax, Math.round(value)));
+  raiseValue = clamped;
+  const display = document.getElementById('raise-amount-display');
+  if (display) display.textContent = raiseValue.toLocaleString();
+  const slider = document.getElementById('raise-slider');
+  if (slider && raiseMax > raiseMin) {
+    const pct = (raiseValue - raiseMin) / (raiseMax - raiseMin);
+    slider.value = Math.round(pct * 100);
+  }
+  const raiseBtn = document.querySelector('.btn-raise .btn-sub');
+  if (raiseBtn) raiseBtn.textContent = raiseValue.toLocaleString();
+  updateActivePreset();
 }
 
 function onRaiseSlide() {
   const slider = document.getElementById('raise-slider');
   const pct = parseInt(slider.value) / 100;
-  raiseValue = Math.round(raiseMin + (raiseMax - raiseMin) * pct);
-  document.getElementById('raise-amount-display').textContent = raiseValue.toLocaleString();
-  // Update raise button sub text
-  const raiseBtn = document.querySelector('.btn-raise .btn-sub');
-  if (raiseBtn) raiseBtn.textContent = raiseValue.toLocaleString();
+  setRaiseValue(Math.round(raiseMin + (raiseMax - raiseMin) * pct));
+}
+
+function updateRaisePresets() {
+  const presetsEl = document.getElementById('raise-presets');
+  if (!presetsEl || !gameState) return;
+  presetsEl.innerHTML = '';
+  const actor = gameState.players[gameState.currentPlayerIndex];
+  const callAmt = gameState.currentMaxBet - actor.currentBet;
+  const totalPot = getPotTotal(gameState);
+
+  const addPreset = (label, targetValue) => {
+    const value = Math.max(raiseMin, Math.min(raiseMax, Math.round(targetValue)));
+    const btn = document.createElement('button');
+    btn.className = 'raise-preset-btn';
+    btn.textContent = label;
+    btn.dataset.amount = String(value);
+    btn.addEventListener('click', () => setRaiseValue(value), { passive: true });
+    presetsEl.appendChild(btn);
+  };
+
+  if (gameState.phase === 'preflop') {
+    addPreset('2.5BB', gameState.bigBlind * 2.5);
+    addPreset('3BB', gameState.bigBlind * 3);
+    addPreset('5BB', gameState.bigBlind * 5);
+  } else {
+    const potFractions = [
+      ['1/3 POT', 1 / 3],
+      ['1/2 POT', 1 / 2],
+      ['2/3 POT', 2 / 3],
+      ['FULL POT', 1]
+    ];
+    potFractions.forEach(([label, frac]) => {
+      const betSize = Math.max(1, Math.round(totalPot * frac));
+      addPreset(label, actor.currentBet + callAmt + betSize);
+    });
+  }
+  addPreset('ALL IN', actor.currentBet + actor.chips);
+  updateActivePreset();
+}
+
+function updateActivePreset() {
+  const presetBtns = document.querySelectorAll('.raise-preset-btn');
+  presetBtns.forEach(btn => {
+    const amt = parseInt(btn.dataset.amount || '0', 10);
+    btn.classList.toggle('active', amt === raiseValue);
+  });
 }
 
 function toggleRaiseArea() {
@@ -2757,6 +2970,7 @@ function toggleRaiseArea() {
     doAction('raise', raiseValue);
   } else {
     area.classList.add('visible');
+    updateRaisePresets();
   }
 }
 
@@ -2779,13 +2993,25 @@ function handleFoldAttempt() {
 
   // チェックできる状況で、まだ確認していない場合
   if (callAmt === 0 && !foldConfirmShown) {
+    foldConfirmShown = true;
     showFoldConfirm();
     return;
   }
 
   // 確認済みまたはコールが必要な場合は直接フォールド
-  foldConfirmShown = false;
   doAction('fold');
+}
+
+function handlePhaseTransition() {
+  if (!gameState) { lastPhase = null; return; }
+  if (gameState.phase === 'showdown' && lastPhase !== 'showdown') {
+    stopActionTimer();
+    showShowdown();
+  }
+  if (gameState.phase !== 'showdown' && lastPhase === 'showdown') {
+    document.getElementById('showdown-overlay').classList.remove('visible');
+  }
+  lastPhase = gameState.phase;
 }
 
 function doAction(type, amount = 0) {
@@ -2794,23 +3020,16 @@ function doAction(type, amount = 0) {
     return;
   }
   if (!gameState) return;
-  const prevPhase = gameState.phase;
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
-  foldConfirmShown = false; // アクション後にリセット
 
   // Hide raise area after action
   document.getElementById('raise-area').classList.remove('visible');
 
   render();
 
-  // Showdown check
-  if (gameState.phase === 'showdown') {
-    stopActionTimer();
-    // 常に勝者選択画面を表示（フォールドで決着時も確認を促す）
-    setTimeout(() => showShowdown(), 300);
-  } else if (gameState.isHandActive) {
+  if (gameState.isHandActive) {
     // Restart timer for next player
     startActionTimer();
   }
@@ -2822,14 +3041,18 @@ function doAction(type, amount = 0) {
 function render() {
   renderPlayers();
   renderPot();
+  renderCommunityCards();
   renderPhase();
   renderActionPanel();
+  handlePhaseTransition();
 }
 
 // ─── SHOWDOWN ─────────────────────────────────
 function showShowdown() {
   const total = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
   document.getElementById('showdown-pot-amount').textContent = total.toLocaleString();
+  document.getElementById('next-hand-overlay').classList.remove('visible');
+  document.getElementById('fold-confirm-overlay').classList.remove('visible');
 
   // Eligible players (not folded AND not out)
   const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
@@ -2902,25 +3125,45 @@ function toggleSplit() {
   document.getElementById('split-toggle').classList.toggle('on', isSplitMode);
   if (!isSplitMode) {
     // Reset to single select
-    selectedWinners = [];
-    document.querySelectorAll('.winner-btn').forEach(b => b.classList.remove('selected'));
-    document.getElementById('confirm-winner-btn').disabled = true;
+    if (selectedWinners.length > 1) selectedWinners = [selectedWinners[0]];
+    document.querySelectorAll('.winner-btn').forEach(b => {
+      const keep = selectedWinners.includes(b.dataset.playerId);
+      b.classList.toggle('selected', keep);
+    });
+    document.getElementById('confirm-winner-btn').disabled = selectedWinners.length === 0;
   }
 }
 
 function confirmWinner() {
-  if (selectedWinners.length === 0) return;
-  gameState = distributePot(gameState, selectedWinners);
-  document.getElementById('showdown-overlay').classList.remove('visible');
+  if (confirmLock || selectedWinners.length === 0) return;
+  confirmLock = true;
+  setTimeout(() => { confirmLock = false; }, 200);
+  const totalPot = getPotTotal(gameState);
+  const per = selectedWinners.length ? Math.floor(totalPot / selectedWinners.length) : 0;
+  const rem = totalPot - per * selectedWinners.length;
 
   const winnerNames = selectedWinners.map(id => gameState.players.find(p => p.id === id)?.name || '—');
+  gameState = distributePot(gameState, selectedWinners);
+  document.getElementById('showdown-overlay').classList.remove('visible');
   render();
-  showNextHand(winnerNames.join(' & '));
+
+  let gainText = '';
+  if (selectedWinners.length === 1) {
+    gainText = `+${totalPot.toLocaleString()} チップ`;
+  } else {
+    gainText = rem > 0
+      ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
+      : `各 +${per.toLocaleString()} チップ`;
+  }
+  showNextHand(winnerNames.join(' & '), gainText);
 }
 
 // ─── NEXT HAND ────────────────────────────────
-function showNextHand(winnerName) {
+function showNextHand(winnerName, gainText = '') {
   document.getElementById('next-hand-winner-name').textContent = winnerName;
+  document.getElementById('next-hand-gain').textContent = gainText;
+  document.getElementById('showdown-overlay').classList.remove('visible');
+  document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
   // flash
   const flash = document.getElementById('win-flash');
@@ -2929,6 +3172,9 @@ function showNextHand(winnerName) {
 }
 
 function nextHand() {
+  if (nextHandLock) return;
+  nextHandLock = true;
+  setTimeout(() => { nextHandLock = false; }, 200);
   document.getElementById('next-hand-overlay').classList.remove('visible');
   gameState = advanceDealer(gameState);
   gameState = startHand(gameState);
@@ -2950,6 +3196,7 @@ function showGameOver() {
   const winner = gameState.players.find(p => p.chips > 0);
   const overlay = document.getElementById('next-hand-overlay');
   document.getElementById('next-hand-winner-name').textContent = winner ? `${winner.name} が優勝！` : 'ゲーム終了';
+  document.getElementById('next-hand-gain').textContent = '';
   overlay.classList.add('visible');
   // ボタンを「新しいゲーム」に変更
   const btn = overlay.querySelector('.next-hand-btn');
@@ -3053,10 +3300,13 @@ function generateRandomName() {
 document.addEventListener('DOMContentLoaded', () => {
   loadSavedPlayerNames();
   setUiState('room');
+  setupNumericInput(document.getElementById('sb-input'));
+  setupNumericInput(document.getElementById('bb-input'));
+  setupNumericInput(document.getElementById('initial-chips-input'));
 
   const toggle = document.getElementById('tournament-mode-toggle');
   if (toggle) {
-    toggle.addEventListener('change', syncTournamentOptions);
+    bindOnce(toggle, 'change', syncTournamentOptions);
   }
   syncTournamentOptions();
 
@@ -3162,16 +3412,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   if (codeInput) {
-    codeInput.addEventListener('input', () => {
+    const normalizeInput = debounce(() => {
       codeInput.value = normalizeRoomCode(codeInput.value);
-    });
+    }, 80);
+    bindOnce(codeInput, 'input', normalizeInput);
   }
   if (menuBtn && menu) {
-    menuBtn.addEventListener('click', () => {
+    bindOnce(menuBtn, 'click', () => {
       const open = menu.style.display === 'flex';
       menu.style.display = open ? 'none' : 'flex';
     });
-    document.addEventListener('click', (e) => {
+    bindOnce(document, 'click', (e) => {
       if (!menu.contains(e.target) && e.target !== menuBtn) {
         menu.style.display = 'none';
       }
@@ -3204,15 +3455,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const foldCancelBtn = document.getElementById('fold-cancel-btn');
   const foldConfirmBtn = document.getElementById('fold-confirm-btn');
   if (foldCancelBtn) {
-    foldCancelBtn.addEventListener('click', () => {
+    bindOnce(foldCancelBtn, 'click', () => {
       hideFoldConfirm();
     });
   }
   if (foldConfirmBtn) {
-    foldConfirmBtn.addEventListener('click', () => {
+    bindOnce(foldConfirmBtn, 'click', () => {
       hideFoldConfirm();
-      foldConfirmShown = true;
-      handleFoldAttempt();
+      doAction('fold');
     });
   }
 });
@@ -3220,6 +3470,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function resetToSetup() {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
+  document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('tournament-bar').style.display = 'none';
   stopTournamentTimer();
   stopActionTimer();
