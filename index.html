@@ -555,6 +555,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .stack-suffix {
   font-size: 11px; color: var(--text-muted);
 }
+.stack-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
 @keyframes ready-pulse {
   0%, 100% { box-shadow: 0 0 8px var(--gold-glow); }
   50% { box-shadow: 0 0 24px var(--gold-glow), 0 0 48px rgba(212,175,55,0.2); }
@@ -622,6 +627,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .blind-input-wrap select:focus { border-color: var(--gold-dim); }
 .blind-input-wrap select option { background: #1a3328; color: var(--chip-white); }
+.bb-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
 
 /* Toggle label */
 .toggle-label {
@@ -1612,12 +1622,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
           <input type="number" id="bb-input" value="20" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
         </div>
       </div>
-    <div class="blind-row" style="margin-top: 12px;">
-      <div class="blind-input-wrap" style="flex: 1;">
-        <span class="blind-input-label">初期チップ</span>
-        <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
+      <div class="blind-row" style="margin-top: 12px;">
+        <div class="blind-input-wrap" style="flex: 1;">
+          <span class="blind-input-label">初期チップ</span>
+          <input type="number" id="initial-chips-input" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
+          <div class="bb-hint" id="initial-chips-bb">初期チップ：1000（= 50 BB）</div>
+        </div>
       </div>
-    </div>
     <div class="blind-row" style="margin-top: 12px;">
       <label class="toggle-label" style="width:100%;">
         <input type="checkbox" id="per-player-stack-toggle">
@@ -1816,7 +1827,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.4.5";
+const APP_VERSION = "v0.5.0";
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
 
 function getBigBlindValue() {
@@ -2607,6 +2618,7 @@ async function joinRoom(role, code, isAuto = false) {
       if (onlineState.role === 'host') return;
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
+      localPendingActionKey = null;
       if (gameState?.isHandActive) {
         document.getElementById('next-hand-overlay').classList.remove('visible');
       }
@@ -2992,9 +3004,11 @@ function renderPerPlayerStackList() {
       perPlayerStackBB[i] = Number.isFinite(val) ? val : defaultBB;
     });
 
+    const chips = (Number.isFinite(parseInt(input.value, 10)) ? parseInt(input.value, 10) : defaultBB) * settings.bigBlind;
     row.innerHTML = `
       <div class="stack-name">${p.name}</div>
       <div class="stack-suffix">BB</div>
+      <div class="stack-meta">= ${chips.toLocaleString()} チップ</div>
     `;
     row.appendChild(input);
     listEl.appendChild(row);
@@ -3266,6 +3280,8 @@ function renderActionPanel() {
     lastTurnKey = turnKey;
     lastActionId = null;
   }
+  const isMyTurn = onlineState.role === 'local' || actor.name === onlineState.displayName;
+  const hasPending = localPendingActionKey === turnKey;
 
   // アクティブなプレイヤーがいない場合（全員オールインまたはフォールド）
   if (actor.status !== 'active') {
@@ -3281,11 +3297,14 @@ function renderActionPanel() {
   if (lockMessage) lockMessage.style.display = 'none';
 
   // Actor label
-  if (actorLabel) actorLabel.innerHTML = `<strong>${actor.name}</strong> のターン`;
+  if (actorLabel) actorLabel.innerHTML = `<strong>${actor.name}</strong> のターンです`;
 
-  if (onlineState.role === 'player' && actor.name !== onlineState.displayName) {
+  if (!isMyTurn || hasPending) {
     panel.classList.add('locked');
-    if (lockMessage) lockMessage.style.display = 'block';
+    if (lockMessage) {
+      lockMessage.style.display = 'block';
+      lockMessage.innerHTML = 'あなたの番になるまでお待ちください';
+    }
     return;
   }
 
@@ -3345,6 +3364,7 @@ let raiseMinTo = 0;
 let actionLock = false;
 let lastActionId = null;
 let lastTurnKey = null;
+let localPendingActionKey = null;
 function setupRaiseSlider(min, max) {
   raiseMin = min;
   raiseMax = max;
@@ -3433,6 +3453,15 @@ function updateRaiseMinLabel() {
   el.textContent = `Min Raise: ${formatAmount(minRaiseTo)}`;
 }
 
+function updateInitialChipsBB() {
+  const bb = parseInt(document.getElementById('bb-input')?.value || '0', 10) || 0;
+  const chips = parseInt(document.getElementById('initial-chips-input')?.value || '0', 10) || 0;
+  const el = document.getElementById('initial-chips-bb');
+  if (!el) return;
+  const bbValue = bb > 0 ? Math.floor(chips / bb) : 0;
+  el.textContent = `初期チップ：${chips.toLocaleString()}（= ${bbValue} BB）`;
+}
+
 function updateRaiseError() {
   const el = document.getElementById('raise-error');
   if (!el || !gameState) return;
@@ -3515,6 +3544,11 @@ function handlePhaseTransition() {
 function doAction(type, amount = 0) {
   if (actionLock) return;
   if (onlineState.role === 'player') {
+    if (gameState) {
+      const actor = gameState.players[gameState.currentPlayerIndex];
+      localPendingActionKey = `${actor.id}:${gameState.currentMaxBet}:${gameState.phase}`;
+      renderActionPanel();
+    }
     sendActionRequest(type, amount);
     return;
   }
@@ -3558,7 +3592,20 @@ function showShowdown() {
   document.getElementById('showdown-pot-amount').textContent = formatAmount(total);
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
- 
+
+  if (onlineState.role !== 'host') {
+    const card = document.querySelector('#showdown-overlay .showdown-card');
+    if (card) {
+      card.innerHTML = `
+        <div class="showdown-title">ホストが結果を確定しています</div>
+        <div class="showdown-pot">${formatAmount(total)}</div>
+        <div class="showdown-pot-label">TOTAL POT</div>
+        <div class="waiting-subtext" style="margin-top:12px;">しばらくお待ちください</div>
+      `;
+    }
+    document.getElementById('showdown-overlay').classList.add('visible');
+    return;
+  }
 
   // Eligible players (not folded AND not out)
   const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
@@ -3605,6 +3652,7 @@ function showShowdown() {
 }
 
 function selectWinner(btn, playerId) {
+  if (onlineState.role !== 'host') return;
   if (isSplitMode) {
     btn.classList.toggle('selected');
     if (selectedWinners.includes(playerId)) {
@@ -3622,6 +3670,7 @@ function selectWinner(btn, playerId) {
 }
 
 function toggleSplit() {
+  if (onlineState.role !== 'host') return;
   isSplitMode = !isSplitMode;
   document.getElementById('split-toggle').classList.toggle('on', isSplitMode);
   if (!isSplitMode) {
@@ -3636,6 +3685,7 @@ function toggleSplit() {
 }
 
 function confirmWinner() {
+  if (onlineState.role !== 'host') return;
   if (confirmLock || selectedWinners.length === 0) return;
   confirmLock = true;
   setTimeout(() => { confirmLock = false; }, 200);
@@ -3873,7 +3923,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const bbInput = document.getElementById('bb-input');
   if (bbInput) {
     bindOnce(bbInput, 'input', renderPerPlayerStackList);
+    bindOnce(bbInput, 'input', updateInitialChipsBB);
   }
+  const chipsInput = document.getElementById('initial-chips-input');
+  if (chipsInput) {
+    bindOnce(chipsInput, 'input', updateInitialChipsBB);
+  }
+  updateInitialChipsBB();
 
   const hostBtn = document.getElementById('room-host-btn');
   const joinBtn = document.getElementById('room-join-btn');
