@@ -867,6 +867,22 @@ summary.setup-label::-webkit-details-marker { display: none; }
   position: relative;
   min-height: 340px;
 }
+.table-area::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(212,175,55,0.18), transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+.table-area.phase-pulse::after {
+  animation: phase-pulse 0.6s ease-out;
+}
+@keyframes phase-pulse {
+  0% { opacity: 0; transform: scale(0.98); }
+  35% { opacity: 0.35; }
+  100% { opacity: 0; transform: scale(1); }
+}
 
 /* Table felt oval */
 .table-felt {
@@ -915,6 +931,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--text-secondary);
   transition: border-color 0.4s, box-shadow 0.4s, background 0.4s;
   position: relative;
+}
+.player-card.is-winner .avatar::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(212,175,55,0.7);
+  box-shadow: 0 0 18px rgba(212,175,55,0.45), 0 0 30px rgba(212,175,55,0.2);
+  animation: winner-ring 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes winner-ring {
+  0%, 100% { opacity: 0.25; transform: scale(0.98); }
+  50% { opacity: 0.9; transform: scale(1.03); }
 }
 .player-card .info-line {
   display: flex;
@@ -1062,6 +1092,16 @@ summary.setup-label::-webkit-details-marker { display: none; }
   50% { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
+.pot-flyer {
+  position: fixed;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff1b8, var(--gold));
+  box-shadow: 0 0 14px rgba(212,175,55,0.55), 0 4px 10px rgba(0,0,0,0.3);
+  pointer-events: none;
+  z-index: 132;
+  transition: transform 0.65s cubic-bezier(.2,.8,.2,1), opacity 0.65s ease;
+}
 
 /* ─── Community Cards ────────────────────────── */
 .community-cards {
@@ -1075,6 +1115,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin: 0;
   z-index: 3;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,0.28));
+  perspective: 900px;
 }
 .community-slot {
   width: clamp(44px, 7vw, 76px);
@@ -1086,6 +1127,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.18);
   box-shadow: 0 10px 22px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06);
+  transform-style: preserve-3d;
 }
 .community-slot img {
   width: 100%;
@@ -1095,6 +1137,29 @@ summary.setup-label::-webkit-details-marker { display: none; }
   object-position: center;
   transform: translateY(-1.5%);
   filter: saturate(1.05) contrast(1.05);
+  backface-visibility: hidden;
+}
+.community-slot.revealed img {
+  animation: card-flip 0.45s ease-out;
+}
+.community-slot.revealed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(212,175,55,0.3), transparent 60%);
+  opacity: 0;
+  animation: card-glow 0.45s ease-out;
+  pointer-events: none;
+}
+@keyframes card-flip {
+  0% { transform: translateY(-1.5%) rotateY(90deg) scale(0.96); filter: brightness(0.7); }
+  60% { transform: translateY(-1.5%) rotateY(-6deg) scale(1.02); filter: brightness(1.1); }
+  100% { transform: translateY(-1.5%) rotateY(0deg) scale(1); filter: brightness(1); }
+}
+@keyframes card-glow {
+  0% { opacity: 0; }
+  40% { opacity: 0.35; }
+  100% { opacity: 0; }
 }
 .community-slot.empty {
   background: rgba(255,255,255,0.03);
@@ -1228,6 +1293,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   font-size: 11px;
   color: var(--text-muted);
   text-align: right;
+  display: inline-block;
 }
 .raise-error {
   font-size: 11px;
@@ -1256,6 +1322,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   font-size: 14px; font-weight: 600;
   color: var(--gold);
   min-width: 52px; text-align: right;
+  display: inline-block;
+}
+.value-bump { animation: value-bump 0.28s ease-out; }
+@keyframes value-bump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 /* ─── Showdown / Winner Screen ───────────────── */
@@ -2082,6 +2155,76 @@ function applyDisplayMode(mode) {
   render();
 }
 
+// ─── FX helpers ────────────────────────────────
+let fxAudioCtx = null;
+let fxAudioUnlocked = false;
+function getFxAudioCtx() {
+  if (!fxAudioCtx) {
+    fxAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return fxAudioCtx;
+}
+function unlockFxAudio() {
+  try {
+    const ctx = getFxAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    fxAudioUnlocked = true;
+  } catch (e) {}
+}
+document.addEventListener('click', unlockFxAudio, { once: true });
+document.addEventListener('touchend', unlockFxAudio, { once: true });
+
+function playTone({ freq = 660, duration = 0.18, type = 'sine', gain = 0.08 }) {
+  try {
+    const ctx = getFxAudioCtx();
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.value = 0;
+    osc.connect(g);
+    g.connect(ctx.destination);
+    const now = ctx.currentTime;
+    g.gain.linearRampToValueAtTime(gain, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  } catch (e) {}
+}
+function playPhaseChime() {
+  if (!timerSettings.soundEnabled) return;
+  playTone({ freq: 660, duration: 0.16, type: 'triangle', gain: 0.06 });
+  setTimeout(() => playTone({ freq: 880, duration: 0.14, type: 'triangle', gain: 0.05 }), 80);
+}
+function playWinChime() {
+  if (!timerSettings.soundEnabled) return;
+  playTone({ freq: 523, duration: 0.2, type: 'sine', gain: 0.07 });
+  setTimeout(() => playTone({ freq: 784, duration: 0.22, type: 'sine', gain: 0.06 }), 90);
+}
+function playAllInHit() {
+  if (!timerSettings.soundEnabled) return;
+  playTone({ freq: 196, duration: 0.12, type: 'square', gain: 0.05 });
+}
+function setTextWithBump(el, text) {
+  if (!el) return;
+  if (el.textContent === text) return;
+  el.textContent = text;
+  el.classList.remove('value-bump');
+  void el.offsetWidth;
+  el.classList.add('value-bump');
+}
+function triggerPhasePulse() {
+  const table = document.querySelector('.table-area');
+  if (!table) return;
+  table.classList.remove('phase-pulse');
+  void table.offsetWidth;
+  table.classList.add('phase-pulse');
+}
+function hasNewAllIn(prevState, nextState) {
+  if (!prevState || !nextState) return false;
+  return nextState.players.some((p, i) => p.status === 'allIn' && prevState.players[i]?.status !== 'allIn');
+}
+
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
 
@@ -2353,9 +2496,12 @@ let handHistory = [];         // ハンド履歴
 let chipsBeforeHand = {};     // ハンド開始時のチップ
 let lastCommunityCount = 0;
 let lastPhase = null;
+let lastPhaseFx = null;
 let confirmLock = false;
 let nextHandLock = false;
 let perPlayerStackChips = {};
+let winnerHighlightIds = [];
+let winnerHighlightTimer = null;
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -2901,9 +3047,15 @@ async function joinRoom(role, code, isAuto = false) {
       const totalPot = getPotTotal(gameState);
       const per = Math.floor(totalPot / winnerIds.length);
       const rem = totalPot - per * winnerIds.length;
-      const winnerNames = winnerIds.map(id => gameState.players.find(p => p.id === id)?.name || '—');
+      const winners = winnerIds.map(id => {
+        const p = gameState.players.find(pl => pl.id === id);
+        return { name: p?.name || '—', icon: p?.icon || '' };
+      });
       gameState = distributePot(gameState, winnerIds);
       render();
+      setWinnerHighlight(winnerIds);
+      animatePotToWinners(winnerIds);
+      playWinChime();
       let gainText = '';
       if (winnerIds.length === 1) {
         gainText = `+${totalPot.toLocaleString()} チップ`;
@@ -2912,7 +3064,7 @@ async function joinRoom(role, code, isAuto = false) {
           ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
           : `各 +${per.toLocaleString()} チップ`;
       }
-      showNextHand(winnerNames.join(' & '), gainText);
+      setTimeout(() => showNextHand(winners, gainText), 220);
     })
     .on('broadcast', { event: 'next-hand-request' }, () => {
       if (onlineState.role !== 'host') return;
@@ -2959,9 +3111,11 @@ function sendActionRequest(type, amount) {
 }
 
 function applyRemoteAction(type, amount) {
+  const prevState = gameState;
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); actionLock = false; return; }
   gameState = result;
+  if (hasNewAllIn(prevState, gameState)) playAllInHit();
   render();
   if (gameState.isHandActive) {
     startActionTimer();
@@ -3401,11 +3555,13 @@ function renderPlayers() {
     const isDealer = idx === gameState.dealerIndex;
     const isFolded = player.status === "folded";
     const isAllIn = player.status === "allIn";
+    const isWinner = winnerHighlightIds.includes(player.id);
 
     let classes = 'player-card';
     if (isActor) classes += ' is-actor';
     if (isFolded) classes += ' folded';
     if (isAllIn) classes += ' allin';
+    if (isWinner) classes += ' is-winner';
     if (idx === 0) classes += ' seat-top';
 
     const initial = player.name ? player.name.charAt(0).toUpperCase() : '';
@@ -3416,6 +3572,7 @@ function renderPlayers() {
 
     const card = document.createElement('div');
     card.className = classes;
+    card.dataset.playerId = player.id;
     card.style.left = pos.x + '%';
     card.style.top = pos.y + '%';
 
@@ -3466,6 +3623,49 @@ function renderPlayers() {
   });
 }
 
+function setWinnerHighlight(ids) {
+  winnerHighlightIds = Array.isArray(ids) ? ids.slice() : [];
+  if (winnerHighlightTimer) clearTimeout(winnerHighlightTimer);
+  renderPlayers();
+  winnerHighlightTimer = setTimeout(() => {
+    winnerHighlightIds = [];
+    renderPlayers();
+  }, 3600);
+}
+
+function animatePotToWinners(winnerIds) {
+  const pot = document.querySelector('.pot-center');
+  if (!pot || !winnerIds || winnerIds.length === 0) return;
+  const potRect = pot.getBoundingClientRect();
+  const startX = potRect.left + potRect.width / 2;
+  const startY = potRect.top + potRect.height / 2;
+  const targets = winnerIds
+    .map(id => document.querySelector(`.player-card[data-player-id="${id}"] .avatar`))
+    .filter(Boolean)
+    .slice(0, 3);
+  if (targets.length === 0) return;
+
+  targets.forEach((avatar, i) => {
+    const rect = avatar.getBoundingClientRect();
+    const endX = rect.left + rect.width / 2;
+    const endY = rect.top + rect.height / 2;
+    const flyer = document.createElement('div');
+    flyer.className = 'pot-flyer';
+    flyer.style.left = `${startX}px`;
+    flyer.style.top = `${startY}px`;
+    flyer.style.transform = 'translate(-50%, -50%)';
+    flyer.style.opacity = '1';
+    document.body.appendChild(flyer);
+    const dx = endX - startX;
+    const dy = endY - startY;
+    setTimeout(() => {
+      flyer.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.4)`;
+      flyer.style.opacity = '0';
+    }, 40 + i * 40);
+    flyer.addEventListener('transitionend', () => flyer.remove(), { once: true });
+  });
+}
+
 function renderPot() {
   const total = (gameState.pots||[]).reduce((s, p) => s + p.amount, 0);
   const el = document.getElementById('pot-amount');
@@ -3494,10 +3694,12 @@ function renderCommunityCards() {
   if (!container) return;
   container.innerHTML = '';
   const count = gameState ? getCommunityCardCount(gameState.phase) : 0;
+  const prevCount = lastCommunityCount;
   for (let i = 0; i < 5; i++) {
     const slot = document.createElement('div');
     slot.className = 'community-slot';
     if (i < count) {
+      if (i >= prevCount) slot.classList.add('revealed');
       const img = document.createElement('img');
       img.src = 'img/trump.png';
       img.alt = '';
@@ -3509,6 +3711,7 @@ function renderCommunityCards() {
     }
     container.appendChild(slot);
   }
+  lastCommunityCount = count;
 }
 
 function renderPhase() {
@@ -3522,6 +3725,12 @@ function renderPhase() {
     if (i < currentIdx) el.classList.add('completed');
     else if (i === currentIdx) el.classList.add('active');
   });
+
+  if (lastPhaseFx && lastPhaseFx !== phase) {
+    triggerPhasePulse();
+    playPhaseChime();
+  }
+  lastPhaseFx = phase;
 }
 
 function renderActionPanel() {
@@ -3645,14 +3854,14 @@ function setRaiseValue(value) {
   const clamped = Math.max(raiseMin, Math.min(raiseMax, Math.round(value)));
   raiseValue = clamped;
   const display = document.getElementById('raise-amount-display');
-  if (display) display.textContent = formatAmount(raiseValue);
+  if (display) setTextWithBump(display, formatAmount(raiseValue));
   const slider = document.getElementById('raise-slider');
   if (slider && raiseMax > raiseMin) {
     const pct = (raiseValue - raiseMin) / (raiseMax - raiseMin);
     slider.value = Math.round(pct * 100);
   }
   const raiseBtn = document.querySelector('.btn-raise .btn-sub');
-  if (raiseBtn) raiseBtn.textContent = formatAmount(raiseValue);
+  if (raiseBtn) setTextWithBump(raiseBtn, formatAmount(raiseValue));
   updateActivePreset();
   updateRaiseMinLabel();
   updateRaiseError();
@@ -3713,7 +3922,7 @@ function updateRaiseMinLabel() {
   if (!el || !gameState) return;
   const minRaiseTo = gameState.currentMaxBet + gameState.lastRaiseSize;
   raiseMinTo = minRaiseTo;
-  el.textContent = `Min Raise: ${formatAmount(minRaiseTo)}`;
+  setTextWithBump(el, `Min Raise: ${formatAmount(minRaiseTo)}`);
 }
 
 function updateInitialChipsBB() {
@@ -3816,6 +4025,7 @@ function doAction(type, amount = 0) {
     return;
   }
   if (!gameState) return;
+  const prevState = gameState;
   const actorId = gameState.players[gameState.currentPlayerIndex]?.id;
   const actionKey = `${actorId}:${gameState.currentPlayerIndex}:${gameState.currentMaxBet}:${gameState.phase}`;
   if (lastActionId === actionKey) return;
@@ -3823,6 +4033,7 @@ function doAction(type, amount = 0) {
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
+  if (hasNewAllIn(prevState, gameState)) playAllInHit();
   lastActionId = actionKey;
 
   // Hide raise area after action
@@ -3956,6 +4167,7 @@ function confirmWinner() {
   const per = selectedWinners.length ? Math.floor(totalPot / selectedWinners.length) : 0;
   const rem = totalPot - per * selectedWinners.length;
 
+  const winnerIds = selectedWinners.slice();
   const winners = selectedWinners.map(id => {
     const p = gameState.players.find(p => p.id === id);
     return { name: p?.name || '—', icon: p?.icon || '' };
@@ -3964,6 +4176,9 @@ function confirmWinner() {
   recordHandResult(winners, totalPot);
   document.getElementById('showdown-overlay').classList.remove('visible');
   render();
+  setWinnerHighlight(winnerIds);
+  animatePotToWinners(winnerIds);
+  playWinChime();
 
   let gainText = '';
   if (selectedWinners.length === 1) {
@@ -3973,7 +4188,7 @@ function confirmWinner() {
       ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
       : `各 +${per.toLocaleString()} チップ`;
   }
-  showNextHand(winners, gainText);
+  setTimeout(() => showNextHand(winners, gainText), 220);
 
   // Broadcast resolution so non-host clients can exit showdown
   if (onlineState.role === 'host' && roomChannel) {
