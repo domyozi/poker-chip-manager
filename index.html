@@ -3731,10 +3731,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   if (codeInput) {
-    const normalizeInput = debounce(() => {
+    bindOnce(codeInput, 'blur', () => {
       codeInput.value = normalizeRoomCode(codeInput.value);
-    }, 80);
-    bindOnce(codeInput, 'input', normalizeInput);
+    });
     const focusRoomInput = () => setTimeout(() => codeInput.focus(), 0);
     bindOnce(codeInput, 'click', focusRoomInput, { passive: true });
     bindOnce(codeInput, 'touchstart', focusRoomInput, { passive: true });
