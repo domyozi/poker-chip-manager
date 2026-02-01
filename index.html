@@ -663,11 +663,11 @@ body {
     <div class="setup-label">プレイヤー</div>
     <div class="player-inputs" id="player-inputs">
       <div class="player-row">
-        <input type="text" class="player-name-input" placeholder="プレイヤー名">
+        <input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー１">
         <button class="remove-btn" onclick="removePlayer(this)">×</button>
       </div>
       <div class="player-row">
-        <input type="text" class="player-name-input" placeholder="プレイヤー名">
+        <input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー２">
         <button class="remove-btn" onclick="removePlayer(this)">×</button>
       </div>
     </div>
@@ -684,6 +684,16 @@ body {
       <div class="blind-input-wrap">
         <span class="blind-input-label">Big Blind</span>
         <input type="number" id="bb-input" value="20" min="1">
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="setup-label">初期チップ数</div>
+    <div class="blind-row">
+      <div class="blind-input-wrap" style="flex: 1;">
+        <span class="blind-input-label">各プレイヤーの開始チップ</span>
+        <input type="number" id="initial-chips-input" value="1000" min="1">
       </div>
     </div>
   </div>
@@ -777,9 +787,9 @@ function findNextActivePlayer(state, fromIndex) {
 function countActivePlayers(state) { return state.players.filter(p => p.status === "active").length; }
 function countEligiblePlayers(state) { return state.players.filter(p => p.status !== "folded").length; }
 
-function initGame(playerNames, smallBlind, bigBlind) {
+function initGame(playerNames, smallBlind, bigBlind, initialChips = 1000) {
   const players = playerNames.map((name, i) => ({
-    id: `player_${i}`, name, chips: 1000,
+    id: `player_${i}`, name, chips: initialChips,
     status: "waiting", currentBet: 0, totalBet: 0,
     actedThisRound: false  // ★ ラウンド内アクション済みフラグ
   }));
@@ -1281,9 +1291,11 @@ function nextHand() {
 // ─── SETUP SCREEN LOGIC ───────────────────────
 function addPlayer() {
   const inputs = document.getElementById('player-inputs');
+  const playerNum = inputs.querySelectorAll('.player-row').length + 1;
   const row = document.createElement('div');
   row.className = 'player-row';
-  row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名"><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
+  const zenkakuNum = String(playerNum).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+  row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー${zenkakuNum}"><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
   inputs.appendChild(row);
 }
 
@@ -1302,16 +1314,46 @@ function startGame() {
   });
   if (names.length < 2) return;
 
+  // Save player names to localStorage
+  localStorage.setItem('pokerPlayerNames', JSON.stringify(names));
+
   const sb = parseInt(document.getElementById('sb-input').value) || 10;
   const bb = parseInt(document.getElementById('bb-input').value) || 20;
+  const initialChips = parseInt(document.getElementById('initial-chips-input').value) || 1000;
 
-  gameState = initGame(names, sb, bb);
+  gameState = initGame(names, sb, bb, initialChips);
   gameState = startHand(gameState);
 
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('game-screen').style.display = 'flex';
   render();
 }
+
+// Load saved player names on page load
+function loadSavedPlayerNames() {
+  const saved = localStorage.getItem('pokerPlayerNames');
+  if (!saved) return;
+
+  try {
+    const names = JSON.parse(saved);
+    if (!Array.isArray(names) || names.length === 0) return;
+
+    const container = document.getElementById('player-inputs');
+    container.innerHTML = '';
+
+    names.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="${name}"><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
+      container.appendChild(row);
+    });
+  } catch (e) {
+    console.log('Failed to load saved player names:', e);
+  }
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', loadSavedPlayerNames);
 
 function resetToSetup() {
   document.getElementById('setup-screen').classList.remove('hidden');
