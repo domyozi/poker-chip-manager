@@ -3085,6 +3085,7 @@ function updateSettingsPanels() {
     onlineSummary.style.display = isOnlineHost ? 'block' : 'none';
     localSettings.style.display = isOnlineHost ? 'none' : 'block';
   }
+  updateInitialChipsBB();
   renderPerPlayerStackList();
 }
 
@@ -3726,6 +3727,16 @@ function showNextHand(winnerName, gainText = '') {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
+  const btn = document.querySelector('.next-hand-btn');
+  if (btn) {
+    if (onlineState.role === 'host') {
+      btn.disabled = false;
+      btn.textContent = '次のハンド';
+    } else {
+      btn.disabled = true;
+      btn.textContent = 'ホストの操作を待っています';
+    }
+  }
   // flash
   const flash = document.getElementById('win-flash');
   flash.classList.add('visible');
@@ -3734,16 +3745,11 @@ function showNextHand(winnerName, gainText = '') {
 
 function nextHand() {
   if (nextHandLock) return;
+  if (onlineState.role !== 'host') return;
   nextHandLock = true;
   setTimeout(() => { nextHandLock = false; }, 200);
   document.getElementById('next-hand-overlay').classList.remove('visible');
-  if (onlineState.role === 'host') {
-    advanceToNextHandAndBroadcast();
-  } else if (roomChannel) {
-    roomChannel.send({ type: 'broadcast', event: 'next-hand-request', payload: {} });
-  } else {
-    advanceToNextHandAndBroadcast();
-  }
+  advanceToNextHandAndBroadcast();
 }
 
 function showGameOver() {
@@ -3755,11 +3761,21 @@ function showGameOver() {
   // ボタンを「新しいゲーム」に変更
   const btn = overlay.querySelector('.next-hand-btn');
   if (btn) {
-    btn.textContent = '新しいゲーム';
-    btn.onclick = () => {
-      overlay.classList.remove('visible');
-      setUiState('room');
-    };
+    if (onlineState.role === 'host') {
+      btn.disabled = false;
+      btn.textContent = '新しいゲーム';
+      btn.onclick = () => {
+        overlay.classList.remove('visible');
+        setUiState('room');
+        if (roomChannel) {
+          roomChannel.send({ type: 'broadcast', event: 'ui-phase', payload: { phase: 'room' } });
+        }
+      };
+    } else {
+      btn.disabled = true;
+      btn.textContent = 'ホストの操作を待っています';
+      btn.onclick = null;
+    }
   }
 }
 
@@ -3919,15 +3935,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const perPlayerToggle = document.getElementById('per-player-stack-toggle');
   if (perPlayerToggle) {
     bindOnce(perPlayerToggle, 'change', renderPerPlayerStackList);
+    bindOnce(perPlayerToggle, 'change', updateInitialChipsBB);
   }
   const bbInput = document.getElementById('bb-input');
   if (bbInput) {
     bindOnce(bbInput, 'input', renderPerPlayerStackList);
     bindOnce(bbInput, 'input', updateInitialChipsBB);
+    bindOnce(bbInput, 'change', updateInitialChipsBB);
   }
   const chipsInput = document.getElementById('initial-chips-input');
   if (chipsInput) {
     bindOnce(chipsInput, 'input', updateInitialChipsBB);
+    bindOnce(chipsInput, 'change', updateInitialChipsBB);
+    bindOnce(chipsInput, 'blur', updateInitialChipsBB);
   }
   updateInitialChipsBB();
 
