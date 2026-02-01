@@ -97,6 +97,25 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .player-row {
   display: flex; align-items: center; gap: 10px;
 }
+.icon-picker {
+  display: flex; gap: 6px;
+}
+.icon-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.2s, background 0.2s;
+}
+.icon-btn:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); }
+.icon-btn.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px var(--gold-glow);
+  background: rgba(212,175,55,0.12);
+}
 .player-row input {
   flex: 1;
   background: rgba(255,255,255,0.06);
@@ -641,16 +660,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .header-phase {
-  font-family: 'Playfair Display', serif;
-  font-size: 13px; font-weight: 600;
-  letter-spacing: 3px; text-transform: uppercase;
-  color: var(--gold);
+  display: none;
 }
 .header-phase-dot {
-  display: inline-block; width: 6px; height: 6px;
-  border-radius: 50%; background: var(--gold);
-  margin-right: 8px;
-  box-shadow: 0 0 8px var(--gold-glow);
+  display: none;
 }
 .header-actions { display: flex; gap: 8px; position: relative; }
 .header-btn {
@@ -693,21 +706,32 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .phase-bar {
   display: flex; justify-content: center; gap: 0;
   background: var(--felt-edge);
-  padding: 0;
+  padding: 2px 0;
   border-bottom: 1px solid rgba(255,255,255,0.05);
+  opacity: 1;
 }
 .phase-step {
   flex: 1; max-width: 80px;
-  padding: 8px 0;
+  padding: 6px 0;
   text-align: center;
-  font-size: 9px; font-weight: 600;
-  letter-spacing: 1.5px; text-transform: uppercase;
+  font-size: 8px; font-weight: 600;
+  letter-spacing: 1.2px; text-transform: uppercase;
   color: var(--text-muted);
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   transition: color 0.3s, border-color 0.3s;
   position: relative;
 }
-.phase-step.active { color: var(--gold); border-bottom-color: var(--gold); }
+.phase-step.active {
+  color: #121a15;
+  border-bottom-color: transparent;
+  text-shadow: none;
+  background: linear-gradient(180deg, rgba(212,175,55,0.95), rgba(212,175,55,0.75));
+  box-shadow: 0 8px 20px rgba(212,175,55,0.35);
+  border-radius: 6px;
+}
+.phase-step.active::after {
+  content: none;
+}
 .phase-step.completed { color: var(--text-secondary); border-bottom-color: rgba(255,255,255,0.15); }
 
 /* ─── Table Area ─────────────────────────────── */
@@ -750,6 +774,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
   width: 110px;
   transform: translate(-50%, -50%);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
   cursor: default;
 }
@@ -766,19 +793,53 @@ summary.setup-label::-webkit-details-marker { display: none; }
   transition: border-color 0.4s, box-shadow 0.4s, background 0.4s;
   position: relative;
 }
+.player-card .info-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(12,20,16,0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+.player-card .player-icon {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.25);
+  box-shadow: 0 0 8px rgba(0,0,0,0.35);
+  position: relative;
+  flex: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--gold);
+}
+.player-card .player-icon.is-empty {
+  color: var(--gold-dim);
+}
 .player-card .name {
   font-family: 'Playfair Display', serif;
-  font-size: 13px; font-weight: 600;
-  color: var(--text-secondary);
+  font-size: 14px; font-weight: 700;
+  color: var(--text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%;
+  max-width: 100px;
   transition: color 0.3s;
 }
+.player-card .name.is-empty { display: none; }
 .player-card .chips {
-  font-size: 14px; font-weight: 700;
-  color: var(--chip-white);
-  margin-top: 3px;
+  font-size: 11px; font-weight: 700;
+  color: var(--gold);
   letter-spacing: 0.5px;
+}
+.player-card.seat-top .info-line {
+  order: -1;
+  margin-top: 0;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.6);
 }
 .player-card .bet-badge {
   position: absolute;
@@ -845,21 +906,29 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* ─── Pot Center ─────────────────────────────── */
 .pot-center {
   position: absolute;
-  top: calc(50% + 56px); left: 50%;
+  top: calc(50% + 68px); left: 50%;
   transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-align: center;
   z-index: 3;
   pointer-events: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(12,20,16,0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
 }
 .pot-label {
-  font-size: 11px; font-weight: 600;
-  letter-spacing: 2.5px; text-transform: uppercase;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 0;
 }
 .pot-amount {
   font-family: 'Playfair Display', serif;
-  font-size: 32px; font-weight: 700;
+  font-size: 30px; font-weight: 700;
   color: var(--gold);
   text-shadow: 0 0 20px var(--gold-glow);
   transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
@@ -873,11 +942,16 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Community Cards ────────────────────────── */
 .community-cards {
+  position: absolute;
+  top: 49%; left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: clamp(8px, 1.6vw, 14px);
-  margin: 14px 0 10px;
+  margin: 0;
+  z-index: 3;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,0.28));
 }
 .community-slot {
   width: clamp(44px, 7vw, 76px);
@@ -888,14 +962,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   position: relative;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.18);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06);
 }
 .community-slot img {
   width: 100%;
-  height: 100%;
+  height: 103%;
   display: block;
   object-fit: cover;
   object-position: center;
+  transform: translateY(-1.5%);
   filter: saturate(1.05) contrast(1.05);
 }
 .community-slot.empty {
@@ -950,8 +1025,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .action-btn .btn-sub {
-  font-size: 11px; font-weight: 400;
-  color: var(--text-muted);
+  font-size: 11px; font-weight: 600;
+  color: var(--text-secondary);
   letter-spacing: 0;
 }
 .action-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
@@ -960,18 +1035,22 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .action-btn.btn-fold { border-color: rgba(192,57,43,0.25); }
 .action-btn.btn-fold:hover { background: rgba(192,57,43,0.15); border-color: rgba(192,57,43,0.4); }
 .action-btn.btn-fold .btn-label { color: var(--chip-red); }
+.action-btn.btn-fold .btn-sub { color: rgba(192,57,43,0.7); }
 
 .action-btn.btn-call { border-color: rgba(46,204,113,0.25); }
 .action-btn.btn-call:hover { background: rgba(46,204,113,0.12); border-color: rgba(46,204,113,0.4); }
 .action-btn.btn-call .btn-label { color: #2ecc71; }
+.action-btn.btn-call .btn-sub { color: #2ecc71; }
 
 .action-btn.btn-check { border-color: rgba(46,204,113,0.25); }
 .action-btn.btn-check:hover { background: rgba(46,204,113,0.12); border-color: rgba(46,204,113,0.4); }
 .action-btn.btn-check .btn-label { color: #2ecc71; }
+.action-btn.btn-check .btn-sub { color: #2ecc71; }
 
 .action-btn.btn-raise { border-color: var(--gold-dim); background: rgba(212,175,55,0.08); }
 .action-btn.btn-raise:hover { background: rgba(212,175,55,0.18); border-color: var(--gold); }
 .action-btn.btn-raise .btn-label { color: var(--gold); }
+.action-btn.btn-raise .btn-sub { color: var(--gold); }
 
 /* Raise slider area */
 .raise-area {
@@ -1003,6 +1082,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   cursor: pointer;
   transition: transform 0.12s, background 0.2s, border-color 0.2s;
 }
+.raise-preset-btn.is-multi {
+  background: rgba(76,184,255,0.1);
+  border-color: rgba(76,184,255,0.35);
+  color: #78c6ff;
+}
+.raise-preset-btn.is-multi:hover { background: rgba(76,184,255,0.18); border-color: #78c6ff; }
+.raise-preset-btn.is-multi.active { background: rgba(76,184,255,0.25); border-color: #78c6ff; color: #d6f1ff; }
 .raise-preset-btn:hover { background: rgba(212,175,55,0.18); border-color: var(--gold); }
 .raise-preset-btn:active { transform: scale(0.96); }
 .raise-preset-btn.active {
@@ -1465,10 +1551,12 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="player-inputs" id="player-inputs">
         <div class="player-row">
           <input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー１">
+          <div class="icon-picker"></div>
           <button class="remove-btn" onclick="removePlayer(this)">×</button>
         </div>
         <div class="player-row">
           <input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー２">
+          <div class="icon-picker"></div>
           <button class="remove-btn" onclick="removePlayer(this)">×</button>
         </div>
       </div>
@@ -1654,12 +1742,17 @@ function findNextActivePlayer(state, fromIndex) {
 function countActivePlayers(state) { return state.players.filter(p => p.status === "active").length; }
 function countEligiblePlayers(state) { return state.players.filter(p => p.status !== "folded").length; }
 
-function initGame(playerNames, smallBlind, bigBlind, initialChips = 1000) {
-  const players = playerNames.map((name, i) => ({
-    id: `player_${i}`, name, chips: initialChips,
+function initGame(playerInput, smallBlind, bigBlind, initialChips = 1000) {
+  const players = playerInput.map((entry, i) => {
+    const name = typeof entry === 'string' ? entry : (entry?.name || '');
+    const icon = typeof entry === 'string' ? '' : (entry?.icon || '');
+    const finalName = name || icon || `プレイヤー${i + 1}`;
+    return {
+      id: `player_${i}`, name: finalName, icon, chips: initialChips,
     status: "waiting", currentBet: 0, totalBet: 0,
     actedThisRound: false  // ★ ラウンド内アクション済みフラグ
-  }));
+    };
+  });
   return {
     players, smallBlind, bigBlind,
     phase: "preflop", currentPlayerIndex: 0, dealerIndex: 0,
@@ -2669,14 +2762,31 @@ function applySettings(settings) {
   currentBlindLevel = 1;
 }
 
-function getLocalPlayerNames() {
-  const inputs = document.querySelectorAll('.player-name-input');
-  const names = [];
-  inputs.forEach(input => {
-    const val = input.value.trim();
-    if (val) names.push(val);
+function getLocalPlayers() {
+  const rows = document.querySelectorAll('.player-row');
+  const players = [];
+  rows.forEach((row, i) => {
+    const input = row.querySelector('.player-name-input');
+    const name = input ? input.value.trim() : '';
+    const icon = row.dataset.icon || '';
+    if (!name && !icon) return;
+    const finalName = name || icon || `プレイヤー${i + 1}`;
+    players.push({ name: finalName, icon });
   });
-  return names;
+  return players;
+}
+
+function getLocalPlayerFormData() {
+  const rows = document.querySelectorAll('.player-row');
+  const data = [];
+  rows.forEach(row => {
+    const input = row.querySelector('.player-name-input');
+    const name = input ? input.value.trim() : '';
+    const icon = row.dataset.icon || '';
+    if (!name && !icon) return;
+    data.push({ name, icon });
+  });
+  return data;
 }
 
 function getOnlinePlayerNames() {
@@ -2684,9 +2794,9 @@ function getOnlinePlayerNames() {
   return list.map((p, i) => p.name || `Player ${i + 1}`);
 }
 
-function startGameWithNames(names, settings) {
+function startGameWithPlayers(players, settings) {
   applySettings(settings);
-  gameState = initGame(names, settings.smallBlind, settings.bigBlind, settings.initialChips);
+  gameState = initGame(players, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
   gameState = startHand(gameState);
@@ -2796,8 +2906,12 @@ function renderPlayers() {
     if (isActor) classes += ' is-actor';
     if (isFolded) classes += ' folded';
     if (isAllIn) classes += ' allin';
+    if (idx === 0) classes += ' seat-top';
 
-    const initial = player.name.charAt(0).toUpperCase();
+    const initial = player.name ? player.name.charAt(0).toUpperCase() : '';
+    const avatarSymbol = player.icon || initial || '?';
+    const displayIcon = player.icon || '•';
+    const showName = player.name && player.name !== player.icon;
     const hasBet = player.currentBet > 0;
 
     const card = document.createElement('div');
@@ -2822,11 +2936,14 @@ function renderPlayers() {
       <div class="avatar">
         ${timerRingHtml}
         ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
-        ${initial}
+        ${avatarSymbol}
         ${hasBet ? `<div class="bet-badge">${player.currentBet}</div>` : ''}
       </div>
-      <div class="name">${player.name}</div>
-      <div class="chips">${player.chips.toLocaleString()}</div>
+      <div class="info-line">
+        <span class="player-icon${player.icon ? '' : ' is-empty'}" aria-hidden="true">${displayIcon}</span>
+        <div class="name${showName ? '' : ' is-empty'}">${showName ? player.name : ''}</div>
+        <div class="chips">${player.chips.toLocaleString()}</div>
+      </div>
     `;
     ring.appendChild(card);
 
@@ -2938,11 +3055,11 @@ function renderActionPanel() {
   const canCheck = callAmt === 0;
 
   // Fold
-  btnsEl.appendChild(makeActionBtn('btn-fold', 'FOLD', '', () => handleFoldAttempt()));
+  btnsEl.appendChild(makeActionBtn('btn-fold', 'FOLD', '—', () => handleFoldAttempt()));
 
   // Check or Call
   if (canCheck) {
-    btnsEl.appendChild(makeActionBtn('btn-check', 'CHECK', '', () => doAction('check')));
+    btnsEl.appendChild(makeActionBtn('btn-check', 'CHECK', '0', () => doAction('check')));
   } else {
     const actualCall = Math.min(callAmt, actor.chips);
     const isAllInCall = actualCall >= actor.chips;
@@ -3026,10 +3143,10 @@ function updateRaisePresets() {
   const callAmt = gameState.currentMaxBet - actor.currentBet;
   const totalPot = getPotTotal(gameState);
 
-  const addPreset = (label, targetValue) => {
+  const addPreset = (label, targetValue, extraClass = '') => {
     const value = Math.max(raiseMin, Math.min(raiseMax, Math.round(targetValue)));
     const btn = document.createElement('button');
-    btn.className = 'raise-preset-btn';
+    btn.className = `raise-preset-btn${extraClass ? ' ' + extraClass : ''}`;
     btn.textContent = label;
     btn.dataset.amount = String(value);
     btn.addEventListener('click', () => setRaiseValue(value), { passive: true });
@@ -3050,6 +3167,10 @@ function updateRaisePresets() {
     potFractions.forEach(([label, frac]) => {
       const betSize = Math.max(1, Math.round(totalPot * frac));
       addPreset(label, actor.currentBet + callAmt + betSize);
+    });
+    [2, 3, 4].forEach(mult => {
+      const betSize = Math.max(1, Math.round(totalPot * mult));
+      addPreset(`x${mult}`, actor.currentBet + callAmt + betSize, 'is-multi');
     });
   }
   addPreset('ALL IN', actor.currentBet + actor.chips);
@@ -3361,14 +3482,16 @@ function addPlayer() {
   const row = document.createElement('div');
   row.className = 'player-row';
   const zenkakuNum = String(playerNum).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
-  row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー${zenkakuNum}"><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
+  row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー${zenkakuNum}"><div class="icon-picker"></div><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
   inputs.appendChild(row);
+  refreshIconPickers();
 }
 
 function removePlayer(btn) {
   const inputs = document.querySelectorAll('.player-row');
   if (inputs.length <= 2) return; // 最低2人
   btn.closest('.player-row').remove();
+  refreshIconPickers();
 }
 
 function startGame() {
@@ -3377,21 +3500,21 @@ function startGame() {
     return;
   }
   const settings = collectSettingsFromForm();
-  let names = [];
+  let players = [];
   if (onlineState.role === 'host') {
-    names = getOnlinePlayerNames();
-    if (names.length < 2) {
+    players = getOnlinePlayerNames();
+    if (players.length < 2) {
       const hostStatus = document.getElementById('waiting-host-status');
       if (hostStatus) hostStatus.textContent = '参加者が足りません';
       return;
     }
   } else {
-    names = getLocalPlayerNames();
-    if (names.length < 2) return;
-    localStorage.setItem('pokerPlayerNames', JSON.stringify(names));
+    players = getLocalPlayers();
+    if (players.length < 2) return;
+    localStorage.setItem('pokerPlayerNames', JSON.stringify(getLocalPlayerFormData()));
   }
 
-  startGameWithNames(names, settings);
+  startGameWithPlayers(players, settings);
 
   if (onlineState.role === 'host' && roomChannel) {
     broadcastState();
@@ -3407,18 +3530,22 @@ function loadSavedPlayerNames() {
   if (!saved) return;
 
   try {
-    const names = JSON.parse(saved);
-    if (!Array.isArray(names) || names.length === 0) return;
+    const savedData = JSON.parse(saved);
+    if (!Array.isArray(savedData) || savedData.length === 0) return;
 
     const container = document.getElementById('player-inputs');
     container.innerHTML = '';
 
-    names.forEach(name => {
+    savedData.forEach((entry) => {
+      const name = typeof entry === 'string' ? entry : (entry?.name || '');
+      const icon = typeof entry === 'string' ? '' : (entry?.icon || '');
       const row = document.createElement('div');
       row.className = 'player-row';
-      row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="${name}"><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
+      row.dataset.icon = icon;
+      row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="${name}"><div class="icon-picker"></div><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
       container.appendChild(row);
     });
+    refreshIconPickers();
   } catch (e) {
     console.log('Failed to load saved player names:', e);
   }
@@ -3441,9 +3568,40 @@ function generateRandomName() {
   return `${adj}${noun}${num}`;
 }
 
+const ICON_OPTIONS = ['🦖', '🐱', '🐶', '🐼', '🐸', '🐵', '🦊', '🐯'];
+
+function buildIconPicker(row, selectedIcon, index) {
+  const picker = row.querySelector('.icon-picker');
+  if (!picker) return;
+  const fallback = ICON_OPTIONS[index % ICON_OPTIONS.length];
+  const current = selectedIcon || row.dataset.icon || fallback;
+  row.dataset.icon = current;
+  picker.innerHTML = '';
+  ICON_OPTIONS.forEach(icon => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-btn' + (icon === current ? ' selected' : '');
+    btn.textContent = icon;
+    btn.dataset.icon = icon;
+    btn.addEventListener('click', () => {
+      row.dataset.icon = icon;
+      picker.querySelectorAll('.icon-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.icon === icon);
+      });
+    }, { passive: true });
+    picker.appendChild(btn);
+  });
+}
+
+function refreshIconPickers() {
+  const rows = document.querySelectorAll('.player-row');
+  rows.forEach((row, i) => buildIconPicker(row, row.dataset.icon, i));
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   loadSavedPlayerNames();
+  refreshIconPickers();
   setUiState('room');
   const versionEl = document.getElementById('app-version');
   if (versionEl) versionEl.textContent = APP_VERSION;
