@@ -129,6 +129,54 @@ body {
 }
 .add-player-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
 
+/* Room controls */
+.room-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+}
+.room-row { display: flex; gap: 8px; align-items: center; }
+.room-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: var(--chip-white);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 14px; font-weight: 600;
+  padding: 10px 12px;
+  outline: none;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.room-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px; letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+.room-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
+.room-btn:active { transform: scale(0.97); }
+.room-btn.primary {
+  background: rgba(212,175,55,0.18);
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+.room-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
 /* Blind row */
 .blind-row { display: flex; gap: 12px; }
 .blind-input-wrap { flex: 1; }
@@ -764,6 +812,21 @@ body {
   <div class="setup-subtitle">チップ管理テーブル</div>
 
   <div class="setup-section">
+    <div class="setup-label">オンラインルーム</div>
+    <div class="room-panel">
+      <div class="room-row">
+        <input type="text" id="room-code-input" class="room-input" placeholder="ルームコード" maxlength="6">
+        <button class="room-btn primary" id="room-host-btn">ルーム作成</button>
+      </div>
+      <div class="room-row">
+        <button class="room-btn" id="room-join-btn">参加</button>
+        <button class="room-btn" id="room-leave-btn" style="display:none;">退出</button>
+      </div>
+      <div class="room-status" id="room-status">ローカルモード</div>
+    </div>
+  </div>
+
+  <div class="setup-section">
     <div class="setup-label">プレイヤー</div>
     <div class="player-inputs" id="player-inputs">
       <div class="player-row">
@@ -918,6 +981,7 @@ body {
 <div class="win-flash" id="win-flash"></div>
 
 <!-- ─── SCRIPT ────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
@@ -1155,6 +1219,178 @@ let tournamentTimer = null;
 let tournamentTimeRemaining = 0;
 let currentBlindLevel = 1;
 
+// Online sync (Supabase Realtime)
+const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ZU269gj6MzgeSra0gUeQ-A_I_9v2giq";
+let supabaseClient = null;
+let roomChannel = null;
+let onlineState = {
+  role: "local", // local | host | player
+  roomCode: "",
+  connected: false
+};
+let onlineReady = false;
+
+function initSupabase() {
+  if (!window.supabase || supabaseClient) return;
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function setRoomStatus(text) {
+  const el = document.getElementById('room-status');
+  if (el) el.textContent = text;
+}
+
+function setRoomControls(connected) {
+  const leaveBtn = document.getElementById('room-leave-btn');
+  if (leaveBtn) leaveBtn.style.display = connected ? 'inline-flex' : 'none';
+}
+
+function normalizeRoomCode(code) {
+  return (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+}
+
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < 6; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
+}
+
+async function leaveRoom() {
+  if (roomChannel) {
+    roomChannel.unsubscribe();
+    roomChannel = null;
+  }
+  onlineState = { role: "local", roomCode: "", connected: false };
+  onlineReady = false;
+  setRoomControls(false);
+  setRoomStatus('ローカルモード');
+}
+
+async function createRoomWithUniqueCode(maxAttempts = 5) {
+  initSupabase();
+  if (!supabaseClient) return;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const code = generateRoomCode();
+    const ok = await joinRoom("host", code, true);
+    if (ok) {
+      const input = document.getElementById('room-code-input');
+      if (input) input.value = code;
+      return true;
+    }
+  }
+  setRoomStatus('ルーム作成に失敗しました');
+  return false;
+}
+
+async function joinRoom(role, code, isAuto = false) {
+  initSupabase();
+  if (!supabaseClient) return false;
+
+  const roomCode = normalizeRoomCode(code);
+  if (!roomCode) {
+    if (!isAuto) setRoomStatus('コードを入力してください');
+    return false;
+  }
+
+  if (roomChannel) {
+    await leaveRoom();
+  }
+
+  onlineState = { role, roomCode, connected: false };
+  setRoomStatus(`接続中: ${roomCode}`);
+
+  const channelName = `room_${roomCode}`;
+  roomChannel = supabaseClient.channel(channelName, {
+    config: { presence: { key: `user_${Date.now()}_${Math.random().toString(16).slice(2)}` } }
+  });
+
+  roomChannel
+    .on('presence', { event: 'sync' }, () => {
+      const presenceState = roomChannel.presenceState();
+      const hosts = Object.values(presenceState).flat().filter(p => p.role === 'host');
+      if (onlineState.role === 'host') {
+        // If another host already exists, back out and let caller retry
+        if (hosts.length > 1) {
+          leaveRoom();
+          if (!isAuto) setRoomStatus('既にホストがいます');
+          return;
+        }
+        onlineReady = true;
+        setRoomStatus(`ホスト中: ${roomCode}`);
+        broadcastState();
+      } else {
+        onlineReady = true;
+        setRoomStatus(`参加中: ${roomCode}`);
+        requestState();
+      }
+    })
+    .on('broadcast', { event: 'state-sync' }, payload => {
+      if (onlineState.role === 'host') return;
+      if (!payload?.payload?.state) return;
+      gameState = payload.payload.state;
+      render();
+    })
+    .on('broadcast', { event: 'state-request' }, () => {
+      if (onlineState.role === 'host') broadcastState();
+    })
+    .on('broadcast', { event: 'action-request' }, payload => {
+      if (onlineState.role !== 'host') return;
+      const { type, amount } = payload?.payload || {};
+      if (!type) return;
+      applyRemoteAction(type, amount || 0);
+    })
+    .subscribe(async status => {
+      if (status === 'SUBSCRIBED') {
+        await roomChannel.track({ role: onlineState.role });
+        onlineState.connected = true;
+        setRoomControls(true);
+      }
+    });
+
+  return true;
+}
+
+function requestState() {
+  if (!roomChannel) return;
+  roomChannel.send({ type: 'broadcast', event: 'state-request', payload: {} });
+}
+
+function broadcastState() {
+  if (!roomChannel || onlineState.role !== 'host') return;
+  if (!gameState) return;
+  roomChannel.send({ type: 'broadcast', event: 'state-sync', payload: { state: gameState } });
+}
+
+function sendActionRequest(type, amount) {
+  if (!roomChannel) return;
+  roomChannel.send({ type: 'broadcast', event: 'action-request', payload: { type, amount } });
+}
+
+function applyRemoteAction(type, amount) {
+  const result = processAction(gameState, type, amount);
+  if (result.error) { console.warn(result.error); return; }
+  gameState = result;
+  render();
+  if (gameState.phase === 'showdown') {
+    stopActionTimer();
+    const totalPot = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
+    if (totalPot === 0) {
+      const winner = gameState.players.find(p => p.status !== 'folded');
+      showNextHand(winner ? winner.name : '—');
+    } else {
+      setTimeout(() => showShowdown(), 300);
+    }
+  } else if (gameState.isHandActive) {
+    startActionTimer();
+  }
+  broadcastState();
+}
+
 // ─── TIMER FUNCTIONS ─────────────────────────────
 function startActionTimer() {
   stopActionTimer();
@@ -1306,6 +1542,9 @@ function advanceBlindLevel() {
   gameState.bigBlind *= 2;
   tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
   updateTournamentDisplay();
+  if (onlineState.role === 'host') {
+    broadcastState();
+  }
 
   // Play level up sound
   if (timerSettings.soundEnabled) {
@@ -1535,6 +1774,10 @@ function toggleRaiseArea() {
 }
 
 function doAction(type, amount = 0) {
+  if (onlineState.role === 'player') {
+    sendActionRequest(type, amount);
+    return;
+  }
   if (!gameState) return;
   const prevPhase = gameState.phase;
   const result = processAction(gameState, type, amount);
@@ -1562,6 +1805,9 @@ function doAction(type, amount = 0) {
   } else if (gameState.isHandActive) {
     // Restart timer for next player
     startActionTimer();
+  }
+  if (onlineState.role === 'host') {
+    broadcastState();
   }
 }
 
@@ -1656,6 +1902,9 @@ function nextHand() {
   gameState = startHand(gameState);
   render();
   startActionTimer();
+  if (onlineState.role === 'host') {
+    broadcastState();
+  }
 }
 
 // ─── SETUP SCREEN LOGIC ───────────────────────
@@ -1676,6 +1925,10 @@ function removePlayer(btn) {
 }
 
 function startGame() {
+  if (onlineState.role === 'player') {
+    setRoomStatus('ホストが開始します');
+    return;
+  }
   const inputs = document.querySelectorAll('.player-name-input');
   const names = [];
   inputs.forEach(input => {
@@ -1717,6 +1970,9 @@ function startGame() {
 
   render();
   startActionTimer();
+  if (onlineState.role === 'host') {
+    broadcastState();
+  }
 }
 
 // Load saved player names on page load
@@ -1757,6 +2013,35 @@ document.addEventListener('DOMContentLoaded', () => {
     toggle.addEventListener('change', syncTournamentOptions);
   }
   syncTournamentOptions();
+
+  const hostBtn = document.getElementById('room-host-btn');
+  const joinBtn = document.getElementById('room-join-btn');
+  const leaveBtn = document.getElementById('room-leave-btn');
+  const codeInput = document.getElementById('room-code-input');
+  if (hostBtn) {
+    hostBtn.addEventListener('click', async () => {
+      if (codeInput) codeInput.value = '';
+      await createRoomWithUniqueCode();
+      onlineState.role = 'host';
+    });
+  }
+  if (joinBtn) {
+    joinBtn.addEventListener('click', async () => {
+      const code = codeInput ? codeInput.value : '';
+      await joinRoom('player', code);
+      onlineState.role = 'player';
+    });
+  }
+  if (leaveBtn) {
+    leaveBtn.addEventListener('click', () => {
+      leaveRoom();
+    });
+  }
+  if (codeInput) {
+    codeInput.addEventListener('input', () => {
+      codeInput.value = normalizeRoomCode(codeInput.value);
+    });
+  }
 });
 
 function resetToSetup() {
