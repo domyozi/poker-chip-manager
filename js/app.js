@@ -1097,6 +1097,9 @@ function startGameWithPlayers(players, settings) {
     ...p,
     startingChips: perPlayerEnabled ? (stacksByIndex.get(i) || settings.initialChips) : settings.initialChips
   }));
+  if (onlineState.role === 'local' || (!roomChannel && onlineState.role !== 'player')) {
+    onlineState.displayName = playersWithStacks[0]?.name || onlineState.displayName;
+  }
   gameState = initGame(playersWithStacks, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
@@ -1411,6 +1414,7 @@ function renderActionPanel() {
   const btnsEl = document.getElementById('action-btns');
   const lockMessage = document.getElementById('action-lock-message');
   const actorLabel = document.getElementById('actor-label');
+  if (!panel || !btnsEl) return;
   btnsEl.innerHTML = '';
 
   if (!gameState || !gameState.isHandActive) {
@@ -1425,7 +1429,8 @@ function renderActionPanel() {
     lastTurnKey = turnKey;
     lastActionId = null;
   }
-  const isMyTurn = onlineState.role === 'local' || actor.name === onlineState.displayName;
+  const isLocalSession = onlineState.role === 'local' || (!roomChannel && onlineState.role !== 'player');
+  const isMyTurn = isLocalSession || actor.name === onlineState.displayName;
   const hasPending = localPendingActionKey === turnKey;
 
   // アクティブなプレイヤーがいない場合（全員オールインまたはフォールド）
