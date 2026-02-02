@@ -1,7 +1,10 @@
-const CACHE_NAME = 'poker-v4';
+const CACHE_NAME = 'poker-v5';
 const urlsToCache = [
   './',
   './index.html',
+  './css/style.css',
+  './js/app.js',
+  './js/game-logic.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -44,8 +47,14 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // HTMLファイルはネットワーク優先
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/') {
+  // HTMLと重要なJS/CSSはネットワーク優先
+  if (
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname === '/'
+  ) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
