@@ -1675,6 +1675,47 @@ summary.setup-label::-webkit-details-marker { display: none; }
   overflow-y: auto;
   margin-bottom: 16px;
 }
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.history-filter {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.history-filter input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px;
+}
+.history-filter input:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+}
+.history-filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.history-filter-btn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
 .history-item {
   background: rgba(255,255,255,0.04);
   border-radius: 10px;
@@ -1850,6 +1891,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--text-secondary);
 }
 .join-status-actions { display: flex; gap: 8px; }
+.join-progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+  margin-top: 6px;
+}
+.join-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(212,175,55,0.6), rgba(212,175,55,1));
+  transition: width 0.2s;
+}
 .join-status-btn {
   padding: 6px 10px;
   border-radius: 10px;
@@ -2171,6 +2226,16 @@ summary.setup-label::-webkit-details-marker { display: none; }
         <input type="checkbox" id="tournament-mode-toggle">
         <span class="toggle-text">トーナメントモード</span>
       </label>
+      <label class="toggle-label" style="margin-top: 10px;">
+        <input type="checkbox" id="late-join-toggle" checked>
+        <span class="toggle-text">途中参加を許可</span>
+      </label>
+      <div class="blind-row" style="margin-top: 8px;">
+        <div class="blind-input-wrap" style="flex: 1;">
+          <span class="blind-input-label">途中参加の最大スタック</span>
+          <input type="number" id="late-join-max-chips" value="1000" min="1" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done">
+        </div>
+      </div>
       <div class="tournament-options" id="tournament-options" style="display: none;">
         <div class="blind-row" style="margin-top: 12px;">
           <div class="blind-input-wrap" style="flex: 1;">
@@ -2242,6 +2307,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="join-status-text">
         <div class="join-status-title" id="join-status-title">参加待機中</div>
         <div class="join-status-sub" id="join-status-sub">席を選ぶと次ハンドから参加</div>
+        <div class="join-progress">
+          <div class="join-progress-bar" id="join-progress-bar"></div>
+        </div>
       </div>
     </div>
     <div class="join-status-actions">
@@ -2317,6 +2385,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
 <div class="chip-status-overlay" id="history-overlay">
   <div class="chip-status-card" style="max-width: 400px;">
     <div class="chip-status-title">ハンド履歴</div>
+    <div class="history-filters">
+      <div class="history-filter">
+        <input type="number" id="history-filter-hand" placeholder="ハンド番号">
+      </div>
+      <div class="history-filter">
+        <input type="text" id="history-filter-winner" placeholder="勝者名">
+      </div>
+      <div class="history-filter">
+        <input type="number" id="history-filter-minpot" placeholder="最小ポット">
+      </div>
+      <div class="history-filter-actions">
+        <button class="history-filter-btn" id="history-filter-clear">クリア</button>
+      </div>
+    </div>
     <div class="history-list" id="history-list"></div>
     <button class="next-hand-btn" onclick="hideHistory()">閉じる</button>
   </div>
@@ -2795,6 +2877,7 @@ let tournamentTimer = null;
 let tournamentTimeRemaining = 0;
 let currentBlindLevel = 1;
 const SOUND_STORAGE_KEY = 'pokerSoundEnabled';
+let lateJoinSettings = { enabled: true, maxChips: 1000 };
 
 // Online sync (Supabase Realtime)
 const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
@@ -3013,6 +3096,7 @@ function setUiState(state) {
   updateJoinMenuVisibility();
   updateJoinStatusBanner();
   updateSoundMenuLabel();
+  updateJoinStatusMenuLabel();
   updatePlayerBadge();
   if (state === 'playing' && onlineState.role !== 'local') {
     saveReconnectInfo({
@@ -3137,27 +3221,41 @@ function updateJoinStatusBanner() {
   const banner = document.getElementById('join-status-banner');
   const titleEl = document.getElementById('join-status-title');
   const subEl = document.getElementById('join-status-sub');
-  if (!banner || !titleEl || !subEl) return;
+  const progressEl = document.getElementById('join-progress-bar');
+  const seatBtn = document.getElementById('join-seat-btn');
+  if (!banner || !titleEl || !subEl || !progressEl) return;
   const pendingJoin = onlineState.role === 'player' &&
     onlineState.joinMode === 'play' &&
     gameState?.isHandActive &&
     !isSelfInGame();
   banner.classList.toggle('visible', !!pendingJoin);
   if (pendingJoin) {
+    const lateJoinAllowed = canLateJoin();
     const seatText = onlineState.seat ? `Seat ${onlineState.seat} 選択済み` : '席が未選択です';
     let estimateText = '進行状況により前後します';
+    let pct = 0;
     if (timerSettings.duration > 0 && timeRemaining > 0) {
       estimateText = `目安: 約${Math.ceil(timeRemaining)}秒`;
+      pct = Math.min(1, Math.max(0, 1 - timeRemaining / timerSettings.duration));
     }
     titleEl.textContent = '参加待機中';
-    subEl.textContent = `次ハンド開始で参加します。${seatText} / ${estimateText}`;
+    subEl.textContent = lateJoinAllowed
+      ? `次ハンド開始で参加します。${seatText} / ${estimateText}`
+      : '現在ホスト設定で途中参加が無効です';
+    if (seatBtn) seatBtn.disabled = !lateJoinAllowed;
+    progressEl.style.width = `${Math.round(pct * 100)}%`;
   }
+  updateJoinStatusMenuLabel();
 }
 
 function showSeatSelectModal() {
   const overlay = document.getElementById('seat-select-overlay');
   const grid = document.getElementById('seat-select-grid');
   if (!overlay || !grid) return;
+  if (!canLateJoin()) {
+    showToast('途中参加はホスト設定で無効です');
+    return;
+  }
   grid.innerHTML = '';
   const list = getPresenceList().filter(p => !isSpectator(p));
   const usedSeats = new Map();
@@ -3626,6 +3724,13 @@ async function joinRoom(role, code, isAuto = false) {
       if (!type) return;
       applyRemoteAction(type, amount || 0);
     })
+    .on('broadcast', { event: 'sound-toggle' }, payload => {
+      if (onlineState.role === 'host') return;
+      const enabled = payload?.payload?.enabled;
+      if (typeof enabled === 'boolean') {
+        setSoundEnabled(enabled);
+      }
+    })
     .on('broadcast', { event: 'showdown-resolved' }, payload => {
       if (onlineState.role === 'host') return;
       const winnerIds = payload?.payload?.winnerIds || [];
@@ -3911,7 +4016,9 @@ function collectSettingsFromForm() {
     timerDuration: parseInt(document.getElementById('timer-select').value) || 0,
     soundEnabled: document.getElementById('timer-sound-toggle').checked,
     tournamentEnabled: document.getElementById('tournament-mode-toggle').checked,
-    levelDuration: parseInt(document.getElementById('blind-level-select').value) || 15
+    levelDuration: parseInt(document.getElementById('blind-level-select').value) || 15,
+    lateJoinEnabled: document.getElementById('late-join-toggle')?.checked ?? true,
+    lateJoinMaxChips: parseInt(document.getElementById('late-join-max-chips')?.value || '0', 10) || 1000
   };
 }
 
@@ -3920,6 +4027,8 @@ function applySettings(settings) {
   timerSettings.soundEnabled = settings.soundEnabled;
   tournamentSettings.enabled = settings.tournamentEnabled;
   tournamentSettings.levelDuration = settings.levelDuration;
+  lateJoinSettings.enabled = !!settings.lateJoinEnabled;
+  lateJoinSettings.maxChips = settings.lateJoinMaxChips || 1000;
   currentBlindLevel = 1;
   updateSoundMenuLabel();
 }
@@ -3940,6 +4049,26 @@ function setSoundEnabled(enabled, persist = true) {
       localStorage.setItem(SOUND_STORAGE_KEY, timerSettings.soundEnabled ? '1' : '0');
     } catch (e) {}
   }
+}
+
+function updateJoinStatusMenuLabel() {
+  const btn = document.getElementById('menu-join-status');
+  if (!btn) return;
+  if (onlineState.role !== 'player') {
+    btn.style.display = 'none';
+    return;
+  }
+  let status = '観戦';
+  if (onlineState.joinMode === 'play') {
+    status = isSelfInGame() ? '参加中' : '待機';
+  }
+  btn.style.display = 'inline-flex';
+  btn.textContent = `参加状態: ${status}`;
+}
+
+function canLateJoin() {
+  const settings = gameState?.lateJoinSettings || lateJoinSettings;
+  return !!settings?.enabled;
 }
 
 function getLocalPlayers() {
@@ -4070,6 +4199,7 @@ function startGameWithPlayers(players, settings) {
   gameState = initGame(playersWithStacks, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
+  gameState.lateJoinSettings = { ...lateJoinSettings };
   handHistory = [];
   saveChipsBeforeHand();  // SB/BB払う前に記録
   gameState = startHand(gameState);
@@ -4910,34 +5040,73 @@ function hideChipStatus() {
 }
 
 function showHistory() {
-  const listEl = document.getElementById('history-list');
-  if (handHistory.length === 0) {
-    listEl.innerHTML = '<div class="history-empty">まだ履歴がありません</div>';
-  } else {
-    listEl.innerHTML = handHistory.map((h, i) => {
-      const winnerText = h.winners.map(w =>
-        `<span class="history-winner">${w.icon || ''} ${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span>`
-      ).join(' ');
-      const loserText = h.losers.map(l =>
-        `<span class="history-loser">${l.icon || ''} ${l.name} -${l.loss.toLocaleString()}</span>`
-      ).join(' ');
-      return `
-        <div class="history-item">
-          <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
-          <div class="history-result">
-            ${winnerText}
-            ${loserText}
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
+  updateHistoryView();
   document.getElementById('history-overlay').classList.add('visible');
   document.getElementById('header-menu').style.display = 'none';
 }
 
 function hideHistory() {
   document.getElementById('history-overlay').classList.remove('visible');
+}
+
+function getHistoryFilterValues() {
+  const handInput = document.getElementById('history-filter-hand');
+  const winnerInput = document.getElementById('history-filter-winner');
+  const minPotInput = document.getElementById('history-filter-minpot');
+  return {
+    hand: handInput ? parseInt(handInput.value, 10) : null,
+    winner: winnerInput ? winnerInput.value.trim().toLowerCase() : '',
+    minPot: minPotInput ? parseInt(minPotInput.value, 10) : null
+  };
+}
+
+function filterHistoryList(list) {
+  const filter = getHistoryFilterValues();
+  return list.filter(h => {
+    if (Number.isFinite(filter.hand) && filter.hand > 0 && h.hand !== filter.hand) return false;
+    if (Number.isFinite(filter.minPot) && filter.minPot > 0 && h.pot < filter.minPot) return false;
+    if (filter.winner) {
+      const winners = (h.winners || []).map(w => (w.name || '').toLowerCase());
+      if (!winners.some(n => n.includes(filter.winner))) return false;
+    }
+    return true;
+  });
+}
+
+function renderHistoryList(list) {
+  const listEl = document.getElementById('history-list');
+  if (!listEl) return;
+  if (list.length === 0) {
+    listEl.innerHTML = '<div class="history-empty">一致する履歴がありません</div>';
+    return;
+  }
+  listEl.innerHTML = list.map(h => {
+    const winnerText = h.winners.map(w =>
+      `<span class="history-winner">${w.icon || ''} ${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span>`
+    ).join(' ');
+    const loserText = h.losers.map(l =>
+      `<span class="history-loser">${l.icon || ''} ${l.name} -${l.loss.toLocaleString()}</span>`
+    ).join(' ');
+    return `
+      <div class="history-item">
+        <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
+        <div class="history-result">
+          ${winnerText}
+          ${loserText}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateHistoryView() {
+  const list = handHistory.length ? filterHistoryList(handHistory) : [];
+  if (handHistory.length === 0) {
+    const listEl = document.getElementById('history-list');
+    if (listEl) listEl.innerHTML = '<div class="history-empty">まだ履歴がありません</div>';
+    return;
+  }
+  renderHistoryList(list);
 }
 
 function showDisconnectDialog() {
@@ -5065,13 +5234,17 @@ function getNextPlayerId(state) {
 
 function addLateJoiners(state) {
   if (!state) return state;
+  const lateJoin = state.lateJoinSettings || lateJoinSettings;
+  if (!lateJoin?.enabled) return state;
   const requests = getLateJoinRequests();
   if (requests.length === 0) return state;
   const nextIdStart = getNextPlayerId(state);
   let nextId = nextIdStart;
   const newPlayers = requests.map(req => {
     const chips = parseInt(req.requestedChips, 10);
-    const startingChips = Number.isFinite(chips) && chips >= 1 ? chips : 1000;
+    const baseChips = Number.isFinite(chips) && chips >= 1 ? chips : 1000;
+    const cap = Number.isFinite(lateJoin.maxChips) && lateJoin.maxChips >= 1 ? lateJoin.maxChips : baseChips;
+    const startingChips = Math.min(baseChips, cap);
     const name = req.name || `Player ${nextId + 1}`;
     return {
       id: `player_${nextId++}`,
@@ -5222,6 +5395,16 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNumericInput(document.getElementById('sb-input'));
   setupNumericInput(document.getElementById('bb-input'));
   setupNumericInput(document.getElementById('initial-chips-input'));
+  setupNumericInput(document.getElementById('late-join-max-chips'));
+  const lateJoinToggle = document.getElementById('late-join-toggle');
+  const lateJoinMaxInput = document.getElementById('late-join-max-chips');
+  if (lateJoinToggle && lateJoinMaxInput) {
+    const syncLateJoinOptions = () => {
+      lateJoinMaxInput.disabled = !lateJoinToggle.checked;
+    };
+    syncLateJoinOptions();
+    lateJoinToggle.addEventListener('change', syncLateJoinOptions);
+  }
 
   const toggle = document.getElementById('tournament-mode-toggle');
   if (toggle) {
@@ -5280,6 +5463,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuJoinBtn = document.getElementById('menu-join-btn');
   const menuSoundBtn = document.getElementById('menu-sound-toggle');
   const soundToggle = document.getElementById('timer-sound-toggle');
+  const historyFilterHand = document.getElementById('history-filter-hand');
+  const historyFilterWinner = document.getElementById('history-filter-winner');
+  const historyFilterMinPot = document.getElementById('history-filter-minpot');
+  const historyFilterClear = document.getElementById('history-filter-clear');
   const joinSeatBtn = document.getElementById('join-seat-btn');
   const joinCancelBtn = document.getElementById('join-cancel-btn');
   const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
@@ -5288,6 +5475,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const reconnectWatchBtn = document.getElementById('reconnect-watch-btn');
   const reconnectPlayBtn = document.getElementById('reconnect-play-btn');
   const reconnectCancelBtn = document.getElementById('reconnect-cancel-btn');
+  const historyFilterHand = document.getElementById('history-filter-hand');
+  const historyFilterWinner = document.getElementById('history-filter-winner');
+  const historyFilterMinPot = document.getElementById('history-filter-minpot');
+  const historyFilterClear = document.getElementById('history-filter-clear');
   if (hostBtn) {
     hostBtn.addEventListener('click', async () => {
       onlineState.displayName = nameInput ? nameInput.value.trim() : '';
@@ -5449,12 +5640,30 @@ document.addEventListener('DOMContentLoaded', () => {
   if (menuSoundBtn) {
     menuSoundBtn.addEventListener('click', () => {
       setSoundEnabled(!timerSettings.soundEnabled);
+      if (onlineState.role === 'host' && roomChannel) {
+        roomChannel.send({ type: 'broadcast', event: 'sound-toggle', payload: { enabled: timerSettings.soundEnabled } });
+      }
       if (menu) menu.style.display = 'none';
     });
   }
   if (soundToggle) {
     soundToggle.addEventListener('change', () => {
       setSoundEnabled(soundToggle.checked);
+      if (onlineState.role === 'host' && roomChannel) {
+        roomChannel.send({ type: 'broadcast', event: 'sound-toggle', payload: { enabled: timerSettings.soundEnabled } });
+      }
+    });
+  }
+  const historyFilterHandler = () => updateHistoryView();
+  if (historyFilterHand) historyFilterHand.addEventListener('input', historyFilterHandler);
+  if (historyFilterWinner) historyFilterWinner.addEventListener('input', historyFilterHandler);
+  if (historyFilterMinPot) historyFilterMinPot.addEventListener('input', historyFilterHandler);
+  if (historyFilterClear) {
+    historyFilterClear.addEventListener('click', () => {
+      if (historyFilterHand) historyFilterHand.value = '';
+      if (historyFilterWinner) historyFilterWinner.value = '';
+      if (historyFilterMinPot) historyFilterMinPot.value = '';
+      updateHistoryView();
     });
   }
   if (joinSeatBtn) {
@@ -5483,6 +5692,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyJoinMode('watch', onlineState.requestedChips || 1000);
       updateParticipantList();
       render();
+      showToast('観戦に戻りました');
     });
   }
 
@@ -5535,6 +5745,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (reconnectCancelBtn) {
     bindOnce(reconnectCancelBtn, 'click', () => {
       hideReconnectModal();
+    });
+  }
+
+  const historyFilterHandler = () => updateHistoryView();
+  if (historyFilterHand) historyFilterHand.addEventListener('input', historyFilterHandler);
+  if (historyFilterWinner) historyFilterWinner.addEventListener('input', historyFilterHandler);
+  if (historyFilterMinPot) historyFilterMinPot.addEventListener('input', historyFilterHandler);
+  if (historyFilterClear) {
+    historyFilterClear.addEventListener('click', () => {
+      if (historyFilterHand) historyFilterHand.value = '';
+      if (historyFilterWinner) historyFilterWinner.value = '';
+      if (historyFilterMinPot) historyFilterMinPot.value = '';
+      updateHistoryView();
     });
   }
 
@@ -5665,6 +5888,7 @@ function showUpdateNotification() {
 <!-- Global Menu (outside screens for z-index) -->
 <div id="header-menu" style="display:none; position:fixed; top:60px; right:20px; background:rgba(26,51,40,0.98); border:3px solid #d4af37; border-radius:12px; padding:12px; z-index:999999; min-width:200px; flex-direction:column; gap:8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
   <button class="header-menu-item" id="menu-join-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer; display:none;">観戦から参加へ</button>
+  <button class="header-menu-item" id="menu-join-status" style="padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#f0ece0; cursor:default; display:none;" disabled>参加状態: 観戦</button>
   <button class="header-menu-item" id="menu-sound-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">音量: ON</button>
   <button class="header-menu-item" id="menu-display-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">表記切替: CHIP</button>
   <button class="header-menu-item" id="menu-history-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">履歴を表示</button>
