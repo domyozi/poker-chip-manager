@@ -2374,6 +2374,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
       </div>
     </div>
     <div class="join-status-actions">
+      <button class="join-status-btn" id="rebuy-request-btn" style="display:none;">リバイ申請</button>
       <button class="join-status-btn" id="join-seat-btn">席を選ぶ</button>
       <button class="join-status-btn danger" id="join-cancel-btn">取り消し</button>
     </div>
@@ -2968,6 +2969,7 @@ let onlineState = {
   joinMode: "play", // play | watch
   requestedChips: 1000,
   joinConfirmed: false,
+  rebuyRequested: false,
   away: false,
   pendingExit: false
 };
@@ -3090,6 +3092,7 @@ function updatePresence(extra = {}) {
     joinMode: onlineState.joinMode || "play",
     requestedChips: onlineState.requestedChips || 1000,
     joinConfirmed: !!onlineState.joinConfirmed,
+    rebuyRequested: !!onlineState.rebuyRequested,
     away: !!onlineState.away,
     pendingExit: !!onlineState.pendingExit,
     ...extra
@@ -3190,10 +3193,7 @@ function setUiState(state) {
 function updateHeaderMenuVisibility() {
   const menuBtn = document.getElementById('menu-btn');
   if (!menuBtn) return;
-  // local, hostは表示、playerのみ非表示
-  const show = onlineState.role === 'local' || onlineState.role === 'host' ||
-    (onlineState.role === 'player' && onlineState.joinMode === 'watch');
-  menuBtn.style.display = show ? 'inline-flex' : 'none';
+  menuBtn.style.display = 'inline-flex';
 }
 
 function updateJoinMenuVisibility() {
@@ -3262,6 +3262,11 @@ function getRequestedChips() {
   return Number.isFinite(value) && value >= 1 ? value : 1000;
 }
 
+function getAutoJoinChips() {
+  const max = gameState?.lateJoinSettings?.maxChips ?? lateJoinSettings.maxChips ?? 1000;
+  return Number.isFinite(max) && max >= 1 ? max : 1000;
+}
+
 function applyJoinMode(mode, requestedChips) {
   onlineState.joinMode = mode;
   if (mode === 'play') {
@@ -3294,19 +3299,35 @@ function isSelfInGame() {
   return gameState.players.some(p => p.name === onlineState.displayName);
 }
 
+function getSelfPlayer() {
+  if (!gameState || !gameState.players) return null;
+  return gameState.players.find(p => p.name === onlineState.displayName) || null;
+}
+
 function updateJoinStatusBanner() {
   const banner = document.getElementById('join-status-banner');
   const titleEl = document.getElementById('join-status-title');
   const subEl = document.getElementById('join-status-sub');
   const progressEl = document.getElementById('join-progress-bar');
   const seatBtn = document.getElementById('join-seat-btn');
+  const rebuyBtn = document.getElementById('rebuy-request-btn');
+  const cancelBtn = document.getElementById('join-cancel-btn');
   if (!banner || !titleEl || !subEl || !progressEl) return;
+  const selfPlayer = getSelfPlayer();
+  const rebuyEligible = onlineState.role === 'player' && selfPlayer && selfPlayer.chips <= 0;
   const pendingJoin = onlineState.role === 'player' &&
     onlineState.joinMode === 'play' &&
     gameState?.isHandActive &&
     !isSelfInGame();
-  banner.classList.toggle('visible', !!pendingJoin);
-  if (pendingJoin) {
+  banner.classList.toggle('visible', !!pendingJoin || !!rebuyEligible);
+  if (rebuyEligible) {
+    titleEl.textContent = 'リバイ待機';
+    subEl.textContent = '次ハンドからリバイできます（ホスト設定額）';
+    progressEl.style.width = '0%';
+    if (rebuyBtn) rebuyBtn.style.display = 'inline-flex';
+    if (seatBtn) seatBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+  } else if (pendingJoin) {
     const lateJoinAllowed = canLateJoin();
     const seatText = onlineState.seat ? `Seat ${onlineState.seat} 選択済み` : '席が未選択です';
     let estimateText = '進行状況により前後します';
@@ -3320,7 +3341,14 @@ function updateJoinStatusBanner() {
       ? `次ハンド開始で参加します。${seatText} / ${estimateText}`
       : '現在ホスト設定で途中参加が無効です';
     if (seatBtn) seatBtn.disabled = !lateJoinAllowed;
+    if (seatBtn) seatBtn.style.display = 'inline-flex';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if (rebuyBtn) rebuyBtn.style.display = 'none';
     progressEl.style.width = `${Math.round(pct * 100)}%`;
+  } else {
+    if (rebuyBtn) rebuyBtn.style.display = 'none';
+    if (seatBtn) seatBtn.style.display = 'inline-flex';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
   }
   updateJoinStatusMenuLabel();
 }
@@ -3404,14 +3432,9 @@ function maybeShowReconnectPrompt() {
       nameInput.value = reconnectInfo.displayName;
     }
   }
-  showReconnectModal({
-    context: 'startup',
-    role: reconnectInfo.role || 'player',
-    roomCode: reconnectInfo.roomCode,
-    defaultChips: reconnectInfo.requestedChips || 1000,
-    title: '前回のゲームに再接続',
-    message: '進行中のゲームに入りますか？'
-  });
+  autoEnterOnStateSync = true;
+  onlineState.requestedChips = getAutoJoinChips();
+  joinRoom(reconnectInfo.role || 'player', reconnectInfo.roomCode, true);
 }
 
 function setRoomStatus(text) {
@@ -3649,6 +3672,7 @@ async function leaveRoom(options = {}) {
     joinMode: "play",
     requestedChips: 1000,
     joinConfirmed: false,
+    rebuyRequested: false,
     away: false,
     pendingExit: false
   };
@@ -3713,6 +3737,7 @@ async function joinRoom(role, code, isAuto = false) {
     joinMode: role === 'host' ? 'play' : (onlineState.joinMode || 'play'),
     requestedChips: onlineState.requestedChips || 1000,
     joinConfirmed: role === 'host',
+    rebuyRequested: false,
     away: false,
     pendingExit: false
   };
@@ -3773,6 +3798,9 @@ async function joinRoom(role, code, isAuto = false) {
       if (onlineState.role === 'host') return;
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
+      if (payload?.payload?.chipsBeforeHand) {
+        chipsBeforeHand = payload.payload.chipsBeforeHand;
+      }
       localPendingActionKey = null;
       if (onlineState.role === 'player' && onlineState.joinMode === 'play' && onlineState.displayName) {
         const stillSeated = gameState.players.some(p => p.name === onlineState.displayName);
@@ -3796,17 +3824,19 @@ async function joinRoom(role, code, isAuto = false) {
         }
       }
       if (gameState?.isHandActive && onlineState.role === 'player' && !joinChoiceConfirmed) {
-        showReconnectModal({
-          context: 'ongoing',
-          role: onlineState.role,
-          roomCode: onlineState.roomCode,
-          title: '進行中のゲーム',
-          message: '進行中のゲームに入りますか？'
-        });
+        autoEnterOnStateSync = true;
+        applyJoinMode('play', getAutoJoinChips());
       }
       if (autoEnterOnStateSync && gameState?.isHandActive) {
         autoEnterOnStateSync = false;
         setUiState('playing');
+      }
+      if (onlineState.role === 'player' && onlineState.rebuyRequested) {
+        const selfPlayer = getSelfPlayer();
+        if (selfPlayer && selfPlayer.chips > 0) {
+          onlineState.rebuyRequested = false;
+          updatePresence({ rebuyRequested: false });
+        }
       }
       if (gameState?.isHandActive) {
         document.getElementById('next-hand-overlay').classList.remove('visible');
@@ -3930,7 +3960,7 @@ function requestState() {
 function broadcastState() {
   if (!roomChannel || onlineState.role !== 'host') return;
   if (!gameState) return;
-  roomChannel.send({ type: 'broadcast', event: 'state-sync', payload: { state: gameState } });
+  roomChannel.send({ type: 'broadcast', event: 'state-sync', payload: { state: gameState, chipsBeforeHand } });
 }
 
 function sendActionRequest(type, amount) {
@@ -5343,6 +5373,7 @@ function advanceToNextHandAndBroadcast() {
   if (onlineState.role === 'host') {
     gameState = removePendingExits(gameState);
     gameState = addLateJoiners(gameState);
+    gameState = applyRebuys(gameState);
   }
   gameState = advanceDealer(gameState);
   saveChipsBeforeHand();  // SB/BB払う前に記録
@@ -5394,11 +5425,9 @@ function addLateJoiners(state) {
   if (requests.length === 0) return state;
   const nextIdStart = getNextPlayerId(state);
   let nextId = nextIdStart;
+  const cap = Number.isFinite(lateJoin.maxChips) && lateJoin.maxChips >= 1 ? lateJoin.maxChips : 1000;
   const newPlayers = requests.map(req => {
-    const chips = parseInt(req.requestedChips, 10);
-    const baseChips = Number.isFinite(chips) && chips >= 1 ? chips : 1000;
-    const cap = Number.isFinite(lateJoin.maxChips) && lateJoin.maxChips >= 1 ? lateJoin.maxChips : baseChips;
-    const startingChips = Math.min(baseChips, cap);
+    const startingChips = cap;
     const name = req.name || `Player ${nextId + 1}`;
     return {
       id: `player_${nextId++}`,
@@ -5412,6 +5441,38 @@ function addLateJoiners(state) {
     };
   });
   return { ...state, players: [...state.players, ...newPlayers] };
+}
+
+function getRebuyRequests(state) {
+  if (!state || !state.players) return [];
+  const list = getPresenceList();
+  const playersByName = new Map(state.players.map(p => [p.name, p]));
+  return list.filter(p => {
+    if (!p || !p.name || !p.rebuyRequested) return false;
+    const entry = playersByName.get(p.name);
+    return entry && entry.chips <= 0;
+  });
+}
+
+function applyRebuys(state) {
+  if (!state || !state.players) return state;
+  const lateJoin = state.lateJoinSettings || lateJoinSettings;
+  const rebuyChips = Number.isFinite(lateJoin?.maxChips) && lateJoin.maxChips >= 1 ? lateJoin.maxChips : 1000;
+  const requests = getRebuyRequests(state);
+  if (requests.length === 0) return state;
+  const updates = new Set(requests.map(r => r.name));
+  const players = state.players.map(p => {
+    if (!updates.has(p.name)) return p;
+    return {
+      ...p,
+      chips: rebuyChips,
+      status: "waiting",
+      currentBet: 0,
+      totalBet: 0,
+      actedThisRound: false
+    };
+  });
+  return { ...state, players };
 }
 
 // ─── SETUP SCREEN LOGIC ───────────────────────
@@ -5625,6 +5686,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyFilterClear = document.getElementById('history-filter-clear');
   const joinSeatBtn = document.getElementById('join-seat-btn');
   const joinCancelBtn = document.getElementById('join-cancel-btn');
+  const rebuyRequestBtn = document.getElementById('rebuy-request-btn');
   const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
   const joinCancelNoBtn = document.getElementById('join-cancel-no');
   const joinCancelYesBtn = document.getElementById('join-cancel-yes');
@@ -5797,14 +5859,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (menuJoinBtn) {
     menuJoinBtn.addEventListener('click', () => {
       if (menu) menu.style.display = 'none';
-      showReconnectModal({
-        context: 'switch',
-        role: onlineState.role,
-        roomCode: onlineState.roomCode,
-        title: '参加申請',
-        message: '次のハンドから参加します。チップを入力して参加しますか？',
-        showWatch: false
-      });
+      applyJoinMode('play', getAutoJoinChips());
     });
   }
   if (menuSoundBtn) {
@@ -5844,6 +5899,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (joinCancelBtn) {
     joinCancelBtn.addEventListener('click', () => {
       showJoinCancelConfirm();
+    });
+  }
+  if (rebuyRequestBtn) {
+    rebuyRequestBtn.addEventListener('click', () => {
+      if (onlineState.role !== 'player') return;
+      onlineState.joinMode = 'play';
+      onlineState.joinConfirmed = true;
+      onlineState.rebuyRequested = true;
+      onlineState.requestedChips = getAutoJoinChips();
+      updatePresence({
+        joinMode: onlineState.joinMode,
+        joinConfirmed: onlineState.joinConfirmed,
+        requestedChips: onlineState.requestedChips,
+        rebuyRequested: true
+      });
+      showToast('リバイ申請しました', 'info');
+      updateJoinStatusBanner();
     });
   }
   if (seatSelectCancelBtn) {
