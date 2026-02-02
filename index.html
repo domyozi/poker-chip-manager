@@ -3314,7 +3314,11 @@ function applyJoinMode(mode, requestedChips) {
     requestedChips: onlineState.requestedChips || 1000
   });
   if (roomChannel) {
-    updatePresence({ joinMode: onlineState.joinMode, requestedChips: onlineState.requestedChips });
+    updatePresence({
+      joinMode: onlineState.joinMode,
+      requestedChips: onlineState.requestedChips,
+      joinConfirmed: true
+    });
   }
 }
 
@@ -5719,6 +5723,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const joinSeatBtn = document.getElementById('join-seat-btn');
   const joinCancelBtn = document.getElementById('join-cancel-btn');
   const rebuyRequestBtn = document.getElementById('rebuy-request-btn');
+  const playersRing = document.getElementById('players-ring');
   const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
   const joinCancelNoBtn = document.getElementById('join-cancel-no');
   const joinCancelYesBtn = document.getElementById('join-cancel-yes');
@@ -5904,6 +5909,7 @@ document.addEventListener('DOMContentLoaded', () => {
     menuJoinBtn.addEventListener('click', () => {
       if (menu) menu.style.display = 'none';
       applyJoinMode('play', getAutoJoinChips());
+      showSeatSelectModal();
     });
   }
   if (menuSoundBtn) {
@@ -5960,6 +5966,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       showToast('リバイ申請しました', 'info');
       updateJoinStatusBanner();
+    });
+  }
+  if (playersRing) {
+    playersRing.addEventListener('click', (e) => {
+      if (onlineState.role !== 'player') return;
+      if (onlineState.joinMode !== 'watch') return;
+      if (e.target.closest('.player-card')) return;
+      applyJoinMode('play', getAutoJoinChips());
+      showSeatSelectModal();
     });
   }
   if (seatSelectCancelBtn) {
