@@ -2572,3 +2572,4 @@ function showUpdateNotification() {
     padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;
   `;
   document.body.appendChild(banner);
+}
