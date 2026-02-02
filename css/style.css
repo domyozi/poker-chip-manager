@@ -1149,45 +1149,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PLAYER PILL - poker-app style with avatar overlap
+   PLAYER UI - Two variants: Active (front) and Back (opponents)
    ═══════════════════════════════════════════════════════════════ */
-.player-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
-  cursor: default;
-}
 
-/* The pill container (info-line) */
-.player-card .info-line {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: var(--pill-h);
-  /* Left padding clears avatar completely */
-  padding-left: var(--text-left-pad);
-  padding-right: 14px;
-  border-radius: calc(var(--pill-h) / 2);
-  background: rgba(12,20,16,0.9);
-  border: 1px solid rgba(255,255,255,0.15);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-  min-width: var(--pill-min-w);
-  max-width: var(--pill-max-w);
-}
-
-/* Avatar overlapping the pill from the left */
-.player-card .avatar {
-  position: absolute;
-  left: var(--avatar-left);
-  top: 50%;
-  transform: translateY(-50%);
-  width: var(--pill-avatar);
-  height: var(--pill-avatar);
-  z-index: 2;
-}
-
+/* --- Shared avatar styles --- */
 .avatar-wrap {
   width: 100%;
   height: 100%;
@@ -1196,11 +1161,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   display: grid;
   place-items: center;
   background: rgba(20,30,25,0.95);
-  border: 2px solid rgba(255,255,255,0.2);
+  border: 2px solid rgba(255,255,255,0.25);
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
-
 .avatar-img {
   width: 100%;
   height: 100%;
@@ -1208,140 +1172,283 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-radius: 50%;
   display: block;
 }
-
-/* Avatar state variations */
-.avatar-wrap.is-you {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 4px 16px rgba(0,0,0,0.5);
-}
 .avatar-wrap.is-dealer {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(212,175,55,0.8), 0 0 16px rgba(212,175,55,0.3);
-}
-.avatar-wrap.is-turn {
-  animation: avatarPulse 1.6s ease-in-out infinite;
 }
 .avatar-wrap.is-winner {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(212,175,55,0.9), 0 0 24px rgba(212,175,55,0.4);
 }
 
-@keyframes avatarPulse {
+/* Hide legacy elements */
+.you-pill, .turn-badge, .seat-badge { display: none !important; }
+
+/* ─────────────────────────────────────────────────────────────────
+   ACTIVE PLAYER (front/bottom) - Large, prominent
+   ───────────────────────────────────────────────────────────────── */
+.player-active {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.player-active .avatar {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  z-index: 2;
+  margin-right: -10px;
+}
+
+.player-active .avatar-wrap {
+  border-width: 3px;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.5), 0 0 20px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.5);
+  animation: activeGlow 2s ease-in-out infinite;
+}
+
+@keyframes activeGlow {
   0%, 100% {
-    border-color: rgba(212,175,55,0.6);
-    box-shadow: 0 0 0 2px rgba(212,175,55,0.4), 0 4px 12px rgba(0,0,0,0.5);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.5), 0 0 20px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.5);
   }
   50% {
-    border-color: rgba(212,175,55,1);
-    box-shadow: 0 0 0 3px rgba(212,175,55,0.8), 0 0 20px rgba(212,175,55,0.5);
+    box-shadow: 0 0 0 4px rgba(212,175,55,0.8), 0 0 30px rgba(212,175,55,0.5), 0 4px 16px rgba(0,0,0,0.5);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .avatar-wrap.is-turn { animation: none; }
-}
-
-/* "YOU" indicator pill on avatar */
-.you-pill {
-  position: absolute;
-  right: -4px;
-  bottom: -2px;
-  font-size: clamp(7px, 1.2vw, 9px);
-  letter-spacing: 0.05em;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: var(--gold);
-  color: #111;
-  font-weight: 700;
-  border: 1px solid rgba(255,255,255,0.3);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  display: none;
-  z-index: 3;
-}
-.avatar-wrap.is-you .you-pill { display: inline-block; }
-
-/* Player info container (name + chips) - horizontal layout */
-.player-card .player-info {
+.player-active .info-pill {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px 0 20px;
+  border-radius: 24px;
+  background: rgba(12,20,16,0.92);
+  border: 2px solid rgba(212,175,55,0.4);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 15px rgba(212,175,55,0.15);
+  min-width: 180px;
+}
+
+.player-active .player-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
   min-width: 0;
 }
 
-/* Name - left side, can ellipsis if too long */
-.player-card .name {
+.player-active .name {
   font-family: 'Playfair Display', serif;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1 1 auto;
+  flex: 1;
   min-width: 0;
-  line-height: 1.2;
 }
 
-/* Chips/stack display - right side, NEVER clip */
-.player-card .chips {
-  font-size: 14px;
+.player-active .chips {
+  font-size: 16px;
   font-weight: 700;
   color: var(--gold);
-  letter-spacing: 0.3px;
   white-space: nowrap;
-  flex: 0 0 auto;
-  margin-left: 8px;
+  flex-shrink: 0;
 }
 
-/* Seat badge - hidden in new pill design */
-.seat-badge {
-  display: none;
-}
-
-/* Position badge (BTN/SB/BB) - inline in pill */
-.player-card .position-badge {
-  font-size: clamp(8px, 1.3vw, 10px);
+.player-active .position-badge {
+  font-size: 10px;
   font-weight: 700;
-  padding: 4px 6px;
-  border-radius: 4px;
-  background: rgba(212,175,55,0.25);
-  border: 1px solid rgba(212,175,55,0.5);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(212,175,55,0.3);
+  border: 1px solid rgba(212,175,55,0.6);
   color: var(--gold);
   text-transform: uppercase;
   flex-shrink: 0;
-  line-height: 1;
 }
 
-/* TURN badge - shown in offline mode for active front player */
-.turn-badge {
+.player-active .dealer-badge {
   position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid #1a3328;
+  color: #1a1408;
   font-size: 10px;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--gold), #c9a227);
-  color: #1a1408;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 2px 8px rgba(212,175,55,0.5);
-  z-index: 10;
-  animation: turnPulse 1.5s ease-in-out infinite;
-}
-@keyframes turnPulse {
-  0%, 100% { box-shadow: 0 2px 8px rgba(212,175,55,0.5); }
-  50% { box-shadow: 0 2px 16px rgba(212,175,55,0.8), 0 0 20px rgba(212,175,55,0.4); }
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
 }
 
-/* Front player styling (bottom position in offline mode) */
-.player-card.is-front {
-  /* Slightly larger for emphasis */
+/* Active player states */
+.player-active.folded {
+  opacity: 0.4;
 }
+.player-active.folded .avatar-wrap {
+  animation: none;
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.player-active.allin .info-pill {
+  border-color: var(--chip-red);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 15px rgba(192,57,43,0.3);
+}
+.player-active.allin .avatar-wrap {
+  border-color: var(--chip-red);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BACK PLAYERS (opponents/top) - Compact, muted
+   ───────────────────────────────────────────────────────────────── */
+.player-back {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  opacity: 0.85;
+  transform: scale(0.9);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.player-back .avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  z-index: 2;
+  margin-right: -8px;
+}
+
+.player-back .avatar-wrap {
+  border-width: 2px;
+}
+
+.player-back .info-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 16px;
+  border-radius: 18px;
+  background: rgba(12,20,16,0.85);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  min-width: 120px;
+  max-width: 180px;
+}
+
+.player-back .player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.player-back .name {
+  font-family: 'Playfair Display', serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.player-back .chips {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  opacity: 0.8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.player-back .position-badge {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(212,175,55,0.2);
+  border: 1px solid rgba(212,175,55,0.4);
+  color: var(--gold);
+  opacity: 0.8;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.player-back .dealer-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid #1a3328;
+  color: #1a1408;
+  font-size: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+/* Back player states */
+.player-back.folded {
+  opacity: 0.35;
+}
+.player-back.allin .info-pill {
+  border-color: rgba(192,57,43,0.5);
+}
+.player-back.allin .avatar-wrap {
+  border-color: var(--chip-red);
+}
+.player-back.is-winner .avatar-wrap {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(212,175,55,0.7), 0 0 16px rgba(212,175,55,0.4);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ALL-IN BADGE (shared)
+   ───────────────────────────────────────────────────────────────── */
+.allin-badge {
+  display: none;
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--chip-red);
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(192,57,43,0.5);
+  z-index: 10;
+}
+.player-active.allin .allin-badge,
+.player-back.allin .allin-badge {
+  display: block;
+}
+
+/* Legacy support - hide old classes */
+.player-card { display: none; }
+.player-card.is-actor, .player-card.is-local, .player-card.is-front { display: none; }
 
 /* Dealer badge */
 .dealer-badge {

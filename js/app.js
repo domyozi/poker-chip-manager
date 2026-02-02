@@ -1488,67 +1488,64 @@ function renderPlayers() {
   }
 }
 
-// Create a player card element (pill style with avatar overlap)
-function createPlayerCard(player, idx, posLabel, isFrontPlayer, isOfflineMode = false) {
-  const isActor = idx === gameState.currentPlayerIndex && gameState.isHandActive && player.status === "active";
+// Create a player element - Active (front) or Back (opponent)
+function createPlayerCard(player, idx, posLabel, isActivePlayer, isOfflineMode = false) {
   const isDealer = idx === gameState.dealerIndex;
   const isFolded = player.status === "folded";
   const isAllIn = player.status === "allIn";
   const isWinner = winnerHighlightIds.includes(player.id);
 
-  let classes = 'player-card';
-  if (isActor) classes += ' is-actor';
+  // Use different class based on active/back status
+  const baseClass = isActivePlayer ? 'player-active' : 'player-back';
+  let classes = baseClass;
   if (isFolded) classes += ' folded';
   if (isAllIn) classes += ' allin';
   if (isWinner) classes += ' is-winner';
-  if (isFrontPlayer) classes += ' is-front';
 
   const characterId = normalizeCharacterId(player.characterId || '', idx);
-  // In offline mode, don't show "YOU" indicator - show "TURN" instead for active player
-  const showYouIndicator = !isOfflineMode && isPlayerYou(player, idx);
   const avatarMarkup = renderAvatarMarkup(characterId, {
-    isYou: showYouIndicator,
+    isYou: false, // No "YOU" indicator in new design
     isDealer,
-    isTurn: isActor,
+    isTurn: false, // No turn animation on avatar
     isWinner,
     fallbackIndex: idx
   });
   const showName = !!player.name;
   const displayName = showName ? player.name : `P${idx + 1}`;
 
-  // Timer ring for active player (sized to fit new avatar)
-  const showTimer = isActor && timerSettings.duration > 0;
+  // Timer ring for active player only
+  const isActorTurn = idx === gameState.currentPlayerIndex && gameState.isHandActive;
+  const showTimer = isActivePlayer && isActorTurn && timerSettings.duration > 0;
+  const avatarSize = isActivePlayer ? 56 : 40;
+  const timerRadius = isActivePlayer ? 24 : 17;
   const timerRingHtml = showTimer ? `
-    <svg class="timer-ring" width="56" height="56" viewBox="0 0 56 56">
-      <circle class="bg" cx="28" cy="28" r="24"/>
-      <circle class="progress" cx="28" cy="28" r="24"
-        style="stroke-dasharray: ${2 * Math.PI * 24}; stroke-dashoffset: 0"/>
+    <svg class="timer-ring" width="${avatarSize}" height="${avatarSize}" viewBox="0 0 ${avatarSize} ${avatarSize}">
+      <circle class="bg" cx="${avatarSize/2}" cy="${avatarSize/2}" r="${timerRadius}"/>
+      <circle class="progress" cx="${avatarSize/2}" cy="${avatarSize/2}" r="${timerRadius}"
+        style="stroke-dasharray: ${2 * Math.PI * timerRadius}; stroke-dashoffset: 0"/>
     </svg>
     <div class="timer-text">0:${timerSettings.duration.toString().padStart(2, '0')}</div>
   ` : '';
 
-  // Position badge (BTN/SB/BB) - shown on pill
+  // Position badge (BTN/SB/BB)
   const positionBadgeHtml = posLabel ? `<span class="position-badge">${posLabel}</span>` : '';
 
-  // Turn badge for offline mode - show on front player when it's their turn
-  const turnBadgeHtml = (isOfflineMode && isFrontPlayer && isActor)
-    ? '<span class="turn-badge">TURN</span>'
-    : '';
+  // Dealer badge
+  const dealerBadgeHtml = isDealer ? '<div class="dealer-badge">D</div>' : '';
 
-  const card = document.createElement('div');
-  card.className = classes;
-  card.dataset.playerId = player.id;
+  const el = document.createElement('div');
+  el.className = classes;
+  el.dataset.playerId = player.id;
 
-  // Pill structure: avatar overlaps from left, name/chips to the right
-  card.innerHTML = `
+  // New structure: avatar overlaps pill from left
+  el.innerHTML = `
     <div class="allin-badge">ALL IN</div>
-    ${turnBadgeHtml}
-    <div class="info-line">
-      <div class="avatar">
-        ${timerRingHtml}
-        ${avatarMarkup}
-        ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
-      </div>
+    <div class="avatar">
+      ${timerRingHtml}
+      ${avatarMarkup}
+      ${dealerBadgeHtml}
+    </div>
+    <div class="info-pill">
       <div class="player-info">
         <span class="name">${displayName}</span>
         <span class="chips">${formatAmount(player.chips)}</span>
@@ -1557,7 +1554,7 @@ function createPlayerCard(player, idx, posLabel, isFrontPlayer, isOfflineMode = 
     </div>
   `;
 
-  return card;
+  return el;
 }
 
 // Get bet position class based on opponent count and index
