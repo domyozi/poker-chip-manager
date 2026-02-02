@@ -1902,6 +1902,34 @@ summary.setup-label::-webkit-details-marker { display: none; }
   opacity: 0.45;
   cursor: not-allowed;
 }
+.seat-select-btn.active {
+  border-color: var(--gold);
+  background: rgba(212,175,55,0.15);
+  color: var(--gold);
+  box-shadow: 0 0 12px rgba(212,175,55,0.2);
+}
+
+/* ─── Toast ──────────────────────────────────── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: rgba(20,32,26,0.95);
+  border: 1px solid rgba(212,175,55,0.4);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+}
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-6px);
+}
 /* ─── Reconnect / Join Modal ─────────────────── */
 .reconnect-dialog-body {
   display: flex;
@@ -2311,6 +2339,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 <!-- ─── WIN FLASH ─────────────────────────────── -->
 <div class="win-flash" id="win-flash"></div>
+
+<div class="toast" id="toast"></div>
 
 <!-- ─── RECONNECT / JOIN MODAL ───────────────── -->
 <div class="confirm-dialog-overlay" id="reconnect-overlay">
@@ -3128,8 +3158,12 @@ function updateJoinStatusBanner() {
   banner.classList.toggle('visible', !!pendingJoin);
   if (pendingJoin) {
     const seatText = onlineState.seat ? `Seat ${onlineState.seat} 選択済み` : '席が未選択です';
+    let estimateText = '進行状況により前後します';
+    if (timerSettings.duration > 0 && timeRemaining > 0) {
+      estimateText = `目安: 約${Math.ceil(timeRemaining)}秒`;
+    }
     titleEl.textContent = '参加待機中';
-    subEl.textContent = `次ハンド開始で参加します。${seatText}`;
+    subEl.textContent = `次ハンド開始で参加します。${seatText} / ${estimateText}`;
   }
 }
 
@@ -3153,6 +3187,9 @@ function showSeatSelectModal() {
       btn.disabled = true;
     } else {
       btn.textContent = `Seat ${i}`;
+      if (onlineState.seat === String(i)) {
+        btn.classList.add('active');
+      }
       btn.addEventListener('click', () => {
         onlineState.seat = String(i);
         onlineState.ready = true;
@@ -3160,6 +3197,7 @@ function showSeatSelectModal() {
         updateParticipantList();
         updateJoinStatusBanner();
         hideSeatSelectModal();
+        showToast(`Seat ${i} を選択しました。次ハンドから参加します`);
       });
     }
     grid.appendChild(btn);
@@ -3170,6 +3208,17 @@ function showSeatSelectModal() {
 function hideSeatSelectModal() {
   const overlay = document.getElementById('seat-select-overlay');
   if (overlay) overlay.classList.remove('visible');
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('visible');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => {
+    toast.classList.remove('visible');
+  }, 1800);
 }
 
 function showJoinCancelConfirm() {
@@ -3749,6 +3798,7 @@ function updateTimerDisplay() {
     ring.classList.add('warning');
     text.classList.add('warning');
   }
+  updateJoinStatusBanner();
 }
 
 function handleTimeOut() {
