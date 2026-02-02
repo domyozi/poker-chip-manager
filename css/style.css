@@ -1199,7 +1199,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   height: 56px;
   flex-shrink: 0;
   z-index: 2;
-  margin-right: -10px;
+  margin-right: -4px;
 }
 
 .player-active .avatar-wrap {
@@ -1325,7 +1325,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   height: 40px;
   flex-shrink: 0;
   z-index: 2;
-  margin-right: -8px;
+  margin-right: -3px;
 }
 
 .player-back .avatar-wrap {

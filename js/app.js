@@ -1450,16 +1450,14 @@ function renderPlayers() {
     }
   }
 
-  // Separate front player and opponents
+  // Build front player and opponents in CLOCKWISE order from front player's perspective
+  // This ensures visual consistency: player to front's LEFT is first opponent, etc.
+  const frontPlayer = { player: gameState.players[frontPlayerIdx], idx: frontPlayerIdx };
   const opponents = [];
-  let frontPlayer = null;
-  gameState.players.forEach((player, idx) => {
-    if (idx === frontPlayerIdx) {
-      frontPlayer = { player, idx };
-    } else {
-      opponents.push({ player, idx });
-    }
-  });
+  for (let i = 1; i < playerCount; i++) {
+    const idx = (frontPlayerIdx + i) % playerCount;
+    opponents.push({ player: gameState.players[idx], idx });
+  }
 
   // Render opponents in top area
   const opponentCount = opponents.length;
