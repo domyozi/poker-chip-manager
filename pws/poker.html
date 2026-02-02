@@ -545,6 +545,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: radial-gradient(ellipse 80% 70% at 50% 50%, var(--felt) 0%, var(--felt-edge) 100%);
   position: relative;
   min-height: 340px;
+  --community-offset: -40px;
+  --pot-offset: 38px;
 }
 
 /* Table felt oval */
@@ -669,7 +671,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* ─── Pot Center ─────────────────────────────── */
 .pot-center {
   position: absolute;
-  top: 50%; left: 50%;
+  top: calc(50% + var(--pot-offset)); left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   z-index: 3;
@@ -698,9 +700,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* ─── Community Cards ────────────────────────── */
 .community-cards {
   position: absolute;
-  top: calc(50% - 58px);
+  top: calc(50% + var(--community-offset));
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   display: flex;
   gap: 8px;
   z-index: 3;

@@ -770,13 +770,46 @@ summary.setup-label::-webkit-details-marker { display: none; }
   position: relative;
   z-index: 1;
 }
+#game-screen > .game-header {
+  z-index: 50;
+}
 
 /* Header */
 .game-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 16px;
   background: var(--felt-edge);
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  z-index: 50;
+}
+.game-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-actions {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.game-header-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.game-header-title {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+.game-header-version {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-left: 6px;
 }
 .header-phase {
   display: none;
@@ -784,7 +817,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .header-phase-dot {
   display: none;
 }
-.header-actions { display: flex; gap: 8px; position: relative; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
 .header-btn {
   padding: 6px 14px;
   border-radius: 20px;
@@ -795,20 +828,24 @@ summary.setup-label::-webkit-details-marker { display: none; }
   font-size: 11px; letter-spacing: 1px;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
+  pointer-events: auto;
+  position: relative;
+  z-index: 60;
 }
 .header-btn:hover { background: rgba(255,255,255,0.13); color: var(--text-primary); }
 .header-menu {
-  position: absolute;
-  top: 48px; right: 16px;
-  background: rgba(20,32,26,0.95);
-  border: 1px solid rgba(255,255,255,0.1);
+  position: fixed;
+  top: 52px; right: 12px;
+  background: rgba(20,32,26,0.98);
+  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 12px;
   padding: 6px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 6px;
-  z-index: 120;
+  z-index: 9999;
   min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
 }
 .header-menu-item {
   background: rgba(255,255,255,0.06);
@@ -1463,7 +1500,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-radius: 18px;
   padding: 28px 24px;
   text-align: center;
-  width: 90%; max-width: 300px;
+  width: 90%; max-width: 340px;
 }
 .next-hand-winners {
   display: flex;
@@ -1499,8 +1536,57 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .next-hand-gain {
   font-size: 12px;
   color: var(--gold);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
+.next-hand-chip-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
+.next-hand-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.next-hand-chip-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--felt-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.next-hand-chip-name {
+  flex: 1;
+  text-align: left;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.next-hand-chip-amount {
+  color: var(--text-secondary);
+  font-family: 'Source Code Pro', monospace;
+  min-width: 60px;
+  text-align: right;
+}
+.next-hand-chip-change {
+  min-width: 50px;
+  text-align: right;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+}
+.next-hand-chip-change.positive { color: #4ade80; }
+.next-hand-chip-change.negative { color: #f87171; }
+.next-hand-chip-change.neutral { color: var(--text-muted); }
 .next-hand-btn {
   width: 100%; padding: 12px;
   border-radius: 12px;
@@ -1991,21 +2077,17 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="next-level">次のレベルまで: <span>15:00</span></div>
   </div>
   <div class="game-header">
-    <div>
-      <span class="header-phase-dot"></span>
-      <span class="header-phase" id="phase-label">PREFLOP</span>
-      <div class="player-badge" id="player-badge">
+    <div class="game-header-brand">
+      <img src="img/logo.png" alt="Pocket Pot" class="game-header-logo">
+      <span class="game-header-title">Pocket Pot</span>
+      <span class="game-header-version">v0.6.0</span>
+    </div>
+    <div class="header-actions">
+      <div class="player-badge" id="player-badge" style="display:none;">
         <span class="tag" id="player-role-tag">PLAYER</span>
         <span id="player-name-tag">—</span>
       </div>
-    </div>
-    <div class="header-actions">
-      <button class="header-btn" id="menu-btn">⋯</button>
-      <div class="header-menu" id="header-menu" style="display:none;">
-        <button class="header-menu-item" id="menu-display-toggle">表記切替: CHIP</button>
-        <button class="header-menu-item" id="menu-history-btn">履歴を表示</button>
-        <button class="header-menu-item" id="menu-reset-btn">ゲーム終了して戻る</button>
-      </div>
+      <button class="header-btn" id="menu-btn" onclick="toggleMenu()">⋯</button>
     </div>
   </div>
 
@@ -2065,10 +2147,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="next-hand-winners" id="next-hand-winners"></div>
     <div class="next-hand-sub">の勝ち！</div>
     <div class="next-hand-gain" id="next-hand-gain"></div>
-    <div class="next-hand-buttons">
-      <button class="next-hand-btn secondary" onclick="showChipStatus()">チップ状況</button>
-      <button class="next-hand-btn" onclick="nextHand()">次のハンド</button>
-    </div>
+    <div class="next-hand-chip-status" id="next-hand-chip-status"></div>
+    <button class="next-hand-btn" id="next-hand-btn" onclick="nextHand()">次のハンド</button>
   </div>
 </div>
 
@@ -2679,6 +2759,21 @@ function updateHeaderMenuVisibility() {
   menuBtn.style.display = show ? 'inline-flex' : 'none';
 }
 
+function toggleMenu() {
+  console.log('toggleMenu called');
+  const menu = document.getElementById('header-menu');
+  if (!menu) { console.log('menu not found'); return; }
+  const isHidden = menu.style.display === 'none' || menu.style.display === '';
+  if (isHidden) {
+    menu.style.display = 'flex';
+    menu.style.opacity = '1';
+    menu.style.visibility = 'visible';
+  } else {
+    menu.style.display = 'none';
+  }
+  console.log('menu display:', menu.style.display, 'hidden was:', isHidden);
+}
+
 function updatePlayerBadge() {
   const nameEl = document.getElementById('player-name-tag');
   const roleEl = document.getElementById('player-role-tag');
@@ -3056,13 +3151,19 @@ async function joinRoom(role, code, isAuto = false) {
       setWinnerHighlight(winnerIds);
       animatePotToWinners(winnerIds);
       playWinChime();
+      // 勝者の実際の損益を計算
+      const winnerGains = winnerIds.map(id => {
+        const p = gameState.players.find(pl => pl.id === id);
+        const before = chipsBeforeHand[id] || p.chips;
+        return p.chips - before;
+      });
       let gainText = '';
       if (winnerIds.length === 1) {
-        gainText = `+${totalPot.toLocaleString()} チップ`;
+        const gain = winnerGains[0];
+        gainText = `${gain >= 0 ? '+' : ''}${gain.toLocaleString()} チップ`;
       } else {
-        gainText = rem > 0
-          ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
-          : `各 +${per.toLocaleString()} チップ`;
+        const totalGain = winnerGains.reduce((a, b) => a + b, 0);
+        gainText = `合計 ${totalGain >= 0 ? '+' : ''}${totalGain.toLocaleString()} チップ`;
       }
       setTimeout(() => showNextHand(winners, gainText), 220);
     })
@@ -3450,8 +3551,8 @@ function startGameWithPlayers(players, settings) {
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
   handHistory = [];
+  saveChipsBeforeHand();  // SB/BB払う前に記録
   gameState = startHand(gameState);
-  saveChipsBeforeHand();
 
   setUiState('playing');
 
@@ -3716,7 +3817,8 @@ function renderCommunityCards() {
 
 function renderPhase() {
   const phase = gameState ? gameState.phase : 'preflop';
-  document.getElementById('phase-label').textContent = phase.toUpperCase();
+  const phaseLabel = document.getElementById('phase-label');
+  if (phaseLabel) phaseLabel.textContent = phase.toUpperCase();
 
   const order = ['preflop','flop','turn','river'];
   const currentIdx = order.indexOf(phase);
@@ -4180,13 +4282,19 @@ function confirmWinner() {
   animatePotToWinners(winnerIds);
   playWinChime();
 
+  // 勝者の実際の損益を計算
+  const winnerGains = winnerIds.map(id => {
+    const p = gameState.players.find(pl => pl.id === id);
+    const before = chipsBeforeHand[id] || p.chips;
+    return p.chips - before;
+  });
   let gainText = '';
   if (selectedWinners.length === 1) {
-    gainText = `+${totalPot.toLocaleString()} チップ`;
+    const gain = winnerGains[0];
+    gainText = `${gain >= 0 ? '+' : ''}${gain.toLocaleString()} チップ`;
   } else {
-    gainText = rem > 0
-      ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
-      : `各 +${per.toLocaleString()} チップ`;
+    const totalGain = winnerGains.reduce((a, b) => a + b, 0);
+    gainText = `合計 ${totalGain >= 0 ? '+' : ''}${totalGain.toLocaleString()} チップ`;
   }
   setTimeout(() => showNextHand(winners, gainText), 220);
 
@@ -4211,10 +4319,30 @@ function showNextHand(winners, gainText = '') {
     </div>
   `).join('');
   document.getElementById('next-hand-gain').textContent = gainText;
+
+  // Render inline chip status
+  const chipStatusEl = document.getElementById('next-hand-chip-status');
+  if (gameState && gameState.players) {
+    chipStatusEl.innerHTML = gameState.players.map(p => {
+      const before = chipsBeforeHand[p.id] || p.chips;
+      const change = p.chips - before;
+      const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+      const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '±0';
+      return `
+        <div class="next-hand-chip-row">
+          <div class="next-hand-chip-avatar">${p.icon || p.name.charAt(0).toUpperCase()}</div>
+          <div class="next-hand-chip-name">${p.name}</div>
+          <div class="next-hand-chip-amount">${p.chips.toLocaleString()}</div>
+          <div class="next-hand-chip-change ${changeClass}">${changeText}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
-  const btn = document.querySelector('.next-hand-btn');
+  const btn = document.getElementById('next-hand-btn');
   if (btn) {
     if (onlineState.role !== 'player') {
       btn.disabled = false;
@@ -4367,8 +4495,8 @@ function showGameOver() {
 
 function advanceToNextHandAndBroadcast() {
   gameState = advanceDealer(gameState);
+  saveChipsBeforeHand();  // SB/BB払う前に記録
   gameState = startHand(gameState);
-  saveChipsBeforeHand();
 
   if (gameState.phase === 'finished') {
     showGameOver();
@@ -4827,5 +4955,12 @@ function showUpdateNotification() {
   document.body.appendChild(banner);
 }
 </script>
+
+<!-- Global Menu (outside screens for z-index) -->
+<div id="header-menu" style="display:none; position:fixed; top:60px; right:20px; background:rgba(26,51,40,0.98); border:3px solid #d4af37; border-radius:12px; padding:12px; z-index:999999; min-width:200px; flex-direction:column; gap:8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+  <button class="header-menu-item" id="menu-display-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">表記切替: CHIP</button>
+  <button class="header-menu-item" id="menu-history-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">履歴を表示</button>
+  <button class="header-menu-item" id="menu-reset-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">ゲーム終了して戻る</button>
+</div>
 </body>
 </html>
