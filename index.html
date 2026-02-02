@@ -2794,6 +2794,7 @@ let tournamentSettings = { enabled: false, levelDuration: 15 };
 let tournamentTimer = null;
 let tournamentTimeRemaining = 0;
 let currentBlindLevel = 1;
+const SOUND_STORAGE_KEY = 'pokerSoundEnabled';
 
 // Online sync (Supabase Realtime)
 const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
@@ -3011,6 +3012,7 @@ function setUiState(state) {
   updateHeaderMenuVisibility();
   updateJoinMenuVisibility();
   updateJoinStatusBanner();
+  updateSoundMenuLabel();
   updatePlayerBadge();
   if (state === 'playing' && onlineState.role !== 'local') {
     saveReconnectInfo({
@@ -3919,6 +3921,25 @@ function applySettings(settings) {
   tournamentSettings.enabled = settings.tournamentEnabled;
   tournamentSettings.levelDuration = settings.levelDuration;
   currentBlindLevel = 1;
+  updateSoundMenuLabel();
+}
+
+function updateSoundMenuLabel() {
+  const btn = document.getElementById('menu-sound-toggle');
+  if (!btn) return;
+  btn.textContent = `音量: ${timerSettings.soundEnabled ? 'ON' : 'OFF'}`;
+}
+
+function setSoundEnabled(enabled, persist = true) {
+  timerSettings.soundEnabled = !!enabled;
+  const toggle = document.getElementById('timer-sound-toggle');
+  if (toggle) toggle.checked = timerSettings.soundEnabled;
+  updateSoundMenuLabel();
+  if (persist) {
+    try {
+      localStorage.setItem(SOUND_STORAGE_KEY, timerSettings.soundEnabled ? '1' : '0');
+    } catch (e) {}
+  }
 }
 
 function getLocalPlayers() {
@@ -5246,11 +5267,19 @@ document.addEventListener('DOMContentLoaded', () => {
       nameInput.value = generateRandomName();
     }
   }
+  const storedSound = localStorage.getItem(SOUND_STORAGE_KEY);
+  if (storedSound === '0' || storedSound === '1') {
+    setSoundEnabled(storedSound === '1', false);
+  } else {
+    updateSoundMenuLabel();
+  }
   const startBtn = document.getElementById('start-btn');
   const menuBtn = document.getElementById('menu-btn');
   const menu = document.getElementById('header-menu');
   const menuResetBtn = document.getElementById('menu-reset-btn');
   const menuJoinBtn = document.getElementById('menu-join-btn');
+  const menuSoundBtn = document.getElementById('menu-sound-toggle');
+  const soundToggle = document.getElementById('timer-sound-toggle');
   const joinSeatBtn = document.getElementById('join-seat-btn');
   const joinCancelBtn = document.getElementById('join-cancel-btn');
   const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
@@ -5415,6 +5444,17 @@ document.addEventListener('DOMContentLoaded', () => {
         message: '次のハンドから参加します。チップを入力して参加しますか？',
         showWatch: false
       });
+    });
+  }
+  if (menuSoundBtn) {
+    menuSoundBtn.addEventListener('click', () => {
+      setSoundEnabled(!timerSettings.soundEnabled);
+      if (menu) menu.style.display = 'none';
+    });
+  }
+  if (soundToggle) {
+    soundToggle.addEventListener('change', () => {
+      setSoundEnabled(soundToggle.checked);
     });
   }
   if (joinSeatBtn) {
@@ -5625,6 +5665,7 @@ function showUpdateNotification() {
 <!-- Global Menu (outside screens for z-index) -->
 <div id="header-menu" style="display:none; position:fixed; top:60px; right:20px; background:rgba(26,51,40,0.98); border:3px solid #d4af37; border-radius:12px; padding:12px; z-index:999999; min-width:200px; flex-direction:column; gap:8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
   <button class="header-menu-item" id="menu-join-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer; display:none;">観戦から参加へ</button>
+  <button class="header-menu-item" id="menu-sound-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">音量: ON</button>
   <button class="header-menu-item" id="menu-display-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">表記切替: CHIP</button>
   <button class="header-menu-item" id="menu-history-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">履歴を表示</button>
   <button class="header-menu-item" id="menu-reset-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">ゲーム終了して戻る</button>

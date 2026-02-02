@@ -1502,6 +1502,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <button class="header-btn" id="menu-btn">⋯</button>
       <div class="header-menu" id="header-menu" style="display:none;">
         <button class="header-menu-item" id="menu-join-btn" style="display:none;">観戦から参加へ</button>
+        <button class="header-menu-item" id="menu-sound-toggle">音量: ON</button>
         <button class="header-menu-item" id="menu-reset-btn">終了して戻る</button>
       </div>
     </div>
@@ -1878,6 +1879,7 @@ let tournamentSettings = { enabled: false, levelDuration: 15 };
 let tournamentTimer = null;
 let tournamentTimeRemaining = 0;
 let currentBlindLevel = 1;
+const SOUND_STORAGE_KEY = 'pokerSoundEnabled';
 
 // Online sync (Supabase Realtime)
 const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
@@ -2005,6 +2007,7 @@ function setUiState(state) {
   updateHeaderMenuVisibility();
   updateJoinMenuVisibility();
   updateJoinStatusBanner();
+  updateSoundMenuLabel();
   updatePlayerBadge();
   if (state === 'playing' && onlineState.role !== 'local') {
     saveReconnectInfo({
@@ -2050,6 +2053,24 @@ function updatePresence(extra = {}) {
   };
   onlineState.joinedAt = payload.joinedAt;
   roomChannel.track(payload);
+}
+
+function updateSoundMenuLabel() {
+  const btn = document.getElementById('menu-sound-toggle');
+  if (!btn) return;
+  btn.textContent = `音量: ${timerSettings.soundEnabled ? 'ON' : 'OFF'}`;
+}
+
+function setSoundEnabled(enabled, persist = true) {
+  timerSettings.soundEnabled = !!enabled;
+  const toggle = document.getElementById('timer-sound-toggle');
+  if (toggle) toggle.checked = timerSettings.soundEnabled;
+  updateSoundMenuLabel();
+  if (persist) {
+    try {
+      localStorage.setItem(SOUND_STORAGE_KEY, timerSettings.soundEnabled ? '1' : '0');
+    } catch (e) {}
+  }
 }
 
 function scheduleReconnect() {
@@ -2889,6 +2910,7 @@ function applySettings(settings) {
   tournamentSettings.enabled = settings.tournamentEnabled;
   tournamentSettings.levelDuration = settings.levelDuration;
   currentBlindLevel = 1;
+  updateSoundMenuLabel();
 }
 
 function getLocalPlayerNames() {
@@ -3590,6 +3612,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const menu = document.getElementById('header-menu');
   const menuResetBtn = document.getElementById('menu-reset-btn');
   const menuJoinBtn = document.getElementById('menu-join-btn');
+  const menuSoundBtn = document.getElementById('menu-sound-toggle');
   const joinSeatBtn = document.getElementById('join-seat-btn');
   const joinCancelBtn = document.getElementById('join-cancel-btn');
   const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
@@ -3599,6 +3622,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const reconnectWatchBtn = document.getElementById('reconnect-watch-btn');
   const reconnectPlayBtn = document.getElementById('reconnect-play-btn');
   const reconnectCancelBtn = document.getElementById('reconnect-cancel-btn');
+  const soundToggle = document.getElementById('timer-sound-toggle');
   const foldCancelBtn = document.getElementById('fold-confirm-cancel');
   const foldOkBtn = document.getElementById('fold-confirm-ok');
   setupNumericInput(document.getElementById('sb-input'));
@@ -3612,6 +3636,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       nameInput.value = generateRandomName();
     }
+  }
+  const storedSound = localStorage.getItem(SOUND_STORAGE_KEY);
+  if (storedSound === '0' || storedSound === '1') {
+    setSoundEnabled(storedSound === '1', false);
+  } else {
+    updateSoundMenuLabel();
   }
 
   if (hostBtn) {
@@ -3731,6 +3761,17 @@ document.addEventListener('DOMContentLoaded', () => {
         message: '次のハンドから参加します。チップを入力して参加しますか？',
         showWatch: false
       });
+    });
+  }
+  if (menuSoundBtn) {
+    bindOnce(menuSoundBtn, 'click', () => {
+      setSoundEnabled(!timerSettings.soundEnabled);
+      if (menu) menu.style.display = 'none';
+    });
+  }
+  if (soundToggle) {
+    bindOnce(soundToggle, 'change', () => {
+      setSoundEnabled(soundToggle.checked);
     });
   }
   if (joinSeatBtn) {
