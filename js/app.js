@@ -1097,8 +1097,11 @@ function startGameWithPlayers(players, settings) {
     ...p,
     startingChips: perPlayerEnabled ? (stacksByIndex.get(i) || settings.initialChips) : settings.initialChips
   }));
-  if (onlineState.role === 'local' || (!roomChannel && onlineState.role !== 'player')) {
-    onlineState.displayName = playersWithStacks[0]?.name || onlineState.displayName;
+  if (!roomChannel && onlineState.role !== 'host') {
+    onlineState.role = 'local';
+    if (!onlineState.displayName) {
+      onlineState.displayName = playersWithStacks[0]?.name || onlineState.displayName;
+    }
   }
   gameState = initGame(playersWithStacks, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
@@ -1422,8 +1425,21 @@ function renderActionPanel() {
     return;
   }
 
-  const actorIdx = gameState.currentPlayerIndex;
-  const actor = gameState.players[actorIdx];
+  let actorIdx = gameState.currentPlayerIndex;
+  let actor = gameState.players[actorIdx];
+  if (!actor) {
+    const fallbackIdx = gameState.players.findIndex(p => p.status === 'active');
+    if (fallbackIdx >= 0) {
+      actorIdx = fallbackIdx;
+      gameState.currentPlayerIndex = fallbackIdx;
+      actor = gameState.players[actorIdx];
+    }
+  }
+  if (!actor) {
+    panel.classList.add('hidden');
+    if (actorLabel) actorLabel.innerHTML = '<strong>—</strong>のターン';
+    return;
+  }
   const turnKey = `${actor.id}:${gameState.currentMaxBet}:${gameState.phase}`;
   if (turnKey !== lastTurnKey) {
     lastTurnKey = turnKey;
@@ -2252,6 +2268,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setUiState('room');
   const versionEl = document.getElementById('app-version');
   if (versionEl) versionEl.textContent = APP_VERSION;
+  const headerVersionEl = document.querySelector('.game-header-version');
+  if (headerVersionEl) headerVersionEl.textContent = APP_VERSION;
   setupNumericInput(document.getElementById('sb-input'));
   setupNumericInput(document.getElementById('bb-input'));
   setupNumericInput(document.getElementById('initial-chips-input'));
