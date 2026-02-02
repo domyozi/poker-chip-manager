@@ -210,6 +210,8 @@ let onlineReady = false;
 let uiState = 'room'; // room | waiting | settings | playing
 let appMode = 'offline'; // offline | online
 let lastActionPanelLogKey = null;
+// Offline mode: display rotation - which player index appears at bottom (front)
+let offlineDisplayFrontIdx = 0;
 let debugBannerEl = null;
 
 const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
@@ -1312,6 +1314,10 @@ function startGameWithPlayers(players, settings) {
   handHistory = [];
   gameState = startHand(gameState);
   saveChipsBeforeHand();
+  // Initialize offline display rotation to first acting player
+  if (onlineState.role === 'local') {
+    offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+  }
 
   setUiState('playing');
   console.log('[startGameWithPlayers]', {
@@ -1418,25 +1424,38 @@ function renderPlayers() {
   if (!gameState || !gameState.players.length) return;
 
   const positionLabels = buildPositionLabels(gameState.players.length, gameState.dealerIndex);
+  const isOfflineMode = onlineState.role === 'local';
+  const playerCount = gameState.players.length;
 
-  // Find local player index (you)
-  let localPlayerIdx = -1;
-  gameState.players.forEach((player, idx) => {
-    if (isPlayerYou(player, idx)) {
-      localPlayerIdx = idx;
+  // Determine which player appears at front (bottom)
+  let frontPlayerIdx;
+  if (isOfflineMode) {
+    // Offline: use display rotation (current acting player at front)
+    frontPlayerIdx = offlineDisplayFrontIdx;
+    // Validate index
+    if (frontPlayerIdx < 0 || frontPlayerIdx >= playerCount) {
+      frontPlayerIdx = gameState.currentPlayerIndex;
     }
-  });
-  // Fallback: if no "you" found (offline mode), use last player as local
-  if (localPlayerIdx === -1) {
-    localPlayerIdx = gameState.players.length - 1;
+  } else {
+    // Online: find "you" player
+    frontPlayerIdx = -1;
+    gameState.players.forEach((player, idx) => {
+      if (isPlayerYou(player, idx)) {
+        frontPlayerIdx = idx;
+      }
+    });
+    // Fallback
+    if (frontPlayerIdx === -1) {
+      frontPlayerIdx = playerCount - 1;
+    }
   }
 
-  // Separate opponents and local player
+  // Separate front player and opponents
   const opponents = [];
-  let localPlayer = null;
+  let frontPlayer = null;
   gameState.players.forEach((player, idx) => {
-    if (idx === localPlayerIdx) {
-      localPlayer = { player, idx };
+    if (idx === frontPlayerIdx) {
+      frontPlayer = { player, idx };
     } else {
       opponents.push({ player, idx });
     }
@@ -1446,7 +1465,7 @@ function renderPlayers() {
   const opponentCount = opponents.length;
   opponents.forEach((item, opIdx) => {
     const { player, idx } = item;
-    const card = createPlayerCard(player, idx, positionLabels[idx], false);
+    const card = createPlayerCard(player, idx, positionLabels[idx], false, isOfflineMode);
     opponentsArea.appendChild(card);
 
     // Render opponent bet on table
@@ -1456,13 +1475,13 @@ function renderPlayers() {
     }
   });
 
-  // Render local player in bottom area
-  if (localPlayer) {
-    const { player, idx } = localPlayer;
-    const card = createPlayerCard(player, idx, positionLabels[idx], true);
+  // Render front player in bottom area
+  if (frontPlayer) {
+    const { player, idx } = frontPlayer;
+    const card = createPlayerCard(player, idx, positionLabels[idx], true, isOfflineMode);
     localPlayerArea.appendChild(card);
 
-    // Render local player bet on table
+    // Render front player bet on table
     if (player.currentBet > 0 && betsContainer) {
       renderTableBet(betsContainer, player, positionLabels[idx], 'bet-bottom');
     }
@@ -1470,7 +1489,7 @@ function renderPlayers() {
 }
 
 // Create a player card element (pill style with avatar overlap)
-function createPlayerCard(player, idx, posLabel, isLocalPlayer) {
+function createPlayerCard(player, idx, posLabel, isFrontPlayer, isOfflineMode = false) {
   const isActor = idx === gameState.currentPlayerIndex && gameState.isHandActive && player.status === "active";
   const isDealer = idx === gameState.dealerIndex;
   const isFolded = player.status === "folded";
@@ -1482,12 +1501,13 @@ function createPlayerCard(player, idx, posLabel, isLocalPlayer) {
   if (isFolded) classes += ' folded';
   if (isAllIn) classes += ' allin';
   if (isWinner) classes += ' is-winner';
-  if (isLocalPlayer) classes += ' is-local';
+  if (isFrontPlayer) classes += ' is-front';
 
   const characterId = normalizeCharacterId(player.characterId || '', idx);
-  const isYou = isPlayerYou(player, idx);
+  // In offline mode, don't show "YOU" indicator - show "TURN" instead for active player
+  const showYouIndicator = !isOfflineMode && isPlayerYou(player, idx);
   const avatarMarkup = renderAvatarMarkup(characterId, {
-    isYou,
+    isYou: showYouIndicator,
     isDealer,
     isTurn: isActor,
     isWinner,
@@ -1510,13 +1530,19 @@ function createPlayerCard(player, idx, posLabel, isLocalPlayer) {
   // Position badge (BTN/SB/BB) - shown on pill
   const positionBadgeHtml = posLabel ? `<span class="position-badge">${posLabel}</span>` : '';
 
+  // Turn badge for offline mode - show on front player when it's their turn
+  const turnBadgeHtml = (isOfflineMode && isFrontPlayer && isActor)
+    ? '<span class="turn-badge">TURN</span>'
+    : '';
+
   const card = document.createElement('div');
   card.className = classes;
   card.dataset.playerId = player.id;
 
-  // New pill structure: avatar overlaps from left, name/chips to the right
+  // Pill structure: avatar overlaps from left, name/chips to the right
   card.innerHTML = `
     <div class="allin-badge">ALL IN</div>
+    ${turnBadgeHtml}
     <div class="info-line">
       <div class="avatar">
         ${timerRingHtml}
@@ -2150,6 +2176,11 @@ function doAction(type, amount = 0) {
   // Hide raise area after action
   document.getElementById('raise-area').classList.remove('visible');
 
+  // Offline mode: rotate display so next acting player is at bottom
+  if (onlineState.role === 'local' && gameState.isHandActive) {
+    offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+  }
+
   render();
 
   if (gameState.isHandActive) {
@@ -2599,6 +2630,10 @@ function advanceToNextHandAndBroadcast() {
   gameState = advanceDealer(gameState);
   gameState = startHand(gameState);
   saveChipsBeforeHand();
+  // Initialize offline display rotation to first acting player
+  if (onlineState.role === 'local') {
+    offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+  }
 
   if (gameState.phase === 'finished') {
     showGameOver();

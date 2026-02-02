@@ -1048,15 +1048,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
    ═══════════════════════════════════════════════════════════════ */
 :root {
   /* Bet chip sizing */
-  --bet-size: clamp(26px, 4.5vw, 34px);
-  --bet-inset: clamp(14px, 2.2vw, 26px);
-  /* Player pill sizing */
-  --pill-h: clamp(38px, 6vw, 50px);
-  --pill-avatar: clamp(42px, 6.5vw, 54px);
-  --pill-overlap: clamp(8px, 1.5vw, 14px);
-  --avatar-left: clamp(-4px, -0.5vw, -2px);
-  --text-left-pad: calc(var(--pill-avatar) + var(--avatar-left) + 10px);
-  --pill-min-w: clamp(140px, 36vw, 200px);
+  --bet-size: clamp(28px, 5vw, 36px);
+  --bet-inset: clamp(16px, 3vw, 28px);
+  /* Player pill sizing - stable px-based values */
+  --pill-h: 44px;
+  --pill-avatar: 48px;
+  --avatar-left: -6px;
+  --text-left-pad: calc(var(--pill-avatar) + var(--avatar-left) + 12px);
+  --pill-min-w: 160px;
+  --pill-max-w: 240px;
 }
 
 .table-bets {
@@ -1168,13 +1168,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   height: var(--pill-h);
   /* Left padding clears avatar completely */
   padding-left: var(--text-left-pad);
-  padding-right: clamp(12px, 2vw, 16px);
+  padding-right: 14px;
   border-radius: calc(var(--pill-h) / 2);
-  background: rgba(12,20,16,0.88);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(12,20,16,0.9);
+  border: 1px solid rgba(255,255,255,0.15);
   box-shadow: 0 4px 16px rgba(0,0,0,0.5);
   min-width: var(--pill-min-w);
-  max-width: clamp(180px, 45vw, 260px);
+  max-width: var(--pill-max-w);
 }
 
 /* Avatar overlapping the pill from the left */
@@ -1266,15 +1266,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(6px, 1.5vw, 12px);
+  gap: 8px;
   width: 100%;
   min-width: 0;
 }
 
-/* Name - left side, can ellipsis */
+/* Name - left side, can ellipsis if too long */
 .player-card .name {
   font-family: 'Playfair Display', serif;
-  font-size: clamp(11px, 1.8vw, 14px);
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -1285,15 +1285,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   line-height: 1.2;
 }
 
-/* Chips/stack display - right side, never clip */
+/* Chips/stack display - right side, NEVER clip */
 .player-card .chips {
-  font-size: clamp(12px, 2vw, 15px);
+  font-size: 14px;
   font-weight: 700;
   color: var(--gold);
   letter-spacing: 0.3px;
   white-space: nowrap;
   flex: 0 0 auto;
-  margin-left: clamp(6px, 1vw, 10px);
+  margin-left: 8px;
 }
 
 /* Seat badge - hidden in new pill design */
@@ -1303,9 +1303,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* Position badge (BTN/SB/BB) - inline in pill */
 .player-card .position-badge {
-  font-size: clamp(7px, 1.1vw, 9px);
+  font-size: clamp(8px, 1.3vw, 10px);
   font-weight: 700;
-  padding: 3px 5px;
+  padding: 4px 6px;
   border-radius: 4px;
   background: rgba(212,175,55,0.25);
   border: 1px solid rgba(212,175,55,0.5);
@@ -1313,6 +1313,34 @@ summary.setup-label::-webkit-details-marker { display: none; }
   text-transform: uppercase;
   flex-shrink: 0;
   line-height: 1;
+}
+
+/* TURN badge - shown in offline mode for active front player */
+.turn-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--gold), #c9a227);
+  color: #1a1408;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(212,175,55,0.5);
+  z-index: 10;
+  animation: turnPulse 1.5s ease-in-out infinite;
+}
+@keyframes turnPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(212,175,55,0.5); }
+  50% { box-shadow: 0 2px 16px rgba(212,175,55,0.8), 0 0 20px rgba(212,175,55,0.4); }
+}
+
+/* Front player styling (bottom position in offline mode) */
+.player-card.is-front {
+  /* Slightly larger for emphasis */
 }
 
 /* Dealer badge */
@@ -2610,18 +2638,19 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* Small mobile (~360px Android) */
 @media (max-width: 400px) {
   :root {
-    --pill-h: 36px;
-    --pill-avatar: 40px;
-    --pill-overlap: 6px;
-    --avatar-left: -2px;
-    --text-left-pad: calc(var(--pill-avatar) + var(--avatar-left) + 8px);
-    --pill-min-w: 130px;
-    --bet-size: 24px;
-    --bet-inset: 12px;
+    --pill-h: 40px;
+    --pill-avatar: 44px;
+    --avatar-left: -4px;
+    --text-left-pad: calc(var(--pill-avatar) + var(--avatar-left) + 10px);
+    --pill-min-w: 140px;
+    --pill-max-w: 200px;
+    --bet-size: 26px;
+    --bet-inset: 14px;
   }
   .brand-title { font-size: 28px; letter-spacing: 2px; }
   .brand-logo { width: 40px; height: 40px; }
-  .player-card .info-line { max-width: 160px; padding-right: 10px; }
+  .player-card .name { font-size: 12px; }
+  .player-card .chips { font-size: 13px; }
   .pot-amount { font-size: 22px; }
   .action-btns { gap: 6px; }
   .action-btn { max-width: 85px; padding: 10px 6px; font-size: 11px; }
@@ -2639,19 +2668,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* スマホ横向き */
 @media (max-height: 500px) and (orientation: landscape) {
   :root {
-    --pill-h: 34px;
-    --pill-avatar: 38px;
-    --pill-overlap: 6px;
-    --avatar-left: -2px;
+    --pill-h: 36px;
+    --pill-avatar: 40px;
+    --avatar-left: -3px;
     --text-left-pad: calc(var(--pill-avatar) + var(--avatar-left) + 8px);
-    --pill-min-w: 120px;
-    --bet-size: 22px;
-    --bet-inset: 10px;
+    --pill-min-w: 130px;
+    --pill-max-w: 180px;
+    --bet-size: 24px;
+    --bet-inset: 12px;
   }
   .opponents-area { min-height: 50px; padding: 6px 10px 4px; gap: 10px; }
   .local-player-area { min-height: 50px; padding: 4px 10px 6px; }
   .table-area { min-height: 140px; }
-  .player-card .info-line { max-width: 150px; }
+  .player-card .name { font-size: 11px; }
+  .player-card .chips { font-size: 12px; }
   .pot-center { transform: translate(-50%, -50%) scale(0.8); }
   .action-panel { padding: 8px 12px; }
   .action-btn { padding: 8px 6px; font-size: 12px; }
