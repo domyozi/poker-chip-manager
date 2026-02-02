@@ -1218,6 +1218,67 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin-bottom: 16px;
 }
 .action-actor-label strong { color: var(--gold); font-family: 'Playfair Display', serif; font-size: 16px; }
+.action-aux {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -4px 0 14px;
+}
+.aux-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+.aux-toggle input { display: none; }
+.aux-toggle-track {
+  width: 36px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  position: relative;
+  transition: background 0.2s ease;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+}
+.aux-toggle-track::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+}
+.aux-toggle input:checked + .aux-toggle-track {
+  background: rgba(214,64,69,0.5);
+  box-shadow: inset 0 0 0 1px rgba(214,64,69,0.6);
+}
+.aux-toggle input:checked + .aux-toggle-track::after { transform: translateX(18px); }
+.aux-exit-btn {
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  transition: 0.2s ease;
+}
+.aux-exit-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.4);
+}
+.aux-exit-btn.pending {
+  border-color: rgba(214,64,69,0.7);
+  color: #f0b0b0;
+  background: rgba(214,64,69,0.12);
+}
 
 /* Action buttons row */
 .action-btns { display: flex; gap: 12px; justify-content: center; margin-bottom: 14px; }
@@ -2333,6 +2394,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <strong>—</strong>のターン
     </div>
     <div class="action-lock-message" id="action-lock-message" style="display:none;">あなたの番になるまでお待ちください</div>
+    <div class="action-aux" id="action-aux">
+      <label class="aux-toggle">
+        <input type="checkbox" id="away-toggle">
+        <span class="aux-toggle-track"></span>
+        <span class="aux-toggle-text">離席中</span>
+      </label>
+      <button class="aux-exit-btn" id="exit-next-hand-btn">次ハンドで退出</button>
+    </div>
     <div class="action-btns" id="action-btns"></div>
     <div class="raise-area" id="raise-area">
       <div class="raise-presets" id="raise-presets"></div>
@@ -2898,7 +2967,9 @@ let onlineState = {
   ready: false,
   joinMode: "play", // play | watch
   requestedChips: 1000,
-  joinConfirmed: false
+  joinConfirmed: false,
+  away: false,
+  pendingExit: false
 };
 let onlineReady = false;
 let uiState = 'room'; // room | waiting | settings | playing
@@ -3019,6 +3090,8 @@ function updatePresence(extra = {}) {
     joinMode: onlineState.joinMode || "play",
     requestedChips: onlineState.requestedChips || 1000,
     joinConfirmed: !!onlineState.joinConfirmed,
+    away: !!onlineState.away,
+    pendingExit: !!onlineState.pendingExit,
     ...extra
   };
   onlineState.joinedAt = payload.joinedAt;
@@ -3098,6 +3171,7 @@ function setUiState(state) {
   updateSoundMenuLabel();
   updateJoinStatusMenuLabel();
   updatePlayerBadge();
+  updateAwayControls();
   if (state === 'playing' && onlineState.role !== 'local') {
     saveReconnectInfo({
       roomCode: onlineState.roomCode,
@@ -3195,11 +3269,14 @@ function applyJoinMode(mode, requestedChips) {
   } else {
     onlineState.ready = false;
     onlineState.seat = '';
+    onlineState.away = false;
+    onlineState.pendingExit = false;
   }
   joinChoiceConfirmed = true;
   onlineState.joinConfirmed = true;
   updateJoinMenuVisibility();
   updateJoinStatusBanner();
+  updateAwayControls();
   saveReconnectInfo({
     roomCode: onlineState.roomCode,
     role: onlineState.role,
@@ -3378,6 +3455,27 @@ function getPresenceList() {
   });
 }
 
+function isPlayerAway(name) {
+  if (!name) return false;
+  const list = getPresenceList();
+  const player = list.find(p => p.name === name && p.role === 'player');
+  return !!(player && player.away);
+}
+
+function updateAwayControls() {
+  const aux = document.getElementById('action-aux');
+  const toggle = document.getElementById('away-toggle');
+  const exitBtn = document.getElementById('exit-next-hand-btn');
+  if (!aux || !toggle || !exitBtn) return;
+  const hasHand = !!(gameState && gameState.isHandActive);
+  const show = hasHand && uiState === 'playing' && onlineState.role === 'player' && onlineState.joinMode === 'play';
+  aux.style.display = show ? 'flex' : 'none';
+  if (!show) return;
+  toggle.checked = !!onlineState.away;
+  exitBtn.classList.toggle('pending', !!onlineState.pendingExit);
+  exitBtn.textContent = onlineState.pendingExit ? '退出予約中' : '次ハンドで退出';
+}
+
 function renderSeatRing(list) {
   const ring = document.getElementById('seat-ring');
   if (!ring) return;
@@ -3550,7 +3648,9 @@ async function leaveRoom(options = {}) {
     joinedAt: 0,
     joinMode: "play",
     requestedChips: 1000,
-    joinConfirmed: false
+    joinConfirmed: false,
+    away: false,
+    pendingExit: false
   };
   joinChoiceConfirmed = false;
   gameState = null;
@@ -3612,7 +3712,9 @@ async function joinRoom(role, code, isAuto = false) {
     joinedAt: onlineState.joinedAt,
     joinMode: role === 'host' ? 'play' : (onlineState.joinMode || 'play'),
     requestedChips: onlineState.requestedChips || 1000,
-    joinConfirmed: role === 'host'
+    joinConfirmed: role === 'host',
+    away: false,
+    pendingExit: false
   };
   joinChoiceConfirmed = onlineState.joinConfirmed;
   setRoomStatus(`接続中: ${roomCode}`);
@@ -3672,6 +3774,27 @@ async function joinRoom(role, code, isAuto = false) {
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
       localPendingActionKey = null;
+      if (onlineState.role === 'player' && onlineState.joinMode === 'play' && onlineState.displayName) {
+        const stillSeated = gameState.players.some(p => p.name === onlineState.displayName);
+        if (!stillSeated) {
+          onlineState.joinMode = 'watch';
+          onlineState.ready = false;
+          onlineState.seat = '';
+          onlineState.pendingExit = false;
+          onlineState.away = false;
+          updatePresence({
+            joinMode: onlineState.joinMode,
+            ready: onlineState.ready,
+            seat: onlineState.seat,
+            pendingExit: onlineState.pendingExit,
+            away: onlineState.away
+          });
+          updateJoinMenuVisibility();
+          updateJoinStatusBanner();
+          updateAwayControls();
+          showToast('次のハンドから退出しました（観戦中）', 'info');
+        }
+      }
       if (gameState?.isHandActive && onlineState.role === 'player' && !joinChoiceConfirmed) {
         showReconnectModal({
           context: 'ongoing',
@@ -4490,6 +4613,7 @@ function renderActionPanel() {
   const lockMessage = document.getElementById('action-lock-message');
   const actorLabel = document.getElementById('actor-label');
   btnsEl.innerHTML = '';
+  updateAwayControls();
 
   if (!gameState || !gameState.isHandActive) {
     panel.classList.add('hidden');
@@ -4502,6 +4626,7 @@ function renderActionPanel() {
   if (turnKey !== lastTurnKey) {
     lastTurnKey = turnKey;
     lastActionId = null;
+    autoFoldTurnKey = null;
   }
   const isMyTurn = onlineState.joinMode !== 'watch' &&
     (onlineState.role === 'local' || actor.name === onlineState.displayName);
@@ -4514,6 +4639,13 @@ function renderActionPanel() {
     if (actorLabel) actorLabel.innerHTML = '次のフェーズを待っています...';
     if (lockMessage) lockMessage.style.display = 'none';
     return;
+  }
+
+  if (onlineState.role === 'host' && isPlayerAway(actor.name)) {
+    if (autoFoldTurnKey !== turnKey) {
+      autoFoldTurnKey = turnKey;
+      setTimeout(() => { doAction('fold'); }, 100);
+    }
   }
 
   panel.classList.remove('hidden');
@@ -4591,6 +4723,7 @@ let actionLock = false;
 let lastActionId = null;
 let lastTurnKey = null;
 let localPendingActionKey = null;
+let autoFoldTurnKey = null;
 function setupRaiseSlider(min, max) {
   raiseMin = min;
   raiseMax = max;
@@ -5186,8 +5319,29 @@ function showGameOver() {
   }
 }
 
+function removePendingExits(state) {
+  if (!state || !state.players) return state;
+  const pending = new Set(
+    getPresenceList()
+      .filter(p => p.role === 'player' && p.pendingExit && p.name)
+      .map(p => p.name)
+  );
+  if (pending.size === 0) return state;
+  const remaining = state.players.filter(p => !pending.has(p.name));
+  if (remaining.length === state.players.length) return state;
+  state.players = remaining;
+  if (state.dealerIndex >= remaining.length) {
+    state.dealerIndex = Math.max(0, remaining.length - 1);
+  }
+  if (state.currentPlayerIndex >= remaining.length) {
+    state.currentPlayerIndex = Math.max(0, remaining.length - 1);
+  }
+  return state;
+}
+
 function advanceToNextHandAndBroadcast() {
   if (onlineState.role === 'host') {
+    gameState = removePendingExits(gameState);
     gameState = addLateJoiners(gameState);
   }
   gameState = advanceDealer(gameState);
@@ -5463,6 +5617,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuJoinBtn = document.getElementById('menu-join-btn');
   const menuSoundBtn = document.getElementById('menu-sound-toggle');
   const soundToggle = document.getElementById('timer-sound-toggle');
+  const awayToggle = document.getElementById('away-toggle');
+  const exitNextHandBtn = document.getElementById('exit-next-hand-btn');
   const historyFilterHand = document.getElementById('history-filter-hand');
   const historyFilterWinner = document.getElementById('history-filter-winner');
   const historyFilterMinPot = document.getElementById('history-filter-minpot');
@@ -5475,10 +5631,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const reconnectWatchBtn = document.getElementById('reconnect-watch-btn');
   const reconnectPlayBtn = document.getElementById('reconnect-play-btn');
   const reconnectCancelBtn = document.getElementById('reconnect-cancel-btn');
-  const historyFilterHand = document.getElementById('history-filter-hand');
-  const historyFilterWinner = document.getElementById('history-filter-winner');
-  const historyFilterMinPot = document.getElementById('history-filter-minpot');
-  const historyFilterClear = document.getElementById('history-filter-clear');
+  if (awayToggle) {
+    bindOnce(awayToggle, 'change', () => {
+      if (onlineState.role !== 'player') return;
+      onlineState.away = awayToggle.checked;
+      updatePresence({ away: onlineState.away });
+      updateAwayControls();
+      showToast(onlineState.away ? '離席中：自動フォールド' : '離席解除', 'info');
+    });
+  }
+  if (exitNextHandBtn) {
+    bindOnce(exitNextHandBtn, 'click', () => {
+      if (onlineState.role !== 'player') return;
+      onlineState.pendingExit = !onlineState.pendingExit;
+      updatePresence({ pendingExit: onlineState.pendingExit });
+      updateAwayControls();
+      showToast(onlineState.pendingExit ? '次ハンドで退出を予約しました' : '退出予約をキャンセルしました', 'info');
+    });
+  }
   if (hostBtn) {
     hostBtn.addEventListener('click', async () => {
       onlineState.displayName = nameInput ? nameInput.value.trim() : '';
