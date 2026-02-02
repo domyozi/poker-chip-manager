@@ -7,7 +7,25 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.0";
+const APP_VERSION = "v0.8.1";
+const ENABLE_SEAT_PRESETS = true;
+const SEAT_PRESETS = {
+  2: [
+    { x: 0.50, y: 0.18 },
+    { x: 0.50, y: 0.82 }
+  ],
+  3: [
+    { x: 0.50, y: 0.18 },
+    { x: 0.20, y: 0.70 },
+    { x: 0.80, y: 0.70 }
+  ],
+  4: [
+    { x: 0.50, y: 0.18 },
+    { x: 0.18, y: 0.50 },
+    { x: 0.50, y: 0.82 },
+    { x: 0.82, y: 0.50 }
+  ]
+};
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
 let actionCounter = 0;
 
@@ -102,6 +120,49 @@ function setTextWithBump(el, text) {
   void el.offsetWidth;
   el.classList.add('value-bump');
 }
+const $ = (id) => document.getElementById(id);
+const missingDomOnce = new Set();
+function isDebugEnabled() {
+  try {
+    return window.DEBUG_MODE === true || localStorage.getItem('debug') === '1';
+  } catch (e) {
+    return window.DEBUG_MODE === true;
+  }
+}
+function warnMissing(id) {
+  if (!isDebugEnabled()) return;
+  const key = `${id}:${uiState}:${appMode}`;
+  if (missingDomOnce.has(key)) return;
+  missingDomOnce.add(key);
+  console.warn('[missing-dom]', id, { uiState, appMode });
+}
+function setText(id, value) {
+  const el = $(id);
+  if (!el) {
+    warnMissing(id);
+    return false;
+  }
+  el.textContent = String(value);
+  return true;
+}
+function setHTML(id, html) {
+  const el = $(id);
+  if (!el) {
+    warnMissing(id);
+    return false;
+  }
+  el.innerHTML = html;
+  return true;
+}
+function setTextWithBumpId(id, value) {
+  const el = $(id);
+  if (!el) {
+    warnMissing(id);
+    return false;
+  }
+  setTextWithBump(el, String(value));
+  return true;
+}
 function triggerPhasePulse() {
   const table = document.querySelector('.table-area');
   if (!table) return;
@@ -156,11 +217,16 @@ let onlineState = {
   roomCode: "",
   connected: false,
   displayName: "",
+  characterId: "",
+  localPlayerId: "",
   seat: "",
   ready: false
 };
 let onlineReady = false;
 let uiState = 'room'; // room | waiting | settings | playing
+let appMode = 'offline'; // offline | online
+let lastActionPanelLogKey = null;
+let debugBannerEl = null;
 
 const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
 const boundEvents = new WeakMap();
@@ -174,6 +240,22 @@ function bindOnce(el, type, handler, options) {
   if (map[type]) return;
   map[type] = true;
   el.addEventListener(type, handler, options);
+}
+
+let seatLayoutTimer = null;
+let seatLayoutScheduled = false;
+let seatPresetWarned = false;
+function scheduleSeatLayoutRefresh() {
+  if (seatLayoutScheduled) return;
+  seatLayoutScheduled = true;
+  if (seatLayoutTimer) clearTimeout(seatLayoutTimer);
+  seatLayoutTimer = setTimeout(() => {
+    seatLayoutTimer = null;
+    requestAnimationFrame(() => {
+      seatLayoutScheduled = false;
+      if (uiState === 'playing') renderPlayers();
+    });
+  }, 150);
 }
 
 function debounce(fn, wait = 120) {
@@ -199,6 +281,22 @@ function setupNumericInput(el) {
 
 // getPotTotal is defined in game-logic.js
 
+function showBootError(err) {
+  console.error('[boot-error]', err);
+  if (document.getElementById('boot-error-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'boot-error-banner';
+  banner.textContent = '初期化に失敗しました。ページを再読み込みしてください。';
+  banner.style.cssText = `
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(180, 30, 30, 0.9); color: #fff; padding: 10px 14px;
+    border-radius: 8px; font-size: 12px; z-index: 9999;
+    font-family: inherit; letter-spacing: 0.2px;
+  `;
+  document.body.appendChild(banner);
+  setRoomStatus('初期化に失敗しました。再読み込みしてください');
+}
+
 const debugEnabled = new URLSearchParams(window.location.search).get('debug') === '1';
 let debugPanel = null;
 let debugLogEl = null;
@@ -219,6 +317,32 @@ function initDebugPanel() {
   bindOnce(header, 'click', () => {
     debugPanel.classList.toggle('collapsed');
   });
+}
+
+function isDebugBannerEnabled() {
+  return window.DEBUG_MODE === true || localStorage.getItem('debug') === '1';
+}
+
+function ensureDebugBanner() {
+  if (!isDebugBannerEnabled()) {
+    if (debugBannerEl) {
+      debugBannerEl.remove();
+      debugBannerEl = null;
+    }
+    return;
+  }
+  if (!debugBannerEl) {
+    debugBannerEl = document.createElement('div');
+    debugBannerEl.className = 'debug-banner';
+    document.body.appendChild(debugBannerEl);
+  }
+  updateDebugBanner();
+}
+
+function updateDebugBanner() {
+  if (!debugBannerEl) return;
+  const channel = roomChannel ? 'on' : 'off';
+  debugBannerEl.textContent = `mode: ${appMode} | role: ${onlineState.role} | channel: ${channel}`;
 }
 function debugLog(msg) {
   if (!debugEnabled) return;
@@ -243,6 +367,7 @@ function updatePresence(extra = {}) {
     joinedAt: onlineState.joinedAt || Date.now(),
     seat: onlineState.seat || "",
     ready: !!onlineState.ready,
+    characterId: onlineState.characterId || "",
     ...extra
   };
   onlineState.joinedAt = payload.joinedAt;
@@ -261,14 +386,25 @@ function scheduleReconnect() {
 }
 
 function setUiState(state) {
-  uiState = state;
+  const requestedState = state;
   const screenMap = {
     room: 'room-screen',
     waiting: 'waiting-screen',
     settings: 'settings-screen',
     playing: 'game-screen'
   };
-  const activeScreenId = screenMap[state];
+  let resolvedState = screenMap[state] ? state : 'room';
+  let activeScreenId = screenMap[resolvedState];
+  let activeScreenEl = activeScreenId ? document.getElementById(activeScreenId) : null;
+  if (!activeScreenEl) {
+    const fallback = Object.entries(screenMap).find(([, id]) => document.getElementById(id));
+    if (fallback) {
+      resolvedState = fallback[0];
+      activeScreenId = fallback[1];
+      activeScreenEl = document.getElementById(activeScreenId);
+    }
+  }
+  uiState = resolvedState;
   const activeEl = document.activeElement;
   if (activeEl && typeof activeEl.blur === 'function') {
     activeEl.blur();
@@ -277,11 +413,29 @@ function setUiState(state) {
   screens.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.toggle('hidden', id !== activeScreenId);
+    const isActive = id === activeScreenId;
+    el.classList.toggle('hidden', !isActive);
+    el.classList.toggle('is-active', isActive);
+    el.style.display = isActive ? 'flex' : 'none';
+    el.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    if ('inert' in el) {
+      el.inert = !isActive;
+    } else if (!isActive) {
+      el.setAttribute('inert', '');
+    } else {
+      el.removeAttribute('inert');
+    }
   });
-  const activeScreen = document.getElementById(activeScreenId);
-  if (activeScreen) {
-    activeScreen.scrollTop = 0;
+  const activeScreen = activeScreenEl || document.getElementById(activeScreenId);
+  if (activeScreen) activeScreen.scrollTop = 0;
+  if (isDebugEnabled()) {
+    const activeCount = document.querySelectorAll('.screen.is-active').length;
+    console.log('[ui-state]', {
+      requested: requestedState,
+      resolved: uiState,
+      activeScreenId: activeScreen ? activeScreen.id : null,
+      activeCount
+    });
   }
   window.scrollTo(0, 0);
   if (state !== 'playing') {
@@ -297,6 +451,7 @@ function setUiState(state) {
   }
   updateHeaderMenuVisibility();
   updatePlayerBadge();
+  updateDebugBanner();
 }
 
 function updateHeaderMenuVisibility() {
@@ -317,6 +472,7 @@ function updatePlayerBadge() {
   roleEl.textContent = role;
   roleEl.classList.toggle('host', onlineState.role === 'host');
   roleEl.classList.toggle('player', onlineState.role !== 'host');
+  updateDebugBanner();
 }
 
 function setRoomStatus(text) {
@@ -379,9 +535,12 @@ function getPresenceList() {
 }
 
 function renderSeatRing(list) {
-  const ring = document.getElementById('seat-ring');
-  if (!ring) return;
-  ring.innerHTML = '<div class="seat-center">TABLE</div>';
+  const ring = $('seat-ring');
+  if (!ring) {
+    warnMissing('seat-ring');
+    return;
+  }
+  setHTML('seat-ring', '<div class="seat-center">TABLE</div>');
   const seats = 8;
   const cx = 50;
   const cy = 50;
@@ -403,7 +562,13 @@ function renderSeatRing(list) {
     const occupant = used.get(String(i));
     if (occupant) {
       seat.classList.add('taken');
-      seat.innerHTML = `<div>${occupant.name || 'Guest'}</div><div class="seat-label">Seat ${i}</div>`;
+      const isSelf = isPresenceYou(occupant, i - 1);
+      const characterId = normalizeCharacterId(occupant.characterId || '', i - 1);
+      seat.innerHTML = `
+        ${renderAvatarMarkup(characterId, { isYou: isSelf, sizeClass: 'avatar--xs', hideYou: true })}
+        <div>${occupant.name || 'Guest'}</div>
+        <div class="seat-label">Seat ${i}</div>
+      `;
       if (occupant.name === onlineState.displayName) {
         seat.classList.remove('taken');
         seat.classList.add('active');
@@ -431,14 +596,18 @@ function updateParticipantList() {
   if (roomCodeDisplay) roomCodeDisplay.textContent = onlineState.roomCode || '—';
   if (el) {
     el.innerHTML = '';
-    list.forEach(p => {
+    list.forEach((p, index) => {
       const item = document.createElement('div');
-      const isSelf = p.name === onlineState.displayName;
+      const isSelf = isPresenceYou(p, index);
+      const characterId = normalizeCharacterId(p.characterId || '', index);
       item.className = 'participant-item' + (isSelf ? ' self' : '');
       item.innerHTML = `
-        <div>
-          <div class="participant-name">${p.name || 'Guest'}${isSelf ? ' (あなた)' : ''} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
-          <div class="participant-meta">${p.online ? 'ONLINE' : 'OFFLINE'}</div>
+        <div class="participant-left">
+          ${renderAvatarMarkup(characterId, { isYou: isSelf, sizeClass: 'avatar--sm', hideYou: false })}
+          <div>
+            <div class="participant-name">${p.name || 'Guest'}${isSelf ? ' (あなた)' : ''} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
+            <div class="participant-meta">${p.online ? 'ONLINE' : 'OFFLINE'}</div>
+          </div>
         </div>
         <div>
           <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
@@ -450,11 +619,16 @@ function updateParticipantList() {
   }
   if (summaryEl) {
     summaryEl.innerHTML = '';
-    list.forEach(p => {
+    list.forEach((p, index) => {
       const item = document.createElement('div');
+      const isSelf = isPresenceYou(p, index);
+      const characterId = normalizeCharacterId(p.characterId || '', index);
       item.className = 'participant-item';
       item.innerHTML = `
-        <div class="participant-name">${p.name || 'Guest'} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
+        <div class="participant-left">
+          ${renderAvatarMarkup(characterId, { isYou: isSelf, sizeClass: 'avatar--sm', hideYou: false })}
+          <div class="participant-name">${p.name || 'Guest'} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
+        </div>
         <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
       `;
       summaryEl.appendChild(item);
@@ -530,11 +704,18 @@ async function leaveRoom() {
     try { await roomChannel.unsubscribe(); } catch (e) {}
     roomChannel = null;
   }
+  localPendingActionKey = null;
+  actionLock = false;
+  lastActionId = null;
+  lastTurnKey = null;
+  pendingAllInAction = null;
   onlineState = {
     role: "local",
     roomCode: "",
     connected: false,
     displayName: onlineState.displayName,
+    characterId: onlineState.characterId,
+    localPlayerId: onlineState.localPlayerId,
     seat: "",
     ready: false,
     joinedAt: 0
@@ -546,7 +727,24 @@ async function leaveRoom() {
   setRoomControls(false);
   setRoomStatus('ローカルモード');
   setUiState('room');
+  appMode = 'offline';
   updatePlayerBadge();
+}
+
+async function resetOnlineStateForOffline(fallbackName = '') {
+  if (roomChannel) {
+    await leaveRoom();
+  }
+  localPendingActionKey = null;
+  actionLock = false;
+  lastActionId = null;
+  lastTurnKey = null;
+  pendingAllInAction = null;
+  onlineState.role = 'local';
+  if (!onlineState.displayName) {
+    onlineState.displayName = fallbackName || onlineState.displayName || 'Player';
+  }
+  appMode = 'offline';
 }
 
 async function createRoomWithUniqueCode(maxAttempts = 5) {
@@ -590,10 +788,15 @@ async function joinRoom(role, code, isAuto = false) {
     roomCode,
     connected: false,
     displayName: onlineState.displayName,
+    characterId: onlineState.characterId,
+    localPlayerId: onlineState.localPlayerId,
     seat: onlineState.seat,
     ready: onlineState.ready,
     joinedAt: onlineState.joinedAt
   };
+  if (!onlineState.characterId) {
+    onlineState.characterId = normalizeCharacterId('', 0);
+  }
   setRoomStatus(`接続中: ${roomCode}`);
 
   const channelName = `room_${roomCode}`;
@@ -650,6 +853,7 @@ async function joinRoom(role, code, isAuto = false) {
       if (onlineState.role === 'host') return;
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
+      syncLocalPlayerIdentityFromState();
       localPendingActionKey = null;
       if (gameState?.isHandActive) {
         document.getElementById('next-hand-overlay').classList.remove('visible');
@@ -669,6 +873,7 @@ async function joinRoom(role, code, isAuto = false) {
       const state = payload?.payload?.state;
       if (settings) applySettings(settings);
       if (state) gameState = state;
+      syncLocalPlayerIdentityFromState();
       setUiState('playing');
       const tournamentBar = document.getElementById('tournament-bar');
       if (tournamentSettings.enabled) {
@@ -699,7 +904,7 @@ async function joinRoom(role, code, isAuto = false) {
       const rem = totalPot - per * winnerIds.length;
       const winners = winnerIds.map(id => {
         const p = gameState.players.find(pl => pl.id === id);
-        return { name: p?.name || '—', icon: p?.icon || '' };
+        return { name: p?.name || '—', characterId: p?.characterId || '' };
       });
       gameState = distributePot(gameState, winnerIds);
       render();
@@ -978,10 +1183,10 @@ function getLocalPlayers() {
   rows.forEach((row, i) => {
     const input = row.querySelector('.player-name-input');
     const name = input ? input.value.trim() : '';
-    const icon = row.dataset.icon || '';
-    if (!name && !icon) return;
-    const finalName = name || icon || `プレイヤー${i + 1}`;
-    players.push({ name: finalName, icon });
+    const characterId = normalizeCharacterId(row.dataset.characterId || '', i);
+    if (!name && !characterId) return;
+    const finalName = name || `プレイヤー${i + 1}`;
+    players.push({ name: finalName, characterId });
   });
   return players;
 }
@@ -989,12 +1194,12 @@ function getLocalPlayers() {
 function getLocalPlayerFormData() {
   const rows = document.querySelectorAll('.player-row');
   const data = [];
-  rows.forEach(row => {
+  rows.forEach((row, i) => {
     const input = row.querySelector('.player-name-input');
     const name = input ? input.value.trim() : '';
-    const icon = row.dataset.icon || '';
-    if (!name && !icon) return;
-    data.push({ name, icon });
+    const characterId = normalizeCharacterId(row.dataset.characterId || '', i);
+    if (!name && !characterId) return;
+    data.push({ name, characterId });
   });
   return data;
 }
@@ -1006,7 +1211,10 @@ function getOnlinePlayerNames() {
 
 function getOnlinePlayers() {
   const list = getPresenceList();
-  return list.map((p, i) => ({ name: p.name || `Player ${i + 1}`, icon: '' }));
+  return list.map((p, i) => ({
+    name: p.name || `Player ${i + 1}`,
+    characterId: normalizeCharacterId(p.characterId || '', i)
+  }));
 }
 
 function getPerPlayerStackEnabled() {
@@ -1019,11 +1227,14 @@ function getPerPlayerStackInputs() {
 }
 
 function renderPerPlayerStackList() {
-  const listEl = document.getElementById('per-player-stack-list');
-  if (!listEl) return;
+  const listEl = $('per-player-stack-list');
+  if (!listEl) {
+    warnMissing('per-player-stack-list');
+    return;
+  }
   const enabled = getPerPlayerStackEnabled();
   listEl.style.display = enabled ? 'flex' : 'none';
-  const initialChipsRow = document.getElementById('initial-chips-row');
+  const initialChipsRow = $('initial-chips-row');
   if (initialChipsRow) {
     initialChipsRow.style.display = enabled ? 'none' : 'flex';
   }
@@ -1031,7 +1242,7 @@ function renderPerPlayerStackList() {
 
   const settings = collectSettingsFromForm();
   const players = onlineState.role === 'host' ? getOnlinePlayers() : getLocalPlayers();
-  listEl.innerHTML = '';
+  setHTML('per-player-stack-list', '');
   const defaultChips = settings.initialChips;
 
   players.forEach((p, i) => {
@@ -1081,6 +1292,12 @@ function updatePerPlayerBBDisplays() {
 }
 
 function startGameWithPlayers(players, settings) {
+  // Reset local action state to avoid stale locks from previous sessions.
+  localPendingActionKey = null;
+  actionLock = false;
+  lastActionId = null;
+  lastTurnKey = null;
+  pendingAllInAction = null;
   applySettings(settings);
   const perPlayerEnabled = getPerPlayerStackEnabled();
   const stackInputs = getPerPlayerStackInputs();
@@ -1095,15 +1312,17 @@ function startGameWithPlayers(players, settings) {
   }
   const playersWithStacks = players.map((p, i) => ({
     ...p,
+    characterId: normalizeCharacterId(p.characterId || '', i),
     startingChips: perPlayerEnabled ? (stacksByIndex.get(i) || settings.initialChips) : settings.initialChips
   }));
-  if (!roomChannel && onlineState.role !== 'host') {
+  if (onlineState.role !== 'host') {
     onlineState.role = 'local';
     if (!onlineState.displayName) {
       onlineState.displayName = playersWithStacks[0]?.name || onlineState.displayName;
     }
   }
   gameState = initGame(playersWithStacks, settings.smallBlind, settings.bigBlind, settings.initialChips);
+  syncLocalPlayerIdentityFromState();
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
   handHistory = [];
@@ -1111,6 +1330,14 @@ function startGameWithPlayers(players, settings) {
   saveChipsBeforeHand();
 
   setUiState('playing');
+  console.log('[startGameWithPlayers]', {
+    uiState,
+    hasGameState: !!gameState,
+    isHandActive: !!gameState?.isHandActive,
+    role: onlineState.role,
+    displayName: onlineState.displayName,
+    roomChannel: !!roomChannel
+  });
 
   const tournamentBar = document.getElementById('tournament-bar');
   if (tournamentSettings.enabled) {
@@ -1138,12 +1365,16 @@ function updateSettingsPanels() {
     if (guestSummary) {
       const list = getPresenceList();
       guestSummary.innerHTML = '';
-      list.forEach(p => {
+      list.forEach((p, index) => {
         const item = document.createElement('div');
-        const isSelf = p.name === onlineState.displayName;
+        const isSelf = isPresenceYou(p, index);
+        const characterId = normalizeCharacterId(p.characterId || '', index);
         item.className = 'participant-item' + (isSelf ? ' self' : '');
         item.innerHTML = `
-          <div class="participant-name">${p.name || 'Guest'}${isSelf ? ' (あなた)' : ''}</div>
+          <div class="participant-left">
+            ${renderAvatarMarkup(characterId, { isYou: isSelf, sizeClass: 'avatar--sm', hideYou: false })}
+            <div class="participant-name">${p.name || 'Guest'}${isSelf ? ' (あなた)' : ''}</div>
+          </div>
           <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
         `;
         guestSummary.appendChild(item);
@@ -1164,6 +1395,9 @@ function updateSettingsPanels() {
 
 // Player positions (ellipse ring). index → {x%, y%}
 function calcPositions(n) {
+  if (ENABLE_SEAT_PRESETS && SEAT_PRESETS[n]) {
+    return SEAT_PRESETS[n].map(p => ({ ...p, normalized: true }));
+  }
   const positions = [];
   const cx = 50, cy = 50;
 
@@ -1199,12 +1433,52 @@ function calcPositions(n) {
   return positions;
 }
 
+function buildPositionLabels(count, dealerIndex) {
+  const labels = Array.from({ length: count }, () => '');
+  if (count <= 0) return labels;
+  const normDealer = ((dealerIndex % count) + count) % count;
+  labels[normDealer] = 'BTN';
+  if (count === 1) return labels;
+  const sbIdx = count === 2 ? normDealer : (normDealer + 1) % count;
+  labels[sbIdx] = labels[sbIdx] ? `${labels[sbIdx]}/SB` : 'SB';
+  const bbIdx = (sbIdx + 1) % count;
+  labels[bbIdx] = labels[bbIdx] ? `${labels[bbIdx]}/BB` : 'BB';
+  if (count >= 4) {
+    const utgIdx = (bbIdx + 1) % count;
+    if (!labels[utgIdx]) labels[utgIdx] = 'UTG';
+  }
+  return labels;
+}
+
 function renderPlayers() {
-  const ring = document.getElementById('players-ring');
-  ring.innerHTML = '';
+  const ring = $('players-ring');
+  if (!ring) {
+    warnMissing('players-ring');
+    return;
+  }
+  setHTML('players-ring', '');
   if (!gameState) return;
 
   const positions = calcPositions(gameState.players.length);
+  let hasNormalized = positions.some(p => p.normalized);
+  const tableEl = hasNormalized ? document.querySelector('.table-area') : null;
+  const tableRect = tableEl ? tableEl.getBoundingClientRect() : null;
+  const ringRect = hasNormalized ? ring.getBoundingClientRect() : null;
+  const rectValid = tableRect
+    && Number.isFinite(tableRect.width)
+    && Number.isFinite(tableRect.height)
+    && tableRect.width > 20
+    && tableRect.height > 20
+    && Number.isFinite(tableRect.left)
+    && Number.isFinite(tableRect.top);
+  if (hasNormalized && !rectValid) {
+    if (isDebugEnabled() && !seatPresetWarned) {
+      seatPresetWarned = true;
+      console.warn('[seat-presets] invalid table rect, fallback');
+    }
+    hasNormalized = false;
+  }
+  const positionLabels = buildPositionLabels(gameState.players.length, gameState.dealerIndex);
 
   gameState.players.forEach((player, idx) => {
     const pos = positions[idx];
@@ -1221,17 +1495,39 @@ function renderPlayers() {
     if (isWinner) classes += ' is-winner';
     if (idx === 0) classes += ' seat-top';
 
-    const initial = player.name ? player.name.charAt(0).toUpperCase() : '';
-    const avatarSymbol = player.icon || initial || '?';
-    const displayIcon = player.icon || '•';
-    const showName = player.name && player.name !== player.icon;
+    const characterId = normalizeCharacterId(player.characterId || '', idx);
+    const isYou = isPlayerYou(player, idx);
+    const avatarMarkup = renderAvatarMarkup(characterId, {
+      isYou,
+      isDealer,
+      isTurn: isActor,
+      isWinner,
+      fallbackIndex: idx
+    });
+    const inlineIconMarkup = renderAvatarMarkup(characterId, {
+      isYou,
+      isWinner,
+      sizeClass: 'avatar--xs',
+      hideYou: true,
+      fallbackIndex: idx,
+      extraClass: 'player-icon'
+    });
+    const showName = !!player.name;
     const hasBet = player.currentBet > 0;
+    const posLabel = positionLabels[idx];
 
     const card = document.createElement('div');
     card.className = classes;
     card.dataset.playerId = player.id;
-    card.style.left = pos.x + '%';
-    card.style.top = pos.y + '%';
+    if (hasNormalized && pos.normalized && tableRect && ringRect) {
+      const absX = tableRect.left + pos.x * tableRect.width;
+      const absY = tableRect.top + pos.y * tableRect.height;
+      card.style.left = `${absX - ringRect.left}px`;
+      card.style.top = `${absY - ringRect.top}px`;
+    } else {
+      card.style.left = pos.x + '%';
+      card.style.top = pos.y + '%';
+    }
 
     // Timer ring for active player (only if timer is enabled)
     const showTimer = isActor && timerSettings.duration > 0;
@@ -1249,12 +1545,14 @@ function renderPlayers() {
       <div class="allin-badge">ALL IN</div>
       <div class="avatar">
         ${timerRingHtml}
+        <div class="seat-badge">S${idx + 1}</div>
+        ${posLabel ? `<div class="position-badge">${posLabel}</div>` : ''}
         ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
-        ${avatarSymbol}
+        ${avatarMarkup}
         ${hasBet ? `<div class="bet-badge">${formatAmount(player.currentBet)}</div>` : ''}
       </div>
       <div class="info-line">
-        <span class="player-icon${player.icon ? '' : ' is-empty'}" aria-hidden="true">${displayIcon}</span>
+        ${inlineIconMarkup}
         <div class="name${showName ? '' : ' is-empty'}">${showName ? player.name : ''}</div>
         <div class="chips">${formatAmount(player.chips)}</div>
       </div>
@@ -1324,11 +1622,15 @@ function animatePotToWinners(winnerIds) {
 }
 
 function renderPot() {
-  const total = (gameState.pots||[]).reduce((s, p) => s + p.amount, 0);
-  const el = document.getElementById('pot-amount');
+  const total = (gameState?.pots || []).reduce((s, p) => s + p.amount, 0);
+  const el = $('pot-amount');
+  if (!el) {
+    warnMissing('pot-amount');
+    return;
+  }
   const prev = parseInt(el.dataset.value || '0', 10) || 0;
   el.dataset.value = String(total);
-  el.textContent = formatAmount(total);
+  setText('pot-amount', formatAmount(total));
   if (total !== prev && total > 0) {
     el.classList.remove('bump');
     void el.offsetWidth; // reflow
@@ -1345,17 +1647,21 @@ function renderStatusBar() {
   const toCall = Math.max(0, gameState.currentMaxBet - actor.currentBet);
   const minRaiseTo = gameState.currentMaxBet + gameState.lastRaiseSize;
 
-  const potEl = document.getElementById('status-pot');
-  const toCallEl = document.getElementById('status-to-call');
-  const minRaiseEl = document.getElementById('status-min-raise');
+  const potEl = $('status-pot');
+  const toCallEl = $('status-to-call');
+  const minRaiseEl = $('status-min-raise');
 
-  if (potEl) setTextWithBump(potEl, formatAmount(potTotal));
+  if (potEl) setTextWithBumpId('status-pot', formatAmount(potTotal));
+  else warnMissing('status-pot');
   if (toCallEl) {
     const toCallText = toCall === 0 ? 'FREE' : formatAmount(toCall);
-    setTextWithBump(toCallEl, toCallText);
+    setTextWithBumpId('status-to-call', toCallText);
     toCallEl.classList.toggle('highlight', toCall === 0);
+  } else {
+    warnMissing('status-to-call');
   }
-  if (minRaiseEl) setTextWithBump(minRaiseEl, formatAmount(minRaiseTo));
+  if (minRaiseEl) setTextWithBumpId('status-min-raise', formatAmount(minRaiseTo));
+  else warnMissing('status-min-raise');
 }
 
 function getCommunityCardCount(phase) {
@@ -1369,9 +1675,12 @@ function getCommunityCardCount(phase) {
 }
 
 function renderCommunityCards() {
-  const container = document.getElementById('community-cards');
-  if (!container) return;
-  container.innerHTML = '';
+  const container = $('community-cards');
+  if (!container) {
+    warnMissing('community-cards');
+    return;
+  }
+  setHTML('community-cards', '');
   const count = gameState ? getCommunityCardCount(gameState.phase) : 0;
   const prevCount = lastCommunityCount;
   for (let i = 0; i < 5; i++) {
@@ -1395,7 +1704,7 @@ function renderCommunityCards() {
 
 function renderPhase() {
   const phase = gameState ? gameState.phase : 'preflop';
-  document.getElementById('phase-label').textContent = phase.toUpperCase();
+  setText('phase-label', phase.toUpperCase());
 
   const order = ['preflop','flop','turn','river'];
   const currentIdx = order.indexOf(phase);
@@ -1413,15 +1722,50 @@ function renderPhase() {
 }
 
 function renderActionPanel() {
-  const panel = document.getElementById('action-panel');
-  const btnsEl = document.getElementById('action-btns');
-  const lockMessage = document.getElementById('action-lock-message');
-  const actorLabel = document.getElementById('actor-label');
+  const panel = $('action-panel');
+  const btnsEl = $('action-btns');
+  const lockMessage = $('action-lock-message');
+  const actorLabel = $('actor-label');
+  if (!panel) warnMissing('action-panel');
+  if (!btnsEl) warnMissing('action-btns');
+  if (!actorLabel) warnMissing('actor-label');
   if (!panel || !btnsEl) return;
-  btnsEl.innerHTML = '';
+  setHTML('action-btns', '');
+  const debugMode = isDebugEnabled();
+  let debugReason = '';
+  const logSnapshot = (reason) => {
+    if (!debugMode) return;
+    const actorIdx = gameState ? gameState.currentPlayerIndex : null;
+    const actor = gameState && gameState.players ? gameState.players[actorIdx] : null;
+    const turnKeyLocal = actor && gameState ? `${actor.id}:${gameState.currentMaxBet}:${gameState.phase}` : '';
+    console.log('[renderActionPanel]', {
+      debugReason: reason,
+      uiState,
+      hasGameState: !!gameState,
+      isHandActive: !!gameState?.isHandActive,
+      phase: gameState?.phase,
+      currentPlayerIndex: gameState?.currentPlayerIndex,
+      actorName: actor?.name,
+      actorStatus: actor?.status,
+      actorCurrentBet: actor?.currentBet,
+      actorChips: actor?.chips,
+      role: onlineState.role,
+      displayName: onlineState.displayName,
+      roomChannel: !!roomChannel,
+      isLocalSession: appMode === 'offline',
+      isMyTurn: appMode === 'offline' || (actor && actor.name === onlineState.displayName),
+      hasPending: localPendingActionKey === turnKeyLocal,
+      localPendingActionKey,
+      turnKey: turnKeyLocal
+    });
+  };
+  logSnapshot('enter');
 
   if (!gameState || !gameState.isHandActive) {
     panel.classList.add('hidden');
+    debugReason = !gameState ? 'no_gameState' : 'hand_inactive';
+    logSnapshot(debugReason);
+    if (debugMode) setText('action-lock-message', debugReason);
     return;
   }
 
@@ -1437,7 +1781,10 @@ function renderActionPanel() {
   }
   if (!actor) {
     panel.classList.add('hidden');
-    if (actorLabel) actorLabel.innerHTML = '<strong>—</strong>のターン';
+    setHTML('actor-label', '<strong>—</strong>のターン');
+    debugReason = 'no_actor';
+    logSnapshot(debugReason);
+    if (debugMode) setText('action-lock-message', debugReason);
     return;
   }
   const turnKey = `${actor.id}:${gameState.currentMaxBet}:${gameState.phase}`;
@@ -1445,16 +1792,42 @@ function renderActionPanel() {
     lastTurnKey = turnKey;
     lastActionId = null;
   }
-  const isLocalSession = onlineState.role === 'local' || (!roomChannel && onlineState.role !== 'player');
+  const isLocalSession = appMode === 'offline';
   const isMyTurn = isLocalSession || actor.name === onlineState.displayName;
   const hasPending = localPendingActionKey === turnKey;
+  const logKey = [
+    turnKey,
+    onlineState.role,
+    onlineState.displayName,
+    String(!!roomChannel),
+    String(isLocalSession),
+    String(isMyTurn),
+    String(hasPending),
+    actor.name
+  ].join('|');
+  if (logKey !== lastActionPanelLogKey) {
+    lastActionPanelLogKey = logKey;
+    console.log('[renderActionPanel]', {
+      role: onlineState.role,
+      roomChannel: !!roomChannel,
+      isLocalSession,
+      isMyTurn,
+      hasPending,
+      actorName: actor.name,
+      displayName: onlineState.displayName
+    });
+  }
+  updateDebugBanner();
 
   // アクティブなプレイヤーがいない場合（全員オールインまたはフォールド）
   if (actor.status !== 'active') {
     panel.classList.remove('hidden');
     panel.classList.add('locked');
-    if (actorLabel) actorLabel.innerHTML = '次のフェーズを待っています...';
+    setHTML('actor-label', '次のフェーズを待っています...');
     if (lockMessage) lockMessage.style.display = 'none';
+    debugReason = 'actor_not_active';
+    logSnapshot(debugReason);
+    if (debugMode) setText('actor-label', debugReason);
     return;
   }
 
@@ -1463,14 +1836,17 @@ function renderActionPanel() {
   if (lockMessage) lockMessage.style.display = 'none';
 
   // Actor label
-  if (actorLabel) actorLabel.innerHTML = `<strong>${actor.name}</strong> のターンです`;
+  setHTML('actor-label', `<strong>${actor.name}</strong> のターンです`);
 
   if (!isMyTurn || hasPending) {
     panel.classList.add('locked');
     if (lockMessage) {
       lockMessage.style.display = 'block';
-      lockMessage.innerHTML = 'あなたの番になるまでお待ちください';
+      setHTML('action-lock-message', 'あなたの番になるまでお待ちください');
     }
+    debugReason = !isMyTurn ? 'not_my_turn' : 'has_pending';
+    logSnapshot(debugReason);
+    if (debugMode) setText('action-lock-message', debugReason);
     return;
   }
 
@@ -1499,7 +1875,12 @@ function renderActionPanel() {
   }
 
   // Hide raise area initially
-  document.getElementById('raise-area').classList.remove('visible');
+  const raiseArea = $('raise-area');
+  if (raiseArea) {
+    raiseArea.classList.remove('visible');
+  } else {
+    warnMissing('raise-area');
+  }
 }
 
 let actionProcessing = false;
@@ -1774,7 +2155,7 @@ function doAction(type, amount = 0) {
   if (lastActionId === actionKey) return;
   actionLock = true;
   const result = processAction(gameState, type, amount);
-  if (result.error) { console.warn(result.error); return; }
+  if (result.error) { console.warn(result.error); actionLock = false; return; }
   gameState = result;
   if (hasNewAllIn(prevState, gameState)) playAllInHit();
   lastActionId = actionKey;
@@ -1795,14 +2176,116 @@ function doAction(type, amount = 0) {
 }
 
 function render() {
-  renderPlayers();
-  renderPot();
-  renderStatusBar();
-  renderCommunityCards();
-  renderPhase();
-  renderActionPanel();
-  handlePhaseTransition();
+  const safeCall = (name, fn) => {
+    try {
+      fn();
+    } catch (err) {
+      if (isDebugEnabled()) {
+        console.error(`[render-guard] ${name} failed`, err);
+      }
+    }
+  };
+  safeCall('renderPlayers', renderPlayers);
+  safeCall('renderPot', renderPot);
+  safeCall('renderStatusBar', renderStatusBar);
+  safeCall('renderCommunityCards', renderCommunityCards);
+  safeCall('renderPhase', renderPhase);
+  safeCall('renderActionPanel', renderActionPanel);
+  safeCall('handlePhaseTransition', handlePhaseTransition);
 }
+
+function runSmokeChecks() {
+  const requiredByState = {
+    playing: [
+      'players-ring',
+      'pot-amount',
+      'phase-label',
+      'action-panel',
+      'action-btns',
+      'actor-label'
+    ],
+    room: [
+      'room-host-btn',
+      'room-join-btn',
+      'room-local-btn'
+    ]
+  };
+  const required = requiredByState[uiState] || [];
+  const missing = required.filter((id) => !$(id));
+  const warnings = [];
+  if (uiState === 'room') {
+    const btnIds = ['room-host-btn', 'room-join-btn', 'room-local-btn'];
+    btnIds.forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      const style = window.getComputedStyle(el);
+      if (style.pointerEvents === 'none') {
+        warnings.push(`${id} pointer-events none`);
+        console.warn('[smoke-checks] home button pointer-events none', { id });
+      }
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(cx, cy);
+      if (hit && !el.contains(hit)) {
+        warnings.push(`${id} hit-test blocked`);
+        console.warn('[smoke-checks] home button hit-test blocked', { id, hit });
+      }
+    });
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach((screen) => {
+      if (screen.id === 'room-screen') return;
+      const style = window.getComputedStyle(screen);
+      const inertOff = !screen.inert && !screen.hasAttribute('inert');
+      if (style.display !== 'none' || style.pointerEvents !== 'none' || inertOff) {
+        warnings.push(`inactive screen interactive: ${screen.id}`);
+        console.warn('[smoke-checks] inactive screen interactive', {
+          id: screen.id,
+          display: style.display,
+          pointerEvents: style.pointerEvents,
+          inert: screen.inert
+        });
+      }
+    });
+  }
+  if (uiState === 'playing') {
+    const ring = $('players-ring');
+    const table = document.querySelector('.table-area');
+    const cards = ring ? ring.querySelectorAll('.player-card') : [];
+    if (!ring) warnings.push('players-ring missing');
+    if (!table) warnings.push('table-area missing');
+    cards.forEach((card, i) => {
+      const left = card.style.left;
+      const top = card.style.top;
+      if (!left || !top) {
+        warnings.push(`seat ${i} missing left/top`);
+        console.warn('[smoke-checks] seat missing position', { index: i });
+      }
+      if (table) {
+        const t = table.getBoundingClientRect();
+        const r = card.getBoundingClientRect();
+        const out = r.left < t.left || r.right > t.right || r.top < t.top || r.bottom > t.bottom;
+        if (out) {
+          warnings.push(`seat ${i} out of bounds`);
+          console.warn('[smoke-checks] seat out of bounds', { index: i, card: r, table: t });
+        }
+      }
+    });
+  }
+  const report = {
+    ok: missing.length === 0,
+    uiState,
+    appMode,
+    protocol: location.protocol,
+    missing,
+    warnings
+  };
+  if (isDebugEnabled()) {
+    console.log('[smoke-checks]', report);
+  }
+  return report;
+}
+window.runSmokeChecks = runSmokeChecks;
 
 // ─── SHOWDOWN ─────────────────────────────────
 function showShowdown() {
@@ -1850,7 +2333,11 @@ function showShowdown() {
       btn.className = 'winner-btn';
       btn.dataset.playerId = player.id;
       btn.innerHTML = `
-      <div class="w-avatar">${player.name.charAt(0).toUpperCase()}</div>
+      ${renderAvatarMarkup(player.characterId || '', {
+        isYou: isPlayerYou(player, gameState.players.indexOf(player)),
+        sizeClass: 'avatar--sm',
+        hideYou: true
+      })}
       <span class="w-name">${player.name}</span>
       <span class="w-chips">${formatAmount(player.chips)}</span>
       `;
@@ -1924,7 +2411,7 @@ function confirmWinner() {
   const winnerIds = selectedWinners.slice();
   const winners = selectedWinners.map(id => {
     const p = gameState.players.find(p => p.id === id);
-    return { name: p?.name || '—', icon: p?.icon || '' };
+    return { name: p?.name || '—', characterId: p?.characterId || '' };
   });
   gameState = distributePot(gameState, selectedWinners);
   recordHandResult(winners, totalPot);
@@ -1960,7 +2447,7 @@ function showNextHand(winners, gainText = '') {
   const winnersEl = document.getElementById('next-hand-winners');
   winnersEl.innerHTML = winners.map(w => `
     <div class="next-hand-winner-item">
-      <div class="next-hand-winner-avatar">${w.icon || w.name.charAt(0).toUpperCase()}</div>
+      ${renderAvatarMarkup(w.characterId || '', { sizeClass: 'avatar--sm', hideYou: true })}
       <div class="next-hand-winner-name">${w.name}</div>
     </div>
   `).join('');
@@ -1995,7 +2482,7 @@ function showChipStatus() {
     const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '±0';
     return `
       <div class="chip-status-row">
-        <div class="chip-status-avatar">${p.icon || p.name.charAt(0).toUpperCase()}</div>
+        ${renderAvatarMarkup(p.characterId || '', { sizeClass: 'avatar--sm', hideYou: true })}
         <div class="chip-status-name">${p.name}</div>
         <div class="chip-status-chips">${p.chips.toLocaleString()}</div>
         <div class="chip-status-change ${changeClass}">${changeText}</div>
@@ -2017,12 +2504,14 @@ function showHistory() {
     listEl.innerHTML = '<div class="history-empty">まだ履歴がありません</div>';
   } else {
     listEl.innerHTML = handHistory.map((h, i) => {
-      const winnerText = h.winners.map(w =>
-        `<span class="history-winner">${w.icon || ''} ${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span>`
-      ).join(' ');
-      const loserText = h.losers.map(l =>
-        `<span class="history-loser">${l.icon || ''} ${l.name} -${l.loss.toLocaleString()}</span>`
-      ).join(' ');
+      const winnerText = h.winners.map(w => {
+        const icon = renderAvatarMarkup(w.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
+        return `<div class="history-winner">${icon}<span>${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span></div>`;
+      }).join(' ');
+      const loserText = h.losers.map(l => {
+        const icon = renderAvatarMarkup(l.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
+        return `<div class="history-loser">${icon}<span>${l.name} -${l.loss.toLocaleString()}</span></div>`;
+      }).join(' ');
       return `
         <div class="history-item">
           <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
@@ -2065,8 +2554,8 @@ function recordHandResult(winners, totalPot) {
   );
   handHistory.push({
     hand: handHistory.length + 1,
-    winners: winners.map(w => ({ name: w.name, icon: w.icon })),
-    losers: losers.map(l => ({ name: l.name, icon: l.icon, loss: chipsBeforeHand[l.id] - l.chips })),
+    winners: winners.map(w => ({ name: w.name, characterId: w.characterId })),
+    losers: losers.map(l => ({ name: l.name, characterId: l.characterId, loss: chipsBeforeHand[l.id] - l.chips })),
     pot: totalPot
   });
 }
@@ -2087,7 +2576,7 @@ function showGameOver() {
   if (winner) {
     winnersEl.innerHTML = `
       <div class="next-hand-winner-item">
-        <div class="next-hand-winner-avatar">${winner.icon || winner.name.charAt(0).toUpperCase()}</div>
+        ${renderAvatarMarkup(winner.characterId || '', { sizeClass: 'avatar--sm', hideYou: true })}
         <div class="next-hand-winner-name">${winner.name}</div>
       </div>
     `;
@@ -2145,14 +2634,14 @@ function addPlayer() {
   const zenkakuNum = String(playerNum).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
   row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー${zenkakuNum}"><div class="icon-picker"></div><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
   inputs.appendChild(row);
-  refreshIconPickers();
+  refreshCharacterPickers();
 }
 
 function removePlayer(btn) {
   const inputs = document.querySelectorAll('.player-row');
   if (inputs.length <= 2) return; // 最低2人
   btn.closest('.player-row').remove();
-  refreshIconPickers();
+  refreshCharacterPickers();
 }
 
 function startGame() {
@@ -2197,16 +2686,16 @@ function loadSavedPlayerNames() {
     const container = document.getElementById('player-inputs');
     container.innerHTML = '';
 
-    savedData.forEach((entry) => {
+    savedData.forEach((entry, index) => {
       const name = typeof entry === 'string' ? entry : (entry?.name || '');
-      const icon = typeof entry === 'string' ? '' : (entry?.icon || '');
+      const characterId = typeof entry === 'string' ? '' : (entry?.characterId || entry?.icon || '');
       const row = document.createElement('div');
       row.className = 'player-row';
-      row.dataset.icon = icon;
+      row.dataset.characterId = normalizeCharacterId(characterId, index);
       row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="${name}"><div class="icon-picker"></div><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
       container.appendChild(row);
     });
-    refreshIconPickers();
+    refreshCharacterPickers();
   } catch (e) {
     console.log('Failed to load saved player names:', e);
   }
@@ -2227,317 +2716,455 @@ function generateRandomName() {
   return `${animal}${num}`;
 }
 
-const ICON_OPTIONS = ['🦖', '🐱', '🐶', '🐼', '🐸', '🐵', '🦊', '🐯'];
+const CHARACTERS = [
+  { id: 'chara1', src: 'img/chara1.png', label: 'Chara 1' },
+  { id: 'chara2', src: 'img/chara2.png', label: 'Chara 2' },
+  { id: 'chara3', src: 'img/chara3.png', label: 'Chara 3' },
+  { id: 'chara4', src: 'img/chara4.png', label: 'Chara 4' },
+  { id: 'chara5', src: 'img/chara5.png', label: 'Chara 5' },
+  { id: 'chara6', src: 'img/chara6.png', label: 'Chara 6' }
+];
+const CHARACTER_IDS = new Set(CHARACTERS.map(c => c.id));
+const DEFAULT_CHARACTER_ID = 'chara1';
+const LEGACY_ICON_MAP = {
+  'char-01': 'chara1',
+  'char-02': 'chara2',
+  'char-03': 'chara3',
+  'char-04': 'chara4',
+  'char-05': 'chara5',
+  'char-06': 'chara6'
+};
 
-function buildIconPicker(row, selectedIcon, index) {
+function getCharacterSrc(id) {
+  const found = CHARACTERS.find(c => c.id === id);
+  return found ? found.src : 'img/chara1.png';
+}
+
+function normalizeCharacterId(id, fallbackIndex = 0) {
+  if (id && LEGACY_ICON_MAP[id]) return LEGACY_ICON_MAP[id];
+  if (id && CHARACTER_IDS.has(id)) return id;
+  const fallback = CHARACTERS[fallbackIndex % CHARACTERS.length];
+  return fallback ? fallback.id : DEFAULT_CHARACTER_ID;
+}
+
+function renderAvatarMarkup(characterId, options = {}) {
+  const {
+    isYou = false,
+    isDealer = false,
+    isTurn = false,
+    isWinner = false,
+    sizeClass = '',
+    hideYou = false,
+    fallbackIndex = 0,
+    extraClass = ''
+  } = options;
+  const safeId = normalizeCharacterId(characterId, fallbackIndex);
+  const classes = [
+    'avatar-wrap',
+    sizeClass,
+    extraClass,
+    isYou ? 'is-you' : '',
+    isDealer ? 'is-dealer' : '',
+    isTurn ? 'is-turn' : '',
+    isWinner ? 'is-winner' : ''
+  ].filter(Boolean).join(' ');
+  const youPill = isYou && !hideYou
+    ? '<span class="you-pill" aria-label="you">YOU</span>'
+    : '';
+  return `
+    <div class="${classes}">
+      <img class="avatar-img" src="${getCharacterSrc(safeId)}" alt="avatar" loading="lazy" onerror="this.onerror=null;this.src='img/chara1.png';">
+      ${youPill}
+    </div>
+  `;
+}
+
+function isPlayerYou(player, index) {
+  if (!player) return false;
+  if (appMode === 'offline' || onlineState.role === 'local') {
+    if (onlineState.localPlayerId && player.id === onlineState.localPlayerId) return true;
+    if (player.name && onlineState.displayName && player.name === onlineState.displayName) return true;
+    return index === 0;
+  }
+  return !!(player.name && onlineState.displayName && player.name === onlineState.displayName);
+}
+
+function isPresenceYou(p, index) {
+  if (!p) return false;
+  if (p.name && onlineState.displayName && p.name === onlineState.displayName) return true;
+  if (onlineState.seat && p.seat && String(p.seat) === String(onlineState.seat)) return true;
+  if (appMode === 'offline' || onlineState.role === 'local') return index === 0;
+  return false;
+}
+
+function syncLocalPlayerIdentityFromState() {
+  if (!gameState || !Array.isArray(gameState.players)) return;
+  const byName = gameState.players.find(p => p.name === onlineState.displayName);
+  if (byName) {
+    onlineState.localPlayerId = byName.id;
+    onlineState.characterId = byName.characterId || onlineState.characterId;
+    return;
+  }
+  if ((appMode === 'offline' || onlineState.role === 'local') && !onlineState.localPlayerId) {
+    const fallback = gameState.players[0];
+    if (fallback) {
+      onlineState.localPlayerId = fallback.id;
+      onlineState.characterId = fallback.characterId || onlineState.characterId;
+    }
+  }
+}
+
+function buildCharacterPicker(row, selectedId, index) {
   const picker = row.querySelector('.icon-picker');
   if (!picker) return;
-  const fallback = ICON_OPTIONS[index % ICON_OPTIONS.length];
-  const current = selectedIcon || row.dataset.icon || fallback;
-  row.dataset.icon = current;
+  const fallback = normalizeCharacterId('', index);
+  const candidate = selectedId || row.dataset.characterId || fallback;
+  const current = normalizeCharacterId(candidate, index);
+  row.dataset.characterId = current;
   picker.innerHTML = '';
-  ICON_OPTIONS.forEach(icon => {
+  CHARACTERS.forEach((chara) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'icon-btn' + (icon === current ? ' selected' : '');
-    btn.textContent = icon;
-    btn.dataset.icon = icon;
+    btn.className = 'icon-btn character-btn' + (chara.id === current ? ' selected' : '');
+    btn.dataset.characterId = chara.id;
+    btn.setAttribute('aria-label', chara.label);
+    btn.innerHTML = `
+      <img src="${chara.src}" alt="${chara.label}" loading="lazy" onerror="this.onerror=null;this.src='img/chara1.png';">
+    `;
     btn.addEventListener('click', () => {
-      row.dataset.icon = icon;
-      picker.querySelectorAll('.icon-btn').forEach(b => {
-        b.classList.toggle('selected', b.dataset.icon === icon);
+      row.dataset.characterId = chara.id;
+      picker.querySelectorAll('.character-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.characterId === chara.id);
       });
     }, { passive: true });
     picker.appendChild(btn);
   });
 }
 
-function refreshIconPickers() {
+function refreshCharacterPickers() {
   const rows = document.querySelectorAll('.player-row');
-  rows.forEach((row, i) => buildIconPicker(row, row.dataset.icon, i));
+  rows.forEach((row, i) => buildCharacterPicker(row, row.dataset.characterId, i));
 }
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-  }
-  window.scrollTo(0, 0);
-  loadSavedPlayerNames();
-  refreshIconPickers();
-  setUiState('room');
-  const versionEl = document.getElementById('app-version');
-  if (versionEl) versionEl.textContent = APP_VERSION;
-  const headerVersionEl = document.querySelector('.game-header-version');
-  if (headerVersionEl) headerVersionEl.textContent = APP_VERSION;
-  setupNumericInput(document.getElementById('sb-input'));
-  setupNumericInput(document.getElementById('bb-input'));
-  setupNumericInput(document.getElementById('initial-chips-input'));
-
-  const toggle = document.getElementById('tournament-mode-toggle');
-  if (toggle) {
-    bindOnce(toggle, 'change', syncTournamentOptions);
-  }
-  syncTournamentOptions();
-  const perPlayerToggle = document.getElementById('per-player-stack-toggle');
-  if (perPlayerToggle) {
-    bindOnce(perPlayerToggle, 'change', renderPerPlayerStackList);
-    bindOnce(perPlayerToggle, 'change', updateInitialChipsBB);
-  }
-  const bbInput = document.getElementById('bb-input');
-  if (bbInput) {
-    bindOnce(bbInput, 'input', updateInitialChipsBB);
-    bindOnce(bbInput, 'input', updatePerPlayerBBDisplays);
-    bindOnce(bbInput, 'change', updateInitialChipsBB);
-    bindOnce(bbInput, 'change', updatePerPlayerBBDisplays);
-  }
-  const chipsInput = document.getElementById('initial-chips-input');
-  if (chipsInput) {
-    bindOnce(chipsInput, 'input', updateInitialChipsBB);
-    bindOnce(chipsInput, 'change', updateInitialChipsBB);
-    bindOnce(chipsInput, 'blur', updateInitialChipsBB);
-  }
-  updateInitialChipsBB();
-
-  const hostBtn = document.getElementById('room-host-btn');
-  const joinBtn = document.getElementById('room-join-btn');
-  const localBtn = document.getElementById('room-local-btn');
-  const leaveBtn = document.getElementById('room-leave-btn');
-  const waitingStartBtn = document.getElementById('waiting-start-btn');
-  const copyBtn = document.getElementById('room-copy-btn');
-  const settingsLeaveBtn = document.getElementById('settings-leave-btn');
-  const codeInput = document.getElementById('room-code-input');
-  const nameInput = document.getElementById('display-name-input');
-
-  // デフォルトでランダム名を設定
-  if (nameInput && !nameInput.value) {
-    nameInput.value = generateRandomName();
-  }
-  const startBtn = document.getElementById('start-btn');
-  const menuBtn = document.getElementById('menu-btn');
-  const menu = document.getElementById('header-menu');
-  const menuResetBtn = document.getElementById('menu-reset-btn');
-  if (hostBtn) {
-    hostBtn.addEventListener('click', async () => {
-      onlineState.displayName = nameInput ? nameInput.value.trim() : '';
-      onlineState.ready = false;
-      onlineState.seat = '';
-      updatePlayerBadge();
-      if (!onlineState.displayName) {
-        setRoomStatus('名前を入力してください');
-        return;
-      }
-      if (codeInput) codeInput.value = '';
-      const ok = await createRoomWithUniqueCode();
-      if (ok) {
-        onlineState.role = 'host';
-        setUiState('waiting');
-        updateParticipantList();
-      }
-    });
-  }
-  if (joinBtn) {
-    joinBtn.addEventListener('click', async () => {
-      onlineState.displayName = nameInput ? nameInput.value.trim() : '';
-      onlineState.ready = false;
-      onlineState.seat = '';
-      updatePlayerBadge();
-      if (!onlineState.displayName) {
-        setRoomStatus('名前を入力してください');
-        return;
-      }
-      const code = codeInput ? codeInput.value : '';
-      const ok = await joinRoom('player', code);
-      if (ok) {
-        onlineState.role = 'player';
-        setUiState('waiting');
-        updateParticipantList();
-      }
-    });
-  }
-  if (localBtn) {
-    localBtn.addEventListener('click', () => {
-      onlineState.displayName = nameInput ? nameInput.value.trim() : '';
-      onlineState.role = 'local';
-      updatePlayerBadge();
-      setUiState('settings');
-      updateSettingsPanels();
-    });
-  }
-  if (leaveBtn) {
-    leaveBtn.addEventListener('click', () => {
-      leaveRoom();
-    });
-  }
-  if (settingsLeaveBtn) {
-    settingsLeaveBtn.addEventListener('click', () => {
-      leaveRoom();
-    });
-  }
-  if (waitingStartBtn) {
-    waitingStartBtn.addEventListener('click', () => {
-      if (onlineState.role !== 'host') return;
-      setUiState('settings');
-      updateSettingsPanels();
-      if (roomChannel) {
-        roomChannel.send({ type: 'broadcast', event: 'ui-phase', payload: { phase: 'settings' } });
-      }
-    });
-  }
-  const waitingBackBtn = document.getElementById('waiting-back-btn');
-  if (waitingBackBtn) {
-    waitingBackBtn.addEventListener('click', () => {
-      leaveRoom();
-    });
-  }
-  const settingsBackBtn = document.getElementById('settings-back-btn');
-  if (settingsBackBtn) {
-    settingsBackBtn.addEventListener('click', () => {
-      if (onlineState.role === 'local') {
-        setUiState('room');
-      } else {
-        leaveRoom();
-      }
-    });
-  }
-  if (startBtn) {
-    startBtn.addEventListener('click', () => {
-      startGame();
-    });
-  }
-  if (copyBtn) {
-    copyBtn.addEventListener('click', async () => {
-      const code = onlineState.roomCode || '';
-      if (!code) return;
-      try {
-        await navigator.clipboard.writeText(code);
-        copyBtn.textContent = 'COPIED';
-        setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
-      } catch (e) {}
-    });
-  }
-  if (codeInput) {
-    bindOnce(codeInput, 'blur', () => {
-      codeInput.value = normalizeRoomCode(codeInput.value);
-    });
-    const focusRoomInput = () => setTimeout(() => codeInput.focus(), 0);
-    bindOnce(codeInput, 'click', focusRoomInput, { passive: true });
-    bindOnce(codeInput, 'touchstart', focusRoomInput, { passive: true });
-    const roomRow = codeInput.parentElement;
-    if (roomRow) {
-      bindOnce(roomRow, 'click', focusRoomInput, { passive: true });
-      bindOnce(roomRow, 'touchstart', focusRoomInput, { passive: true });
+  try {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
     }
-    bindOnce(codeInput, 'focus', () => debugLog('room-code: focus'), { passive: true });
-    bindOnce(codeInput, 'blur', () => debugLog('room-code: blur'), { passive: true });
-  }
-  if (menuBtn && menu) {
-    bindOnce(menuBtn, 'click', () => {
-      const open = menu.style.display === 'flex';
-      menu.style.display = open ? 'none' : 'flex';
-    });
-    bindOnce(document, 'click', (e) => {
-      if (!menu.contains(e.target) && e.target !== menuBtn) {
-        menu.style.display = 'none';
+    window.scrollTo(0, 0);
+    const seatLayoutRefresh = typeof scheduleSeatLayoutRefresh === 'function'
+      ? scheduleSeatLayoutRefresh
+      : () => {
+        showBootError(new Error('scheduleSeatLayoutRefresh is not available'));
+      };
+    window.addEventListener('resize', seatLayoutRefresh, { passive: true });
+    window.addEventListener('orientationchange', seatLayoutRefresh, { passive: true });
+    if (isDebugEnabled()) {
+      const logPointer = (e) => {
+        const target = e.target;
+        const path = typeof e.composedPath === 'function' ? e.composedPath().slice(0, 6) : [];
+        const pathSummary = path.map((node) => {
+          if (!node || !node.tagName) return String(node);
+          const id = node.id ? `#${node.id}` : '';
+          const cls = node.className ? `.${String(node.className).split(' ').filter(Boolean).slice(0, 2).join('.')}` : '';
+          return `${node.tagName.toLowerCase()}${id}${cls}`;
+        });
+        const point = ('clientX' in e && 'clientY' in e) ? { x: e.clientX, y: e.clientY } : null;
+        const hit = point ? document.elementFromPoint(point.x, point.y) : null;
+        console.log('[debug-click]', {
+          type: e.type,
+          target,
+          path: pathSummary,
+          elementFromPoint: hit
+        });
+      };
+      document.addEventListener('pointerdown', logPointer, { passive: true });
+      document.addEventListener('click', logPointer, { passive: true });
+    }
+    loadSavedPlayerNames();
+    refreshCharacterPickers();
+    setUiState('room');
+    const versionEl = document.getElementById('app-version');
+    if (versionEl) versionEl.textContent = APP_VERSION;
+    const headerVersionEl = document.querySelector('.game-header-version');
+    if (headerVersionEl) headerVersionEl.textContent = APP_VERSION;
+    setupNumericInput(document.getElementById('sb-input'));
+    setupNumericInput(document.getElementById('bb-input'));
+    setupNumericInput(document.getElementById('initial-chips-input'));
+
+    const toggle = document.getElementById('tournament-mode-toggle');
+    if (toggle) {
+      bindOnce(toggle, 'change', syncTournamentOptions);
+    }
+    syncTournamentOptions();
+    const perPlayerToggle = document.getElementById('per-player-stack-toggle');
+    if (perPlayerToggle) {
+      bindOnce(perPlayerToggle, 'change', renderPerPlayerStackList);
+      bindOnce(perPlayerToggle, 'change', updateInitialChipsBB);
+    }
+    const bbInput = document.getElementById('bb-input');
+    if (bbInput) {
+      bindOnce(bbInput, 'input', updateInitialChipsBB);
+      bindOnce(bbInput, 'input', updatePerPlayerBBDisplays);
+      bindOnce(bbInput, 'change', updateInitialChipsBB);
+      bindOnce(bbInput, 'change', updatePerPlayerBBDisplays);
+    }
+    const chipsInput = document.getElementById('initial-chips-input');
+    if (chipsInput) {
+      bindOnce(chipsInput, 'input', updateInitialChipsBB);
+      bindOnce(chipsInput, 'change', updateInitialChipsBB);
+      bindOnce(chipsInput, 'blur', updateInitialChipsBB);
+    }
+    updateInitialChipsBB();
+
+    const hostBtn = document.getElementById('room-host-btn');
+    const joinBtn = document.getElementById('room-join-btn');
+    const localBtn = document.getElementById('room-local-btn');
+    const leaveBtn = document.getElementById('room-leave-btn');
+    const waitingStartBtn = document.getElementById('waiting-start-btn');
+    const copyBtn = document.getElementById('room-copy-btn');
+    const settingsLeaveBtn = document.getElementById('settings-leave-btn');
+    const codeInput = document.getElementById('room-code-input');
+    const nameInput = document.getElementById('display-name-input');
+
+    // デフォルトでランダム名を設定
+    if (nameInput && !nameInput.value) {
+      nameInput.value = generateRandomName();
+    }
+    const startBtn = document.getElementById('start-btn');
+    const menuBtn = document.getElementById('menu-btn');
+    const menu = document.getElementById('header-menu');
+    const menuResetBtn = document.getElementById('menu-reset-btn');
+    if (hostBtn) {
+      hostBtn.addEventListener('click', async () => {
+        onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+        onlineState.ready = false;
+        onlineState.seat = '';
+        updatePlayerBadge();
+        if (!onlineState.displayName) {
+          setRoomStatus('名前を入力してください');
+          return;
+        }
+        if (codeInput) codeInput.value = '';
+        const ok = await createRoomWithUniqueCode();
+        if (ok) {
+          onlineState.role = 'host';
+          appMode = 'online';
+          setUiState('waiting');
+          updateParticipantList();
+        }
+      });
+    }
+    if (joinBtn) {
+      joinBtn.addEventListener('click', async () => {
+        onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+        onlineState.ready = false;
+        onlineState.seat = '';
+        updatePlayerBadge();
+        if (!onlineState.displayName) {
+          setRoomStatus('名前を入力してください');
+          return;
+        }
+        const code = codeInput ? codeInput.value : '';
+        const ok = await joinRoom('player', code);
+        if (ok) {
+          onlineState.role = 'player';
+          appMode = 'online';
+          setUiState('waiting');
+          updateParticipantList();
+        }
+      });
+    }
+    if (localBtn) {
+      localBtn.addEventListener('click', async () => {
+        const fallbackName = nameInput ? nameInput.value.trim() : '';
+        await resetOnlineStateForOffline(fallbackName);
+        onlineState.displayName = fallbackName || onlineState.displayName;
+        updatePlayerBadge();
+        setUiState('settings');
+        updateSettingsPanels();
+      });
+    }
+    if (leaveBtn) {
+      leaveBtn.addEventListener('click', () => {
+        leaveRoom();
+      });
+    }
+    if (settingsLeaveBtn) {
+      settingsLeaveBtn.addEventListener('click', () => {
+        leaveRoom();
+      });
+    }
+    if (waitingStartBtn) {
+      waitingStartBtn.addEventListener('click', () => {
+        if (onlineState.role !== 'host') return;
+        setUiState('settings');
+        updateSettingsPanels();
+        if (roomChannel) {
+          roomChannel.send({ type: 'broadcast', event: 'ui-phase', payload: { phase: 'settings' } });
+        }
+      });
+    }
+    const waitingBackBtn = document.getElementById('waiting-back-btn');
+    if (waitingBackBtn) {
+      waitingBackBtn.addEventListener('click', () => {
+        leaveRoom();
+      });
+    }
+    const settingsBackBtn = document.getElementById('settings-back-btn');
+    if (settingsBackBtn) {
+      settingsBackBtn.addEventListener('click', () => {
+        if (onlineState.role === 'local') {
+          setUiState('room');
+        } else {
+          leaveRoom();
+        }
+      });
+    }
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        startGame();
+      });
+    }
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const code = onlineState.roomCode || '';
+        if (!code) return;
+        try {
+          await navigator.clipboard.writeText(code);
+          copyBtn.textContent = 'COPIED';
+          setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
+        } catch (e) {}
+      });
+    }
+    if (codeInput) {
+      bindOnce(codeInput, 'blur', () => {
+        codeInput.value = normalizeRoomCode(codeInput.value);
+      });
+      const focusRoomInput = () => setTimeout(() => codeInput.focus(), 0);
+      bindOnce(codeInput, 'click', focusRoomInput, { passive: true });
+      bindOnce(codeInput, 'touchstart', focusRoomInput, { passive: true });
+      const roomRow = codeInput.parentElement;
+      if (roomRow) {
+        bindOnce(roomRow, 'click', focusRoomInput, { passive: true });
+        bindOnce(roomRow, 'touchstart', focusRoomInput, { passive: true });
       }
-    });
-  }
-  const displayToggleBtn = document.getElementById('menu-display-toggle');
-  if (displayToggleBtn) {
-    displayToggleBtn.textContent = `表記切替: ${displayMode === 'bb' ? 'BB' : 'CHIP'}`;
-    displayToggleBtn.addEventListener('click', () => {
-      applyDisplayMode(displayMode === 'bb' ? 'chips' : 'bb');
-      if (menu) menu.style.display = 'none';
-    });
-  }
-  const menuHistoryBtn = document.getElementById('menu-history-btn');
-  if (menuHistoryBtn) {
-    menuHistoryBtn.addEventListener('click', () => {
-      showHistory();
-    });
-  }
-  if (menuResetBtn) {
-    menuResetBtn.addEventListener('click', () => {
-      if (menu) menu.style.display = 'none';
-      resetToSetup();
-    });
-  }
+      bindOnce(codeInput, 'focus', () => debugLog('room-code: focus'), { passive: true });
+      bindOnce(codeInput, 'blur', () => debugLog('room-code: blur'), { passive: true });
+    }
+    if (menuBtn && menu) {
+      bindOnce(menuBtn, 'click', () => {
+        const open = menu.style.display === 'flex';
+        menu.style.display = open ? 'none' : 'flex';
+      });
+      bindOnce(document, 'click', (e) => {
+        if (!menu.contains(e.target) && e.target !== menuBtn) {
+          menu.style.display = 'none';
+        }
+      });
+    }
+    const displayToggleBtn = document.getElementById('menu-display-toggle');
+    if (displayToggleBtn) {
+      displayToggleBtn.textContent = `表記切替: ${displayMode === 'bb' ? 'BB' : 'CHIP'}`;
+      displayToggleBtn.addEventListener('click', () => {
+        applyDisplayMode(displayMode === 'bb' ? 'chips' : 'bb');
+        if (menu) menu.style.display = 'none';
+      });
+    }
+    const menuHistoryBtn = document.getElementById('menu-history-btn');
+    if (menuHistoryBtn) {
+      menuHistoryBtn.addEventListener('click', () => {
+        showHistory();
+      });
+    }
+    if (menuResetBtn) {
+      menuResetBtn.addEventListener('click', () => {
+        if (menu) menu.style.display = 'none';
+        resetToSetup();
+      });
+    }
 
-  const readyBtn = document.getElementById('ready-toggle-btn');
-  if (readyBtn) {
-    readyBtn.addEventListener('click', () => {
-      if (onlineState.role === 'host') return;
-      if (!onlineState.seat) {
-        const seatHelp = document.getElementById('seat-help-text');
-        if (seatHelp) seatHelp.textContent = '先に席を選んでください';
-        return;
-      }
-      onlineState.ready = !onlineState.ready;
-      readyBtn.classList.toggle('on', onlineState.ready);
-      readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
-      updatePresence({ ready: onlineState.ready });
-      updateParticipantList();
-    });
-  }
+    const readyBtn = document.getElementById('ready-toggle-btn');
+    if (readyBtn) {
+      readyBtn.addEventListener('click', () => {
+        if (onlineState.role === 'host') return;
+        if (!onlineState.seat) {
+          const seatHelp = document.getElementById('seat-help-text');
+          if (seatHelp) seatHelp.textContent = '先に席を選んでください';
+          return;
+        }
+        onlineState.ready = !onlineState.ready;
+        readyBtn.classList.toggle('on', onlineState.ready);
+        readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
+        updatePresence({ ready: onlineState.ready });
+        updateParticipantList();
+      });
+    }
 
-  // Fold confirm dialog handlers
-  const foldCancelBtn = document.getElementById('fold-cancel-btn');
-  const foldConfirmBtn = document.getElementById('fold-confirm-btn');
-  if (foldCancelBtn) {
-    bindOnce(foldCancelBtn, 'click', () => {
-      hideFoldConfirm();
-    });
-  }
-  if (foldConfirmBtn) {
-    bindOnce(foldConfirmBtn, 'click', () => {
-      hideFoldConfirm();
-      doAction('fold');
-    });
-  }
+    // Fold confirm dialog handlers
+    const foldCancelBtn = document.getElementById('fold-cancel-btn');
+    const foldConfirmBtn = document.getElementById('fold-confirm-btn');
+    if (foldCancelBtn) {
+      bindOnce(foldCancelBtn, 'click', () => {
+        hideFoldConfirm();
+      });
+    }
+    if (foldConfirmBtn) {
+      bindOnce(foldConfirmBtn, 'click', () => {
+        hideFoldConfirm();
+        doAction('fold');
+      });
+    }
 
-  // All-in confirm dialog handlers
-  const allinCancelBtn = document.getElementById('allin-cancel-btn');
-  const allinConfirmBtn = document.getElementById('allin-confirm-btn');
-  if (allinCancelBtn) {
-    bindOnce(allinCancelBtn, 'click', () => {
-      hideAllInConfirm();
-    });
-  }
-  if (allinConfirmBtn) {
-    bindOnce(allinConfirmBtn, 'click', () => {
-      confirmAllIn();
-    });
-  }
+    // All-in confirm dialog handlers
+    const allinCancelBtn = document.getElementById('allin-cancel-btn');
+    const allinConfirmBtn = document.getElementById('allin-confirm-btn');
+    if (allinCancelBtn) {
+      bindOnce(allinCancelBtn, 'click', () => {
+        hideAllInConfirm();
+      });
+    }
+    if (allinConfirmBtn) {
+      bindOnce(allinConfirmBtn, 'click', () => {
+        confirmAllIn();
+      });
+    }
 
-  // Disconnect dialog handlers
-  const disconnectWaitBtn = document.getElementById('disconnect-wait-btn');
-  const disconnectExitBtn = document.getElementById('disconnect-exit-btn');
-  if (disconnectWaitBtn) {
-    bindOnce(disconnectWaitBtn, 'click', () => {
-      hideDisconnectDialog();
-    });
-  }
-  if (disconnectExitBtn) {
-    bindOnce(disconnectExitBtn, 'click', () => {
-      hideDisconnectDialog();
-      leaveRoom();
-    });
-  }
+    // Disconnect dialog handlers
+    const disconnectWaitBtn = document.getElementById('disconnect-wait-btn');
+    const disconnectExitBtn = document.getElementById('disconnect-exit-btn');
+    if (disconnectWaitBtn) {
+      bindOnce(disconnectWaitBtn, 'click', () => {
+        hideDisconnectDialog();
+      });
+    }
+    if (disconnectExitBtn) {
+      bindOnce(disconnectExitBtn, 'click', () => {
+        hideDisconnectDialog();
+        leaveRoom();
+      });
+    }
 
-  if (debugEnabled) {
-    initDebugPanel();
-    bindOnce(document, 'click', (e) => {
-      const x = e.clientX;
-      const y = e.clientY;
-      const hit = document.elementFromPoint(x, y);
-      debugLog(`click @${x},${y} -> ${hit?.id || hit?.className || hit?.tagName}`);
-    }, { passive: true });
-    bindOnce(document, 'touchstart', (e) => {
-      const t = e.touches[0];
-      if (!t) return;
-      const hit = document.elementFromPoint(t.clientX, t.clientY);
-      debugLog(`touch @${t.clientX},${t.clientY} -> ${hit?.id || hit?.className || hit?.tagName}`);
-    }, { passive: true });
+    ensureDebugBanner();
+
+    if (debugEnabled) {
+      initDebugPanel();
+      bindOnce(document, 'click', (e) => {
+        const x = e.clientX;
+        const y = e.clientY;
+        const hit = document.elementFromPoint(x, y);
+        debugLog(`click @${x},${y} -> ${hit?.id || hit?.className || hit?.tagName}`);
+      }, { passive: true });
+      bindOnce(document, 'touchstart', (e) => {
+        const t = e.touches[0];
+        if (!t) return;
+        const hit = document.elementFromPoint(t.clientX, t.clientY);
+        debugLog(`touch @${t.clientX},${t.clientY} -> ${hit?.id || hit?.className || hit?.tagName}`);
+      }, { passive: true });
+    }
+  } catch (err) {
+    showBootError(err);
   }
 });
 
@@ -2556,9 +3183,49 @@ function resetToSetup() {
   }
 }
 
+function showFileProtocolWarning() {
+  if (document.getElementById('file-protocol-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'file-protocol-banner';
+  banner.textContent = 'Run via http://localhost (e.g., npx http-server) for PWA/SW features.';
+  banner.style.cssText = `
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: #fff; padding: 8px 12px;
+    border-radius: 8px; font-size: 12px; z-index: 9999;
+    font-family: inherit; letter-spacing: 0.2px;
+  `;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 8000);
+}
+
+function disableManifestForFileProtocol() {
+  if (location.protocol !== 'file:') return;
+  const manifestLink = document.querySelector('link[rel="manifest"]');
+  if (manifestLink && manifestLink.parentNode) {
+    manifestLink.parentNode.removeChild(manifestLink);
+  }
+  if (isDebugEnabled()) {
+    console.warn('[env] manifest disabled for file://');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (location.protocol === 'file:') {
+    disableManifestForFileProtocol();
+    showFileProtocolWarning();
+  }
+});
+
 // ─── SERVICE WORKER & UPDATE NOTIFICATION ─────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+      if (location.protocol === 'file:') showFileProtocolWarning();
+      if (isDebugEnabled()) {
+        console.warn('[env] skip SW registration for', location.protocol);
+      }
+      return;
+    }
     navigator.serviceWorker.register('./sw.js').then(registration => {
       console.log('SW registered:', registration.scope);
 

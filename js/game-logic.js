@@ -36,11 +36,11 @@ function getPotTotal(state) {
 function initGame(playerInput, smallBlind, bigBlind, initialChips = 1000) {
   const players = playerInput.map((entry, i) => {
     const name = typeof entry === 'string' ? entry : (entry?.name || '');
-    const icon = typeof entry === 'string' ? '' : (entry?.icon || '');
-    const finalName = name || icon || `プレイヤー${i + 1}`;
+    const characterId = typeof entry === 'string' ? '' : (entry?.characterId || '');
+    const finalName = name || `プレイヤー${i + 1}`;
     const stack = typeof entry === 'string' ? initialChips : (entry?.startingChips || initialChips);
     return {
-      id: `player_${i}`, name: finalName, icon, chips: stack,
+      id: `player_${i}`, name: finalName, characterId, chips: stack,
       status: "waiting", currentBet: 0, totalBet: 0,
       actedThisRound: false
     };
