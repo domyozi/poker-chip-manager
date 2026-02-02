@@ -221,12 +221,73 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .participant-role.host { color: var(--gold); border-color: var(--gold-dim); }
 .participant-role.player { color: var(--text-secondary); }
 .participant-role.offline { color: var(--text-muted); }
+.participant-role.spectator { color: var(--text-muted); border-color: rgba(255,255,255,0.2); }
 .participant-ready {
   font-size: 10px;
   letter-spacing: 1px;
   color: var(--text-muted);
 }
 .participant-ready.ready { color: #2ecc71; }
+.join-status-banner {
+  display: none;
+  margin: 10px 16px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 12px;
+  color: var(--text-secondary);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.join-status-banner.visible { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.join-status-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.join-status-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: rgba(212,175,55,0.15);
+  border: 1px solid rgba(212,175,55,0.5);
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 0 10px rgba(212,175,55,0.2);
+}
+.join-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.join-status-title {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.join-status-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.join-status-actions { display: flex; gap: 8px; }
+.join-status-btn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+.join-status-btn.danger {
+  border-color: rgba(192,57,43,0.4);
+  color: var(--chip-red);
+}
+.join-status-btn.danger:hover { background: rgba(192,57,43,0.12); }
 .waiting-self-panel {
   display: flex;
   gap: 10px;
@@ -1037,6 +1098,113 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .fold-confirm-btn.danger:hover { background: rgba(192,57,43,0.15); }
 
+/* ─── Reconnect / Join Modal ─────────────────── */
+.reconnect-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(3px);
+  z-index: 65;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.reconnect-overlay.visible { opacity: 1; pointer-events: auto; }
+.reconnect-card {
+  background: var(--felt-edge);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+  padding: 22px 20px;
+  width: 100%; max-width: 340px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.reconnect-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.reconnect-message {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.reconnect-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.reconnect-chip-input {
+  width: 140px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 13px;
+}
+.reconnect-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.reconnect-actions {
+  display: flex; gap: 10px;
+}
+.reconnect-modal-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.reconnect-modal-btn:hover { background: rgba(255,255,255,0.12); }
+.reconnect-modal-btn:active { transform: scale(0.97); }
+.reconnect-modal-btn.primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border-color: rgba(212,175,55,0.7);
+  color: #1a1408;
+}
+.reconnect-modal-btn.danger {
+  border-color: rgba(192,57,43,0.35);
+  color: var(--chip-red);
+}
+.reconnect-modal-btn.danger:hover { background: rgba(192,57,43,0.15); }
+
+/* ─── Seat Select Modal ──────────────────────── */
+.seat-select-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+.seat-select-btn {
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+.seat-select-btn.taken {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ─── Next hand prompt ────────────────────────── */
 .next-hand-overlay {
   position: fixed; inset: 0;
@@ -1296,6 +1464,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="header-actions">
       <button class="header-btn" id="menu-btn">⋯</button>
       <div class="header-menu" id="header-menu" style="display:none;">
+        <button class="header-menu-item" id="menu-join-btn" style="display:none;">観戦から参加へ</button>
         <button class="header-menu-item" id="menu-reset-btn">終了して戻る</button>
       </div>
     </div>
@@ -1306,6 +1475,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="phase-step" data-phase="flop">FLOP</div>
     <div class="phase-step" data-phase="turn">TURN</div>
     <div class="phase-step" data-phase="river">RIVER</div>
+  </div>
+
+  <div class="join-status-banner" id="join-status-banner">
+    <div class="join-status-left">
+      <div class="join-status-badge">⏳</div>
+      <div class="join-status-text">
+        <div class="join-status-title" id="join-status-title">参加待機中</div>
+        <div class="join-status-sub" id="join-status-sub">席を選ぶと次ハンドから参加</div>
+      </div>
+    </div>
+    <div class="join-status-actions">
+      <button class="join-status-btn" id="join-seat-btn">席を選ぶ</button>
+      <button class="join-status-btn danger" id="join-cancel-btn">取り消し</button>
+    </div>
   </div>
 
   <div class="table-area">
@@ -1346,6 +1529,50 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <div class="toggle-switch" id="split-toggle" onclick="toggleSplit()"></div>
     </div>
     <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>確定</button>
+  </div>
+</div>
+
+<!-- ─── RECONNECT / JOIN MODAL ───────────────── -->
+<div class="reconnect-overlay" id="reconnect-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title" id="reconnect-title">進行中のゲーム</div>
+    <div class="reconnect-message" id="reconnect-message">進行中のゲームが見つかりました。参加しますか？</div>
+    <div class="reconnect-row" id="reconnect-chip-row">
+      <input class="reconnect-chip-input" id="reconnect-chips" type="number" min="1" step="1" inputmode="numeric" value="1000">
+      <span class="reconnect-note">チップ（初期値）</span>
+    </div>
+    <div class="reconnect-note" id="reconnect-note">参加を選ぶと次のハンドから入れます。</div>
+    <div class="reconnect-actions">
+      <button class="reconnect-modal-btn" id="reconnect-watch-btn">観戦する</button>
+      <button class="reconnect-modal-btn primary" id="reconnect-play-btn">参加する</button>
+    </div>
+    <div class="reconnect-actions" style="margin-top:10px;">
+      <button class="reconnect-modal-btn danger" id="reconnect-cancel-btn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SEAT SELECT MODAL ────────────────────── -->
+<div class="reconnect-overlay" id="seat-select-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title">席を選択</div>
+    <div class="reconnect-message">空いている席を選んでください</div>
+    <div class="seat-select-grid" id="seat-select-grid"></div>
+    <div class="reconnect-actions" style="margin-top:10px;">
+      <button class="reconnect-modal-btn" id="seat-select-cancel-btn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── JOIN CANCEL CONFIRM ──────────────────── -->
+<div class="reconnect-overlay" id="join-cancel-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title">参加の取り消し</div>
+    <div class="reconnect-message">参加申請を取り消して観戦に戻りますか？</div>
+    <div class="reconnect-actions">
+      <button class="reconnect-modal-btn" id="join-cancel-no">キャンセル</button>
+      <button class="reconnect-modal-btn danger" id="join-cancel-yes">取り消す</button>
+    </div>
   </div>
 </div>
 
@@ -1619,16 +1846,26 @@ const SUPABASE_ANON_KEY = "sb_publishable_ZU269gj6MzgeSra0gUeQ-A_I_9v2giq";
 let supabaseClient = null;
 let roomChannel = null;
 let reconnectTimer = null;
+let hostAbsentTimer = null;
+let hostAbsentDeadline = 0;
 let onlineState = {
   role: "local", // local | host | player
   roomCode: "",
   connected: false,
   displayName: "",
   seat: "",
-  ready: false
+  ready: false,
+  joinMode: "play", // play | watch
+  requestedChips: 1000,
+  joinConfirmed: false
 };
 let onlineReady = false;
 let uiState = 'room'; // room | waiting | settings | playing
+const RECONNECT_STORAGE_KEY = 'pokerReconnectInfo';
+let reconnectInfo = null;
+let reconnectContext = null;
+let joinChoiceConfirmed = false;
+let autoEnterOnStateSync = false;
 
 const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
 const boundEvents = new WeakMap();
@@ -1674,6 +1911,33 @@ function initSupabase() {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
+function loadReconnectInfo() {
+  try {
+    const raw = localStorage.getItem(RECONNECT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveReconnectInfo(patch = {}) {
+  const base = reconnectInfo && typeof reconnectInfo === 'object' ? reconnectInfo : {};
+  reconnectInfo = { ...base, ...patch, updatedAt: Date.now() };
+  try {
+    localStorage.setItem(RECONNECT_STORAGE_KEY, JSON.stringify(reconnectInfo));
+  } catch (e) {}
+}
+
+function clearReconnectInfo() {
+  reconnectInfo = null;
+  try {
+    localStorage.removeItem(RECONNECT_STORAGE_KEY);
+  } catch (e) {}
+}
+
 function setUiState(state) {
   uiState = state;
   const screenMap = {
@@ -1700,7 +1964,22 @@ function setUiState(state) {
     updateSettingsPanels();
   }
   updateHeaderMenuVisibility();
+  updateJoinMenuVisibility();
+  updateJoinStatusBanner();
   updatePlayerBadge();
+  if (state === 'playing' && onlineState.role !== 'local') {
+    saveReconnectInfo({
+      roomCode: onlineState.roomCode,
+      role: onlineState.role,
+      displayName: onlineState.displayName,
+      joinMode: onlineState.joinMode || 'play',
+      requestedChips: onlineState.requestedChips || 1000,
+      wasPlaying: true
+    });
+  }
+  if (state === 'room' && onlineState.role !== 'local' && onlineState.roomCode) {
+    saveReconnectInfo({ wasPlaying: false });
+  }
 }
 
 function setRoomStatus(text) {
@@ -1725,6 +2004,9 @@ function updatePresence(extra = {}) {
     joinedAt: onlineState.joinedAt || Date.now(),
     seat: onlineState.seat || "",
     ready: !!onlineState.ready,
+    joinMode: onlineState.joinMode || "play",
+    requestedChips: onlineState.requestedChips || 1000,
+    joinConfirmed: !!onlineState.joinConfirmed,
     ...extra
   };
   onlineState.joinedAt = payload.joinedAt;
@@ -1740,6 +2022,27 @@ function scheduleReconnect() {
     const code = onlineState.roomCode;
     await joinRoom(role, code);
   }, 1500);
+}
+
+function startHostAbsentTimer() {
+  if (hostAbsentTimer) return;
+  hostAbsentDeadline = Date.now() + 60000;
+  setRoomStatus('ホストが不在です。60秒待機中…');
+  hostAbsentTimer = setTimeout(() => {
+    hostAbsentTimer = null;
+    hostAbsentDeadline = 0;
+    if (onlineState.role !== 'host' && onlineState.connected) {
+      leaveRoom();
+      setRoomStatus('ホスト不在のため退出しました');
+    }
+  }, 60000);
+}
+
+function clearHostAbsentTimer() {
+  if (!hostAbsentTimer) return;
+  clearTimeout(hostAbsentTimer);
+  hostAbsentTimer = null;
+  hostAbsentDeadline = 0;
 }
 
 function setRoomControls(connected) {
@@ -1758,6 +2061,10 @@ function generateRoomCode() {
     out += chars[Math.floor(Math.random() * chars.length)];
   }
   return out;
+}
+
+function isSpectator(p) {
+  return p && p.joinMode === 'watch';
 }
 
 function getPresenceList() {
@@ -1809,6 +2116,7 @@ function renderSeatRing(list) {
     }
     seat.dataset.seat = String(i);
     seat.addEventListener('click', () => {
+      if (onlineState.joinMode === 'watch') return;
       if (occupant && occupant.name !== onlineState.displayName) return;
       onlineState.seat = String(i);
       onlineState.ready = false;
@@ -1821,6 +2129,7 @@ function renderSeatRing(list) {
 
 function updateParticipantList() {
   const list = getPresenceList();
+  const activeList = list.filter(p => !isSpectator(p));
   const el = document.getElementById('participant-list');
   const summaryEl = document.getElementById('participant-summary');
   const roomCodeDisplay = document.getElementById('room-code-display');
@@ -1829,6 +2138,7 @@ function updateParticipantList() {
     el.innerHTML = '';
     list.forEach(p => {
       const item = document.createElement('div');
+      const roleText = isSpectator(p) ? 'spectator' : (p.role || 'player');
       item.className = 'participant-item';
       item.innerHTML = `
         <div>
@@ -1836,7 +2146,7 @@ function updateParticipantList() {
           <div class="participant-meta">${p.online ? 'ONLINE' : 'OFFLINE'}</div>
         </div>
         <div>
-          <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
+          <div class="participant-role ${roleText}">${roleText}</div>
           <div class="participant-ready ${p.ready ? 'ready' : ''}">${p.ready ? 'READY' : 'NOT READY'}</div>
         </div>
       `;
@@ -1847,10 +2157,11 @@ function updateParticipantList() {
     summaryEl.innerHTML = '';
     list.forEach(p => {
       const item = document.createElement('div');
+      const roleText = isSpectator(p) ? 'spectator' : (p.role || 'player');
       item.className = 'participant-item';
       item.innerHTML = `
         <div class="participant-name">${p.name || 'Guest'} ${p.seat ? `• Seat ${p.seat}` : ''}</div>
-        <div class="participant-role ${p.role || 'player'}">${p.role || 'player'}</div>
+        <div class="participant-role ${roleText}">${roleText}</div>
       `;
       summaryEl.appendChild(item);
     });
@@ -1862,7 +2173,7 @@ function updateParticipantList() {
   const guestControls = document.getElementById('waiting-guest-controls');
   if (onlineState.role === 'host' && hostControls) {
     hostControls.style.display = 'block';
-    const canStart = list.length >= 2 && list.every(p => p.ready);
+    const canStart = activeList.length >= 2 && activeList.every(p => p.ready);
     if (startBtn) startBtn.disabled = !canStart;
     if (hostStatus) hostStatus.textContent = canStart ? '全員準備OK。設定へ進めます' : '全員の準備完了を待っています';
     if (guestControls) guestControls.style.display = 'none';
@@ -1871,30 +2182,43 @@ function updateParticipantList() {
     if (hostControls) hostControls.style.display = 'none';
   }
 
-  renderSeatRing(list);
+  renderSeatRing(activeList);
   const readyBtn = document.getElementById('ready-toggle-btn');
   const seatHelp = document.getElementById('seat-help-text');
-  const seatConflict = list.some(p => p.seat && p.seat === onlineState.seat && p.name !== onlineState.displayName);
+  const seatConflict = activeList.some(p => p.seat && p.seat === onlineState.seat && p.name !== onlineState.displayName);
   if (seatConflict) {
     onlineState.seat = '';
     onlineState.ready = false;
     updatePresence({ seat: "", ready: false });
   }
   if (readyBtn) {
+    readyBtn.style.display = (onlineState.role === 'host' || onlineState.joinMode === 'watch') ? 'none' : 'inline-flex';
     readyBtn.classList.toggle('on', onlineState.ready);
     readyBtn.textContent = onlineState.ready ? 'READY' : 'WAIT';
     readyBtn.disabled = !onlineState.seat;
   }
   if (seatHelp) {
-    seatHelp.textContent = onlineState.seat ? `Seat ${onlineState.seat} を選択中` : '空席をタップして席を決める';
+    if (onlineState.joinMode === 'watch') {
+      seatHelp.textContent = '観戦中です';
+    } else {
+      seatHelp.textContent = onlineState.seat ? `Seat ${onlineState.seat} を選択中` : '空席をタップして席を決める';
+    }
   }
 }
 
 function updateHeaderMenuVisibility() {
   const menuBtn = document.getElementById('menu-btn');
   if (!menuBtn) return;
-  const show = onlineState.role !== 'player';
+  const show = onlineState.role !== 'player' ||
+    (onlineState.role === 'player' && onlineState.joinMode === 'watch');
   menuBtn.style.display = show ? 'inline-flex' : 'none';
+}
+
+function updateJoinMenuVisibility() {
+  const joinBtn = document.getElementById('menu-join-btn');
+  if (!joinBtn) return;
+  const show = onlineState.role === 'player' && onlineState.joinMode === 'watch';
+  joinBtn.style.display = show ? 'inline-flex' : 'none';
 }
 
 function updatePlayerBadge() {
@@ -1909,24 +2233,193 @@ function updatePlayerBadge() {
   roleEl.classList.toggle('player', onlineState.role !== 'host');
 }
 
-async function leaveRoom() {
+function showReconnectModal(options = {}) {
+  const overlay = document.getElementById('reconnect-overlay');
+  if (!overlay) return;
+  const titleEl = document.getElementById('reconnect-title');
+  const messageEl = document.getElementById('reconnect-message');
+  const chipsRow = document.getElementById('reconnect-chip-row');
+  const chipsInput = document.getElementById('reconnect-chips');
+  const watchBtn = document.getElementById('reconnect-watch-btn');
+  const playBtn = document.getElementById('reconnect-play-btn');
+  const noteEl = document.getElementById('reconnect-note');
+  const role = options.role || onlineState.role;
+  const roomCode = options.roomCode || onlineState.roomCode || '';
+
+  if (titleEl) titleEl.textContent = options.title || '進行中のゲーム';
+  if (messageEl) {
+    const base = options.message || '進行中のゲームが見つかりました。参加しますか？';
+    messageEl.textContent = roomCode ? `${base}（コード: ${roomCode}）` : base;
+  }
+  if (noteEl) {
+    noteEl.textContent = options.note || '参加を選ぶと次のハンドから入れます。';
+  }
+  const showWatch = role !== 'host' && options.showWatch !== false;
+  if (watchBtn) watchBtn.style.display = showWatch ? 'inline-flex' : 'none';
+  if (playBtn) playBtn.textContent = role === 'host' ? '再接続する' : '参加する';
+  if (chipsRow) chipsRow.style.display = role === 'host' ? 'none' : 'flex';
+  if (chipsInput) {
+    const defaultChips = options.defaultChips || onlineState.requestedChips || 1000;
+    chipsInput.value = String(defaultChips);
+  }
+  reconnectContext = options.context || 'unknown';
+  overlay.classList.add('visible');
+}
+
+function hideReconnectModal() {
+  const overlay = document.getElementById('reconnect-overlay');
+  if (overlay) overlay.classList.remove('visible');
+  reconnectContext = null;
+}
+
+function getRequestedChips() {
+  const input = document.getElementById('reconnect-chips');
+  const value = input ? parseInt(input.value, 10) : NaN;
+  return Number.isFinite(value) && value >= 1 ? value : 1000;
+}
+
+function applyJoinMode(mode, requestedChips) {
+  onlineState.joinMode = mode;
+  if (mode === 'play') {
+    onlineState.requestedChips = requestedChips || 1000;
+  } else {
+    onlineState.ready = false;
+    onlineState.seat = '';
+  }
+  joinChoiceConfirmed = true;
+  onlineState.joinConfirmed = true;
+  updateJoinMenuVisibility();
+  updateJoinStatusBanner();
+  saveReconnectInfo({
+    roomCode: onlineState.roomCode,
+    role: onlineState.role,
+    displayName: onlineState.displayName,
+    joinMode: onlineState.joinMode,
+    requestedChips: onlineState.requestedChips || 1000
+  });
+  if (roomChannel) {
+    updatePresence({ joinMode: onlineState.joinMode, requestedChips: onlineState.requestedChips, joinConfirmed: true });
+  }
+}
+
+function isSelfInGame() {
+  if (!gameState || !gameState.players) return false;
+  return gameState.players.some(p => p.name === onlineState.displayName);
+}
+
+function updateJoinStatusBanner() {
+  const banner = document.getElementById('join-status-banner');
+  const titleEl = document.getElementById('join-status-title');
+  const subEl = document.getElementById('join-status-sub');
+  if (!banner || !titleEl || !subEl) return;
+  const pendingJoin = onlineState.role === 'player' &&
+    onlineState.joinMode === 'play' &&
+    gameState?.isHandActive &&
+    !isSelfInGame();
+  banner.classList.toggle('visible', !!pendingJoin);
+  if (pendingJoin) {
+    const seatText = onlineState.seat ? `Seat ${onlineState.seat} 選択済み` : '席が未選択です';
+    titleEl.textContent = '参加待機中';
+    subEl.textContent = `次ハンド開始で参加します。${seatText}`;
+  }
+}
+
+function showSeatSelectModal() {
+  const overlay = document.getElementById('seat-select-overlay');
+  const grid = document.getElementById('seat-select-grid');
+  if (!overlay || !grid) return;
+  grid.innerHTML = '';
+  const list = getPresenceList().filter(p => !isSpectator(p));
+  const usedSeats = new Map();
+  list.forEach(p => {
+    if (p.seat) usedSeats.set(String(p.seat), p);
+  });
+  for (let i = 1; i <= 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'seat-select-btn';
+    const occupant = usedSeats.get(String(i));
+    if (occupant && occupant.name !== onlineState.displayName) {
+      btn.classList.add('taken');
+      btn.textContent = `Seat ${i}`;
+      btn.disabled = true;
+    } else {
+      btn.textContent = `Seat ${i}`;
+      btn.addEventListener('click', () => {
+        onlineState.seat = String(i);
+        onlineState.ready = true;
+        updatePresence({ seat: onlineState.seat, ready: onlineState.ready });
+        updateParticipantList();
+        updateJoinStatusBanner();
+        hideSeatSelectModal();
+      });
+    }
+    grid.appendChild(btn);
+  }
+  overlay.classList.add('visible');
+}
+
+function hideSeatSelectModal() {
+  const overlay = document.getElementById('seat-select-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function showJoinCancelConfirm() {
+  const overlay = document.getElementById('join-cancel-overlay');
+  if (overlay) overlay.classList.add('visible');
+}
+
+function hideJoinCancelConfirm() {
+  const overlay = document.getElementById('join-cancel-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function maybeShowReconnectPrompt() {
+  if (roomChannel || uiState !== 'room') return;
+  reconnectInfo = reconnectInfo || loadReconnectInfo();
+  if (!reconnectInfo || !reconnectInfo.roomCode || !reconnectInfo.wasPlaying) return;
+  if (reconnectInfo.role === 'local') return;
+  if (onlineState.displayName === '' && reconnectInfo.displayName) {
+    const nameInput = document.getElementById('display-name-input');
+    if (nameInput && !nameInput.value) {
+      nameInput.value = reconnectInfo.displayName;
+    }
+  }
+  showReconnectModal({
+    context: 'startup',
+    role: reconnectInfo.role || 'player',
+    roomCode: reconnectInfo.roomCode,
+    defaultChips: reconnectInfo.requestedChips || 1000,
+    title: '前回のゲームに再接続',
+    message: '進行中のゲームに入りますか？'
+  });
+}
+
+async function leaveRoom(options = {}) {
   if (roomChannel) {
     roomChannel.unsubscribe();
     roomChannel = null;
   }
+  clearHostAbsentTimer();
   onlineState = {
     role: "local",
     roomCode: "",
     connected: false,
     displayName: onlineState.displayName,
     seat: "",
-    ready: false
+    ready: false,
+    joinMode: "play",
+    requestedChips: 1000,
+    joinConfirmed: false
   };
+  joinChoiceConfirmed = false;
   onlineReady = false;
   setRoomControls(false);
   setRoomStatus('ローカルモード');
   setUiState('room');
   updatePlayerBadge();
+  if (options.clearReconnect) {
+    clearReconnectInfo();
+  }
 }
 
 async function createRoomWithUniqueCode(maxAttempts = 5) {
@@ -1972,8 +2465,12 @@ async function joinRoom(role, code, isAuto = false) {
     displayName: onlineState.displayName,
     seat: onlineState.seat,
     ready: onlineState.ready,
-    joinedAt: onlineState.joinedAt
+    joinedAt: onlineState.joinedAt,
+    joinMode: role === 'host' ? 'play' : (onlineState.joinMode || 'play'),
+    requestedChips: onlineState.requestedChips || 1000,
+    joinConfirmed: role === 'host'
   };
+  joinChoiceConfirmed = onlineState.joinConfirmed;
   setRoomStatus(`接続中: ${roomCode}`);
 
   const channelName = `room_${roomCode}`;
@@ -1998,9 +2495,9 @@ async function joinRoom(role, code, isAuto = false) {
         return;
       }
       if (onlineState.role !== 'host' && hosts.length === 0 && onlineReady) {
-        leaveRoom();
-        setRoomStatus('ホストが退出しました');
-        return;
+        startHostAbsentTimer();
+      } else {
+        clearHostAbsentTimer();
       }
       if (onlineState.role === 'host') {
         // If another host already exists, back out and let caller retry
@@ -2030,6 +2527,19 @@ async function joinRoom(role, code, isAuto = false) {
       if (onlineState.role === 'host') return;
       if (!payload?.payload?.state) return;
       gameState = payload.payload.state;
+      if (gameState?.isHandActive && onlineState.role === 'player' && !joinChoiceConfirmed) {
+        showReconnectModal({
+          context: 'ongoing',
+          role: onlineState.role,
+          roomCode: onlineState.roomCode,
+          title: '進行中のゲーム',
+          message: '進行中のゲームに入りますか？'
+        });
+      }
+      if (autoEnterOnStateSync && gameState?.isHandActive) {
+        autoEnterOnStateSync = false;
+        setUiState('playing');
+      }
       render();
       if (gameState.isHandActive) startActionTimer();
     })
@@ -2073,6 +2583,14 @@ async function joinRoom(role, code, isAuto = false) {
         setRoomControls(true);
         updateParticipantList();
         setRoomStatus(`${onlineState.role === 'host' ? 'ホスト中' : '参加中'}: ${onlineState.roomCode}`);
+        saveReconnectInfo({
+          roomCode: onlineState.roomCode,
+          role: onlineState.role,
+          displayName: onlineState.displayName,
+          joinMode: onlineState.joinMode || 'play',
+          requestedChips: onlineState.requestedChips || 1000,
+          wasPlaying: uiState === 'playing'
+        });
       }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         onlineState.connected = false;
@@ -2119,6 +2637,7 @@ function applyRemoteAction(type, amount) {
 function startActionTimer() {
   stopActionTimer();
   if (timerSettings.duration === 0) return; // 無制限
+  if (onlineState.joinMode === 'watch') return;
   if (onlineState.role === 'player') {
     if (!gameState) return;
     const actor = gameState.players[gameState.currentPlayerIndex];
@@ -2324,7 +2843,7 @@ function getLocalPlayerNames() {
 }
 
 function getOnlinePlayerNames() {
-  const list = getPresenceList();
+  const list = getPresenceList().filter(p => !isSpectator(p));
   return list.map((p, i) => p.name || `Player ${i + 1}`);
 }
 
@@ -2533,9 +3052,14 @@ function renderActionPanel() {
   // Actor label
   document.getElementById('actor-label').innerHTML = `<strong>${actor.name}</strong> のターン`;
 
-  if (onlineState.role === 'player' && actor.name !== onlineState.displayName) {
+  if (onlineState.joinMode === 'watch' || (onlineState.role === 'player' && actor.name !== onlineState.displayName)) {
     panel.classList.add('locked');
-    if (lockMessage) lockMessage.style.display = 'block';
+    if (lockMessage) {
+      lockMessage.style.display = 'block';
+      lockMessage.textContent = onlineState.joinMode === 'watch'
+        ? '観戦中です（参加はメニューから）'
+        : 'あなたの番になるまでお待ちください';
+    }
     return;
   }
 
@@ -2703,6 +3227,7 @@ function doAction(type, amount = 0) {
   if (actionLock) return;
   actionLock = true;
   setTimeout(() => { actionLock = false; }, 180);
+  if (onlineState.joinMode === 'watch') return;
   if (onlineState.role === 'player') {
     sendActionRequest(type, amount);
     return;
@@ -2732,6 +3257,7 @@ function render() {
   renderCommunityCards();
   renderPhase();
   renderActionPanel();
+  updateJoinStatusBanner();
   handlePhaseTransition();
 }
 
@@ -2850,6 +3376,9 @@ function nextHand() {
   nextHandLock = true;
   setTimeout(() => { nextHandLock = false; }, 200);
   document.getElementById('next-hand-overlay').classList.remove('visible');
+  if (onlineState.role === 'host') {
+    gameState = addLateJoiners(gameState);
+  }
   gameState = advanceDealer(gameState);
   gameState = startHand(gameState);
   render();
@@ -2857,6 +3386,55 @@ function nextHand() {
   if (onlineState.role === 'host') {
     broadcastState();
   }
+}
+
+function getLateJoinRequests() {
+  if (!gameState) return [];
+  const list = getPresenceList();
+  const existingNames = new Set(gameState.players.map(p => p.name));
+  return list.filter(p =>
+    p.role === 'player' &&
+    !isSpectator(p) &&
+    p.joinConfirmed === true &&
+    p.name &&
+    !existingNames.has(p.name)
+  );
+}
+
+function getNextPlayerId(state) {
+  if (!state || !state.players) return 0;
+  let maxId = -1;
+  state.players.forEach(p => {
+    const match = /player_(\d+)/.exec(p.id || '');
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (Number.isFinite(num)) maxId = Math.max(maxId, num);
+    }
+  });
+  return maxId + 1;
+}
+
+function addLateJoiners(state) {
+  if (!state) return state;
+  const requests = getLateJoinRequests();
+  if (requests.length === 0) return state;
+  let nextId = getNextPlayerId(state);
+  const newPlayers = requests.map(req => {
+    const chips = parseInt(req.requestedChips, 10);
+    const startingChips = Number.isFinite(chips) && chips >= 1 ? chips : 1000;
+    const name = req.name || `Player ${nextId + 1}`;
+    return {
+      id: `player_${nextId++}`,
+      name,
+      icon: '',
+      chips: startingChips,
+      status: "waiting",
+      currentBet: 0,
+      totalBet: 0,
+      actedThisRound: false
+    };
+  });
+  return { ...state, players: [...state.players, ...newPlayers] };
 }
 
 // ─── SETUP SCREEN LOGIC ───────────────────────
@@ -2912,7 +3490,7 @@ function resetToSetup() {
   stopActionTimer();
   gameState = null;
   if (onlineState.role !== 'local') {
-    leaveRoom();
+    leaveRoom({ clearReconnect: true });
   } else {
     setUiState('room');
   }
@@ -2923,6 +3501,13 @@ function syncTournamentOptions() {
   const options = document.getElementById('tournament-options');
   if (!toggle || !options) return;
   options.style.display = toggle.checked ? 'block' : 'none';
+}
+
+function generateRandomName() {
+  const animals = ['Fox', 'Wolf', 'Bear', 'Lion', 'Hawk', 'Owl', 'Cat', 'Dog'];
+  const animal = animals[Math.floor(Math.random() * animals.length)];
+  const num = Math.floor(10 + Math.random() * 90);
+  return `${animal}${num}`;
 }
 
 // Initialize on DOM ready
@@ -2945,12 +3530,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuBtn = document.getElementById('menu-btn');
   const menu = document.getElementById('header-menu');
   const menuResetBtn = document.getElementById('menu-reset-btn');
+  const menuJoinBtn = document.getElementById('menu-join-btn');
+  const joinSeatBtn = document.getElementById('join-seat-btn');
+  const joinCancelBtn = document.getElementById('join-cancel-btn');
+  const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
+  const joinCancelNoBtn = document.getElementById('join-cancel-no');
+  const joinCancelYesBtn = document.getElementById('join-cancel-yes');
   const reconnectBtns = document.querySelectorAll('.reconnect-btn');
+  const reconnectWatchBtn = document.getElementById('reconnect-watch-btn');
+  const reconnectPlayBtn = document.getElementById('reconnect-play-btn');
+  const reconnectCancelBtn = document.getElementById('reconnect-cancel-btn');
   const foldCancelBtn = document.getElementById('fold-confirm-cancel');
   const foldOkBtn = document.getElementById('fold-confirm-ok');
   setupNumericInput(document.getElementById('sb-input'));
   setupNumericInput(document.getElementById('bb-input'));
   setupNumericInput(document.getElementById('initial-chips-input'));
+
+  reconnectInfo = loadReconnectInfo();
+  if (nameInput && !nameInput.value) {
+    if (reconnectInfo && reconnectInfo.displayName) {
+      nameInput.value = reconnectInfo.displayName;
+    } else {
+      nameInput.value = generateRandomName();
+    }
+  }
 
   if (hostBtn) {
     bindOnce(hostBtn, 'click', async () => {
@@ -3001,12 +3604,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (leaveBtn) {
     bindOnce(leaveBtn, 'click', () => {
-      leaveRoom();
+      leaveRoom({ clearReconnect: true });
     });
   }
   if (settingsLeaveBtn) {
     bindOnce(settingsLeaveBtn, 'click', () => {
-      leaveRoom();
+      leaveRoom({ clearReconnect: true });
     });
   }
   if (waitingStartBtn) {
@@ -3058,6 +3661,99 @@ document.addEventListener('DOMContentLoaded', () => {
       resetToSetup();
     });
   }
+  if (menuJoinBtn) {
+    bindOnce(menuJoinBtn, 'click', () => {
+      if (menu) menu.style.display = 'none';
+      showReconnectModal({
+        context: 'switch',
+        role: onlineState.role,
+        roomCode: onlineState.roomCode,
+        title: '参加申請',
+        message: '次のハンドから参加します。チップを入力して参加しますか？',
+        showWatch: false
+      });
+    });
+  }
+  if (joinSeatBtn) {
+    bindOnce(joinSeatBtn, 'click', () => {
+      showSeatSelectModal();
+    });
+  }
+  if (joinCancelBtn) {
+    bindOnce(joinCancelBtn, 'click', () => {
+      showJoinCancelConfirm();
+    });
+  }
+  if (seatSelectCancelBtn) {
+    bindOnce(seatSelectCancelBtn, 'click', () => {
+      hideSeatSelectModal();
+    });
+  }
+  if (joinCancelNoBtn) {
+    bindOnce(joinCancelNoBtn, 'click', () => {
+      hideJoinCancelConfirm();
+    });
+  }
+  if (joinCancelYesBtn) {
+    bindOnce(joinCancelYesBtn, 'click', () => {
+      hideJoinCancelConfirm();
+      applyJoinMode('watch', onlineState.requestedChips || 1000);
+      updateParticipantList();
+      render();
+    });
+  }
+
+  if (reconnectWatchBtn) {
+    bindOnce(reconnectWatchBtn, 'click', async () => {
+      const chips = getRequestedChips();
+      if (reconnectContext === 'startup') {
+        const info = reconnectInfo || loadReconnectInfo();
+        if (!info || !info.roomCode) return;
+        onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+        onlineState.joinMode = 'watch';
+        onlineState.requestedChips = chips;
+        joinChoiceConfirmed = true;
+        onlineState.joinConfirmed = true;
+        autoEnterOnStateSync = true;
+        hideReconnectModal();
+        await joinRoom(info.role || 'player', info.roomCode);
+        return;
+      }
+      applyJoinMode('watch', chips);
+      hideReconnectModal();
+      setUiState('playing');
+      render();
+    });
+  }
+  if (reconnectPlayBtn) {
+    bindOnce(reconnectPlayBtn, 'click', async () => {
+      const chips = getRequestedChips();
+      if (reconnectContext === 'startup') {
+        const info = reconnectInfo || loadReconnectInfo();
+        if (!info || !info.roomCode) return;
+        onlineState.displayName = nameInput ? nameInput.value.trim() : '';
+        onlineState.joinMode = 'play';
+        onlineState.requestedChips = chips;
+        joinChoiceConfirmed = true;
+        onlineState.joinConfirmed = true;
+        autoEnterOnStateSync = true;
+        hideReconnectModal();
+        await joinRoom(info.role || 'player', info.roomCode);
+        showSeatSelectModal();
+        return;
+      }
+      applyJoinMode('play', chips);
+      hideReconnectModal();
+      setUiState('playing');
+      render();
+      showSeatSelectModal();
+    });
+  }
+  if (reconnectCancelBtn) {
+    bindOnce(reconnectCancelBtn, 'click', () => {
+      hideReconnectModal();
+    });
+  }
 
   reconnectBtns.forEach(btn => {
     bindOnce(btn, 'click', async () => {
@@ -3069,6 +3765,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const readyBtn = document.getElementById('ready-toggle-btn');
   if (readyBtn) {
     bindOnce(readyBtn, 'click', () => {
+      if (onlineState.joinMode === 'watch') return;
       if (!onlineState.seat) {
         const seatHelp = document.getElementById('seat-help-text');
         if (seatHelp) seatHelp.textContent = '先に席を選んでください';
@@ -3093,6 +3790,8 @@ document.addEventListener('DOMContentLoaded', () => {
       doAction('fold');
     });
   }
+
+  maybeShowReconnectPrompt();
 });
 </script>
 
