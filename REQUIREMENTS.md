@@ -37,6 +37,7 @@ P2（保留）:
 
 ## 追加ルール
 - 要件の追加・変更が発生した時は `REQUIREMENTS.md` に追記すること
+- UIフローや画面構成の変更時は `docs/STATE_FLOW.md` と `docs/WIREFRAME_GAME_SCREEN.md` を更新すること
 
 ## 納品ルール
 - 作業完了時は必ず git へコミットし、push すること

@@ -9,6 +9,7 @@
 - P2: 余裕があれば対応したい改善/演出
 
 ## ✅ 完了
+- ✅ UI設計ドキュメントを追加（docs/ARCHITECTURE.md / docs/STATE_FLOW.md / docs/WIREFRAME_GAME_SCREEN.md）
 - テーブル中央の画像（カードバックの透かし）を追加
 - バージョン表示を画面右上に追加
 - フェーズ表示のコミュニティカードは常に5枠表示（0→3→4→5でimg/trump.pngを表示）
