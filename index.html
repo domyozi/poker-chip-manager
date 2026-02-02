@@ -303,14 +303,24 @@
     </div>
   </div>
 
-  <div class="table-area">
-    <div class="table-felt"></div>
-    <div class="players-ring" id="players-ring"></div>
-    <div class="community-cards" id="community-cards"></div>
-    <div class="pot-center">
-      <div class="pot-label">POT</div>
-      <div class="pot-amount" id="pot-amount">0</div>
+  <!-- Vertical lane structure: opponents → table → you -->
+  <div class="game-layout">
+    <!-- Opponents area (top) -->
+    <div class="opponents-area" id="opponents-area"></div>
+
+    <!-- Table area (middle) -->
+    <div class="table-area">
+      <div class="table-felt"></div>
+      <div class="table-bets" id="table-bets"></div>
+      <div class="community-cards" id="community-cards"></div>
+      <div class="pot-center">
+        <div class="pot-label">POT</div>
+        <div class="pot-amount" id="pot-amount">0</div>
+      </div>
     </div>
+
+    <!-- Local player area (bottom) -->
+    <div class="local-player-area" id="local-player-area"></div>
   </div>
 
   <div class="status-bar" id="status-bar">

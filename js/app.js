@@ -8,24 +8,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 const APP_VERSION = "v0.8.1";
-const ENABLE_SEAT_PRESETS = true;
-const SEAT_PRESETS = {
-  2: [
-    { x: 0.50, y: 0.18 },
-    { x: 0.50, y: 0.82 }
-  ],
-  3: [
-    { x: 0.50, y: 0.18 },
-    { x: 0.20, y: 0.70 },
-    { x: 0.80, y: 0.70 }
-  ],
-  4: [
-    { x: 0.50, y: 0.18 },
-    { x: 0.18, y: 0.50 },
-    { x: 0.50, y: 0.82 },
-    { x: 0.82, y: 0.50 }
-  ]
-};
+// Vertical lane layout: no longer using circular seat presets
+const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
 let actionCounter = 0;
 
@@ -1393,44 +1377,10 @@ function updateSettingsPanels() {
   renderPerPlayerStackList();
 }
 
-// Player positions (ellipse ring). index → {x%, y%}
+// calcPositions is no longer used in vertical lane layout
+// Kept for backward compatibility with other functions that might reference it
 function calcPositions(n) {
-  if (ENABLE_SEAT_PRESETS && SEAT_PRESETS[n]) {
-    return SEAT_PRESETS[n].map(p => ({ ...p, normalized: true }));
-  }
-  const positions = [];
-  const cx = 50, cy = 50;
-
-  // 2人の場合: 上下に大きく離す
-  if (n === 2) {
-    positions.push({ x: cx, y: 10 });  // 上
-    positions.push({ x: cx, y: 90 });  // 下
-    return positions;
-  }
-
-  // 3-4人の場合: 広めの楕円
-  if (n <= 4) {
-    const rx = 44, ry = 42;
-    for (let i = 0; i < n; i++) {
-      const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
-      positions.push({
-        x: cx + rx * Math.cos(angle),
-        y: cy + ry * Math.sin(angle)
-      });
-    }
-    return positions;
-  }
-
-  // 5人以上: 標準の楕円配置
-  const rx = 42, ry = 40;
-  for (let i = 0; i < n; i++) {
-    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
-    positions.push({
-      x: cx + rx * Math.cos(angle),
-      y: cy + ry * Math.sin(angle)
-    });
-  }
-  return positions;
+  return Array.from({ length: n }, () => ({ x: 0.5, y: 0.5 }));
 }
 
 function buildPositionLabels(count, dealerIndex) {
@@ -1451,131 +1401,168 @@ function buildPositionLabels(count, dealerIndex) {
 }
 
 function renderPlayers() {
-  const ring = $('players-ring');
-  if (!ring) {
-    warnMissing('players-ring');
+  const opponentsArea = $('opponents-area');
+  const localPlayerArea = $('local-player-area');
+  const betsContainer = $('table-bets');
+
+  if (!opponentsArea || !localPlayerArea) {
+    warnMissing('opponents-area or local-player-area');
     return;
   }
-  setHTML('players-ring', '');
-  if (!gameState) return;
 
-  const positions = calcPositions(gameState.players.length);
-  let hasNormalized = positions.some(p => p.normalized);
-  const tableEl = hasNormalized ? document.querySelector('.table-area') : null;
-  const tableRect = tableEl ? tableEl.getBoundingClientRect() : null;
-  const ringRect = hasNormalized ? ring.getBoundingClientRect() : null;
-  const rectValid = tableRect
-    && Number.isFinite(tableRect.width)
-    && Number.isFinite(tableRect.height)
-    && tableRect.width > 20
-    && tableRect.height > 20
-    && Number.isFinite(tableRect.left)
-    && Number.isFinite(tableRect.top);
-  if (hasNormalized && !rectValid) {
-    if (isDebugEnabled() && !seatPresetWarned) {
-      seatPresetWarned = true;
-      console.warn('[seat-presets] invalid table rect, fallback');
-    }
-    hasNormalized = false;
-  }
+  // Clear all areas
+  opponentsArea.innerHTML = '';
+  localPlayerArea.innerHTML = '';
+  if (betsContainer) betsContainer.innerHTML = '';
+
+  if (!gameState || !gameState.players.length) return;
+
   const positionLabels = buildPositionLabels(gameState.players.length, gameState.dealerIndex);
 
+  // Find local player index (you)
+  let localPlayerIdx = -1;
   gameState.players.forEach((player, idx) => {
-    const pos = positions[idx];
-    const isActor = idx === gameState.currentPlayerIndex && gameState.isHandActive && player.status === "active";
-    const isDealer = idx === gameState.dealerIndex;
-    const isFolded = player.status === "folded";
-    const isAllIn = player.status === "allIn";
-    const isWinner = winnerHighlightIds.includes(player.id);
-
-    let classes = 'player-card';
-    if (isActor) classes += ' is-actor';
-    if (isFolded) classes += ' folded';
-    if (isAllIn) classes += ' allin';
-    if (isWinner) classes += ' is-winner';
-    if (idx === 0) classes += ' seat-top';
-
-    const characterId = normalizeCharacterId(player.characterId || '', idx);
-    const isYou = isPlayerYou(player, idx);
-    const avatarMarkup = renderAvatarMarkup(characterId, {
-      isYou,
-      isDealer,
-      isTurn: isActor,
-      isWinner,
-      fallbackIndex: idx
-    });
-    const inlineIconMarkup = renderAvatarMarkup(characterId, {
-      isYou,
-      isWinner,
-      sizeClass: 'avatar--xs',
-      hideYou: true,
-      fallbackIndex: idx,
-      extraClass: 'player-icon'
-    });
-    const showName = !!player.name;
-    const hasBet = player.currentBet > 0;
-    const posLabel = positionLabels[idx];
-
-    const card = document.createElement('div');
-    card.className = classes;
-    card.dataset.playerId = player.id;
-    if (hasNormalized && pos.normalized && tableRect && ringRect) {
-      const absX = tableRect.left + pos.x * tableRect.width;
-      const absY = tableRect.top + pos.y * tableRect.height;
-      card.style.left = `${absX - ringRect.left}px`;
-      card.style.top = `${absY - ringRect.top}px`;
-    } else {
-      card.style.left = pos.x + '%';
-      card.style.top = pos.y + '%';
-    }
-
-    // Timer ring for active player (only if timer is enabled)
-    const showTimer = isActor && timerSettings.duration > 0;
-    const circumference = 2 * Math.PI * 28;
-    const timerRingHtml = showTimer ? `
-      <svg class="timer-ring" width="64" height="64" viewBox="0 0 64 64">
-        <circle class="bg" cx="32" cy="32" r="28"/>
-        <circle class="progress" cx="32" cy="32" r="28"
-          style="stroke-dasharray: ${circumference}; stroke-dashoffset: 0"/>
-      </svg>
-      <div class="timer-text">0:${timerSettings.duration.toString().padStart(2, '0')}</div>
-    ` : '';
-
-    card.innerHTML = `
-      <div class="allin-badge">ALL IN</div>
-      <div class="avatar">
-        ${timerRingHtml}
-        <div class="seat-badge">S${idx + 1}</div>
-        ${posLabel ? `<div class="position-badge">${posLabel}</div>` : ''}
-        ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
-        ${avatarMarkup}
-        ${hasBet ? `<div class="bet-badge">${formatAmount(player.currentBet)}</div>` : ''}
-      </div>
-      <div class="info-line">
-        ${inlineIconMarkup}
-        <div class="name${showName ? '' : ' is-empty'}">${showName ? player.name : ''}</div>
-        <div class="chips">${formatAmount(player.chips)}</div>
-      </div>
-    `;
-    ring.appendChild(card);
-
-    // Bet badge visibility
-    if (hasBet) {
-      setTimeout(() => {
-        const badge = card.querySelector('.bet-badge');
-        if (badge) {
-          const dx = 50 - pos.x;
-          const dy = 50 - pos.y;
-          const mag = Math.hypot(dx, dy) || 1;
-          const offset = 26;
-          const ox = (dx / mag) * offset;
-          const oy = (dy / mag) * offset;
-          badge.style.opacity = '1';
-          badge.style.transform = `translate(-50%, -50%) translate(${ox}px, ${oy}px)`;
-        }
-      }, 50);
+    if (isPlayerYou(player, idx)) {
+      localPlayerIdx = idx;
     }
   });
+  // Fallback: if no "you" found (offline mode), use last player as local
+  if (localPlayerIdx === -1) {
+    localPlayerIdx = gameState.players.length - 1;
+  }
+
+  // Separate opponents and local player
+  const opponents = [];
+  let localPlayer = null;
+  gameState.players.forEach((player, idx) => {
+    if (idx === localPlayerIdx) {
+      localPlayer = { player, idx };
+    } else {
+      opponents.push({ player, idx });
+    }
+  });
+
+  // Render opponents in top area
+  const opponentCount = opponents.length;
+  opponents.forEach((item, opIdx) => {
+    const { player, idx } = item;
+    const card = createPlayerCard(player, idx, positionLabels[idx], false);
+    opponentsArea.appendChild(card);
+
+    // Render opponent bet on table
+    if (player.currentBet > 0 && betsContainer) {
+      const betClass = getBetPositionClass(opponentCount, opIdx, false);
+      renderTableBet(betsContainer, player, positionLabels[idx], betClass);
+    }
+  });
+
+  // Render local player in bottom area
+  if (localPlayer) {
+    const { player, idx } = localPlayer;
+    const card = createPlayerCard(player, idx, positionLabels[idx], true);
+    localPlayerArea.appendChild(card);
+
+    // Render local player bet on table
+    if (player.currentBet > 0 && betsContainer) {
+      renderTableBet(betsContainer, player, positionLabels[idx], 'bet-bottom');
+    }
+  }
+}
+
+// Create a player card element (pill style with avatar overlap)
+function createPlayerCard(player, idx, posLabel, isLocalPlayer) {
+  const isActor = idx === gameState.currentPlayerIndex && gameState.isHandActive && player.status === "active";
+  const isDealer = idx === gameState.dealerIndex;
+  const isFolded = player.status === "folded";
+  const isAllIn = player.status === "allIn";
+  const isWinner = winnerHighlightIds.includes(player.id);
+
+  let classes = 'player-card';
+  if (isActor) classes += ' is-actor';
+  if (isFolded) classes += ' folded';
+  if (isAllIn) classes += ' allin';
+  if (isWinner) classes += ' is-winner';
+  if (isLocalPlayer) classes += ' is-local';
+
+  const characterId = normalizeCharacterId(player.characterId || '', idx);
+  const isYou = isPlayerYou(player, idx);
+  const avatarMarkup = renderAvatarMarkup(characterId, {
+    isYou,
+    isDealer,
+    isTurn: isActor,
+    isWinner,
+    fallbackIndex: idx
+  });
+  const showName = !!player.name;
+  const displayName = showName ? player.name : `P${idx + 1}`;
+
+  // Timer ring for active player (sized to fit new avatar)
+  const showTimer = isActor && timerSettings.duration > 0;
+  const timerRingHtml = showTimer ? `
+    <svg class="timer-ring" width="56" height="56" viewBox="0 0 56 56">
+      <circle class="bg" cx="28" cy="28" r="24"/>
+      <circle class="progress" cx="28" cy="28" r="24"
+        style="stroke-dasharray: ${2 * Math.PI * 24}; stroke-dashoffset: 0"/>
+    </svg>
+    <div class="timer-text">0:${timerSettings.duration.toString().padStart(2, '0')}</div>
+  ` : '';
+
+  // Position badge (BTN/SB/BB) - shown on pill
+  const positionBadgeHtml = posLabel ? `<span class="position-badge">${posLabel}</span>` : '';
+
+  const card = document.createElement('div');
+  card.className = classes;
+  card.dataset.playerId = player.id;
+
+  // New pill structure: avatar overlaps from left, name/chips to the right
+  card.innerHTML = `
+    <div class="allin-badge">ALL IN</div>
+    <div class="info-line">
+      <div class="avatar">
+        ${timerRingHtml}
+        ${avatarMarkup}
+        ${isDealer ? '<div class="dealer-badge">D</div>' : ''}
+      </div>
+      <div class="player-info">
+        <span class="name">${displayName}</span>
+        <span class="chips">${formatAmount(player.chips)}</span>
+      </div>
+      ${positionBadgeHtml}
+    </div>
+  `;
+
+  return card;
+}
+
+// Get bet position class based on opponent count and index
+function getBetPositionClass(opponentCount, opIdx, isLocal) {
+  if (isLocal) return 'bet-bottom';
+
+  if (opponentCount === 1) {
+    return 'bet-top';
+  } else if (opponentCount === 2) {
+    return opIdx === 0 ? 'bet-top-left' : 'bet-top-right';
+  } else {
+    // 3+ opponents
+    return `bet-top-${opIdx + 1}`;
+  }
+}
+
+// Render a bet chip on the table
+function renderTableBet(container, player, posLabel, positionClass) {
+  const betEl = document.createElement('div');
+  betEl.className = `table-bet ${positionClass}`;
+
+  // Show SB/BB on chip
+  const chipLabel = posLabel && (posLabel.includes('SB') || posLabel.includes('BB'))
+    ? posLabel.replace('BTN/', '').replace('/SB', '').replace('/BB', '')
+    : '';
+
+  betEl.innerHTML = `
+    <div class="bet-chip">${chipLabel || ''}</div>
+    <div class="bet-amount">${formatAmount(player.currentBet)}</div>
+  `;
+  container.appendChild(betEl);
 }
 
 function setWinnerHighlight(ids) {
@@ -2197,7 +2184,8 @@ function render() {
 function runSmokeChecks() {
   const requiredByState = {
     playing: [
-      'players-ring',
+      'opponents-area',
+      'local-player-area',
       'pot-amount',
       'phase-label',
       'action-panel',
@@ -2249,18 +2237,17 @@ function runSmokeChecks() {
     });
   }
   if (uiState === 'playing') {
-    const ring = $('players-ring');
+    const opponentsArea = $('opponents-area');
+    const localPlayerArea = $('local-player-area');
     const table = document.querySelector('.table-area');
-    const cards = ring ? ring.querySelectorAll('.player-card') : [];
-    if (!ring) warnings.push('players-ring missing');
+    const opponentCards = opponentsArea ? opponentsArea.querySelectorAll('.player-card') : [];
+    const localCards = localPlayerArea ? localPlayerArea.querySelectorAll('.player-card') : [];
+    const cards = [...opponentCards, ...localCards];
+    if (!opponentsArea) warnings.push('opponents-area missing');
+    if (!localPlayerArea) warnings.push('local-player-area missing');
     if (!table) warnings.push('table-area missing');
     cards.forEach((card, i) => {
-      const left = card.style.left;
-      const top = card.style.top;
-      if (!left || !top) {
-        warnings.push(`seat ${i} missing left/top`);
-        console.warn('[smoke-checks] seat missing position', { index: i });
-      }
+      // Cards are now flexbox positioned, no left/top needed
       if (table) {
         const t = table.getBoundingClientRect();
         const r = card.getBoundingClientRect();
