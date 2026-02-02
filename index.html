@@ -5918,19 +5918,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const historyFilterHandler = () => updateHistoryView();
-  if (historyFilterHand) historyFilterHand.addEventListener('input', historyFilterHandler);
-  if (historyFilterWinner) historyFilterWinner.addEventListener('input', historyFilterHandler);
-  if (historyFilterMinPot) historyFilterMinPot.addEventListener('input', historyFilterHandler);
-  if (historyFilterClear) {
-    historyFilterClear.addEventListener('click', () => {
-      if (historyFilterHand) historyFilterHand.value = '';
-      if (historyFilterWinner) historyFilterWinner.value = '';
-      if (historyFilterMinPot) historyFilterMinPot.value = '';
-      updateHistoryView();
-    });
-  }
-
   const readyBtn = document.getElementById('ready-toggle-btn');
   if (readyBtn) {
     readyBtn.addEventListener('click', () => {
