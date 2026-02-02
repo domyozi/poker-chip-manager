@@ -1674,19 +1674,17 @@ function showAllInConfirm(chips) {
   overlay.classList.add('visible');
 }
 
-function hideAllInConfirm() {
+function hideAllInConfirm(clearPending = true) {
   const overlay = document.getElementById('allin-confirm-overlay');
   overlay.classList.remove('visible');
-  pendingAllInAction = null;
+  if (clearPending) pendingAllInAction = null;
 }
 
 function confirmAllIn() {
-  hideAllInConfirm();
-  if (pendingAllInAction) {
-    const { type, amount } = pendingAllInAction;
-    pendingAllInAction = null;
-    executeAction(type, amount);
-  }
+  const pending = pendingAllInAction;
+  pendingAllInAction = null;
+  hideAllInConfirm(false);
+  if (pending) executeAction(pending.type, pending.amount);
 }
 
 function executeAction(type, amount) {
@@ -1702,7 +1700,7 @@ function executeAction(type, amount) {
   } else {
     const result = processAction(gameState, type, amount);
     if (result.error) return;
-    gameState = result.state;
+    gameState = result;
     render();
     document.getElementById('raise-area').classList.remove('visible');
     startActionTimer();
