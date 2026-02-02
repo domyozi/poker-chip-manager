@@ -835,6 +835,60 @@ summary.setup-label::-webkit-details-marker { display: none; }
   display: none;
 }
 .header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Connection indicator */
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(46,204,113,0.12);
+  border: 1px solid rgba(46,204,113,0.25);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: #2ecc71;
+  transition: all 0.3s ease;
+}
+.connection-indicator.disconnected {
+  background: rgba(231,76,60,0.12);
+  border-color: rgba(231,76,60,0.25);
+  color: #e74c3c;
+}
+.connection-indicator.reconnecting {
+  background: rgba(241,196,15,0.12);
+  border-color: rgba(241,196,15,0.25);
+  color: #f1c40f;
+}
+.connection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 6px rgba(46,204,113,0.5);
+  animation: connection-pulse 2s ease-in-out infinite;
+}
+.connection-indicator.disconnected .connection-dot {
+  background: #e74c3c;
+  box-shadow: 0 0 6px rgba(231,76,60,0.5);
+  animation: none;
+}
+.connection-indicator.reconnecting .connection-dot {
+  background: #f1c40f;
+  box-shadow: 0 0 6px rgba(241,196,15,0.5);
+  animation: connection-blink 0.8s ease-in-out infinite;
+}
+@keyframes connection-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes connection-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.connection-text {
+  font-weight: 600;
+}
 .header-btn {
   padding: 6px 14px;
   border-radius: 20px;
@@ -1048,17 +1102,38 @@ summary.setup-label::-webkit-details-marker { display: none; }
   pointer-events: none;
 }
 
-/* Active player glow */
+/* Active player glow + zoom */
+.player-card.is-actor {
+  transform: scale(1.12);
+  z-index: 10;
+  animation: actor-pulse 1.5s ease-in-out infinite;
+}
 .player-card.is-actor .avatar {
   border-color: var(--gold);
-  box-shadow: 0 0 16px var(--gold-glow), 0 0 40px rgba(212,175,55,0.12);
-  background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.03));
+  border-width: 3px;
+  box-shadow:
+    0 0 20px var(--gold-glow),
+    0 0 50px rgba(212,175,55,0.25),
+    0 0 80px rgba(212,175,55,0.1);
+  background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05));
 }
-.player-card.is-actor .name { color: var(--gold); }
-.player-card.is-actor { animation: actor-pulse 2s ease-in-out infinite; }
+.player-card.is-actor .name {
+  color: var(--gold);
+  font-weight: 700;
+  text-shadow: 0 0 10px var(--gold-glow);
+}
+.player-card.is-actor .chips {
+  color: var(--gold);
+}
 @keyframes actor-pulse {
-  0%, 100% { filter: drop-shadow(0 0 0px transparent); }
-  50% { filter: drop-shadow(0 0 12px rgba(212,175,55,0.25)); }
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(212,175,55,0.3));
+    transform: scale(1.12);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(212,175,55,0.5));
+    transform: scale(1.15);
+  }
 }
 
 /* Dealer badge */
@@ -1205,6 +1280,49 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border: 1px dashed rgba(255,255,255,0.22);
   box-shadow: none;
   opacity: 0.55;
+}
+
+/* ─── Status Bar (常時表示) ───────────────────── */
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: rgba(12,20,16,0.85);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 70px;
+}
+.status-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.status-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: transform 0.2s, color 0.2s;
+}
+.status-value.highlight {
+  color: var(--gold);
+}
+.status-value.value-bump {
+  animation: status-bump 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes status-bump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
 }
 
 /* ─── Action Panel ───────────────────────────── */
@@ -1529,22 +1647,56 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .toggle-switch.on::after { transform: translateX(16px); background: var(--gold); }
 
-.confirm-winner-btn {
+.showdown-buttons {
+  display: flex;
+  gap: 12px;
   width: 100%;
-  padding: 14px;
-  border-radius: 12px;
+}
+.showdown-cancel-btn {
+  flex: 1;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-secondary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.showdown-cancel-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--text-primary);
+}
+.confirm-winner-btn {
+  flex: 2;
+  padding: 18px 24px;
+  border-radius: 14px;
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
   border: none;
   color: #1a1408;
   font-family: 'Playfair Display', serif;
-  font-size: 14px; font-weight: 700;
-  letter-spacing: 2px; text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: transform 0.15s, opacity 0.2s;
+  transition: transform 0.15s, opacity 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px var(--gold-glow);
 }
-.confirm-winner-btn:hover { transform: translateY(-1px); }
+.confirm-winner-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px var(--gold-glow);
+}
 .confirm-winner-btn:active { transform: translateY(0); }
-.confirm-winner-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+.confirm-winner-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 
 /* ─── Next hand prompt ────────────────────────── */
@@ -2374,6 +2526,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
         <span class="tag" id="player-role-tag">PLAYER</span>
         <span id="player-name-tag">—</span>
       </div>
+      <div class="connection-indicator" id="connection-indicator" title="接続状態">
+        <span class="connection-dot"></span>
+        <span class="connection-text">接続中</span>
+      </div>
       <button class="header-btn" id="menu-btn">⋯</button>
     </div>
   </div>
@@ -2410,6 +2566,21 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="pot-center">
       <div class="pot-label">POT</div>
       <div class="pot-amount" id="pot-amount">0</div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="status-bar">
+    <div class="status-item">
+      <span class="status-label">POT</span>
+      <span class="status-value highlight" id="status-pot">0</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">TO CALL</span>
+      <span class="status-value" id="status-to-call">0</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">MIN RAISE</span>
+      <span class="status-value" id="status-min-raise">0</span>
     </div>
   </div>
 
@@ -2450,7 +2621,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <span class="split-label">チョップ（引き分け）</span>
       <div class="toggle-switch" id="split-toggle" onclick="toggleSplit()"></div>
     </div>
-    <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>確定</button>
+    <div class="showdown-buttons">
+      <button class="showdown-cancel-btn" id="showdown-cancel-btn" onclick="cancelShowdown()">キャンセル</button>
+      <button class="confirm-winner-btn" id="confirm-winner-btn" onclick="confirmWinner()" disabled>確定</button>
+    </div>
   </div>
 </div>
 
@@ -2560,6 +2734,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
   </div>
 </div>
 
+<!-- ─── ALL-IN CONFIRM DIALOG ─────────────────── -->
+<div class="confirm-dialog-overlay" id="allin-confirm-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">オールインの確認</div>
+    <div class="confirm-dialog-message" id="allin-confirm-message">すべてのチップを賭けます。本当にオールインしますか？</div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="allin-cancel-btn">キャンセル</button>
+      <button class="confirm-dialog-btn danger" id="allin-confirm-btn">オールイン</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── DISCONNECT DIALOG ────────────────────── -->
 <div class="confirm-dialog-overlay" id="disconnect-overlay">
   <div class="confirm-dialog">
@@ -2578,7 +2764,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 // GAME LOGIC (actedThisRound版 - 32テスト全通過)
 // ========================================================
-const APP_VERSION = "v0.6.0";
+const APP_VERSION = "v0.7.0";
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
 
 function getBigBlindValue() {
@@ -3470,6 +3656,28 @@ function setRoomStatus(text) {
   if (el) el.textContent = text;
 }
 
+function updateConnectionIndicator(status) {
+  const indicator = document.getElementById('connection-indicator');
+  if (!indicator) return;
+  const dot = indicator.querySelector('.connection-dot');
+  const text = indicator.querySelector('.connection-text');
+
+  indicator.classList.remove('disconnected', 'reconnecting');
+
+  if (status === 'connected' || status === 'SUBSCRIBED') {
+    text.textContent = '接続中';
+    indicator.title = '接続状態: 正常';
+  } else if (status === 'reconnecting' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+    indicator.classList.add('reconnecting');
+    text.textContent = '再接続中';
+    indicator.title = '接続状態: 再接続中...';
+  } else if (status === 'disconnected' || status === 'CLOSED') {
+    indicator.classList.add('disconnected');
+    text.textContent = '切断';
+    indicator.title = '接続状態: 切断されました';
+  }
+}
+
 function setRoomControls(connected) {
   const leaveBtn = document.getElementById('room-leave-btn');
   if (leaveBtn) leaveBtn.style.display = connected ? 'inline-flex' : 'none';
@@ -3956,6 +4164,7 @@ async function joinRoom(role, code, isAuto = false) {
       advanceToNextHandAndBroadcast();
     })
     .subscribe(async status => {
+      updateConnectionIndicator(status);
       if (status === 'SUBSCRIBED') {
         updatePresence({ joinedAt: Date.now() });
         onlineState.connected = true;
@@ -4617,6 +4826,28 @@ function renderPot() {
   }
 }
 
+function renderStatusBar() {
+  if (!gameState) return;
+  const actor = gameState.players[gameState.currentPlayerIndex];
+  if (!actor) return;
+
+  const potTotal = (gameState.pots||[]).reduce((s, p) => s + p.amount, 0);
+  const toCall = Math.max(0, gameState.currentMaxBet - actor.currentBet);
+  const minRaiseTo = gameState.currentMaxBet + gameState.lastRaiseSize;
+
+  const potEl = document.getElementById('status-pot');
+  const toCallEl = document.getElementById('status-to-call');
+  const minRaiseEl = document.getElementById('status-min-raise');
+
+  if (potEl) setTextWithBump(potEl, formatAmount(potTotal));
+  if (toCallEl) {
+    const toCallText = toCall === 0 ? 'FREE' : formatAmount(toCall);
+    setTextWithBump(toCallEl, toCallText);
+    toCallEl.classList.toggle('highlight', toCall === 0);
+  }
+  if (minRaiseEl) setTextWithBump(minRaiseEl, formatAmount(minRaiseTo));
+}
+
 function getCommunityCardCount(phase) {
   switch (phase) {
     case 'flop': return 3;
@@ -4918,6 +5149,12 @@ function toggleRaiseArea() {
       updateRaiseError();
       return;
     }
+    // Check if this is an all-in
+    if (actor && raiseValue >= allInTo) {
+      pendingAllInAction = { type: 'raise', amount: raiseValue };
+      showAllInConfirm(actor.chips);
+      return;
+    }
     doAction('raise', raiseValue);
   } else {
     area.classList.add('visible');
@@ -4935,6 +5172,51 @@ function showFoldConfirm() {
 function hideFoldConfirm() {
   const overlay = document.getElementById('fold-confirm-overlay');
   overlay.classList.remove('visible');
+}
+
+// All-in confirmation
+let pendingAllInAction = null;
+
+function showAllInConfirm(chips) {
+  const overlay = document.getElementById('allin-confirm-overlay');
+  const message = document.getElementById('allin-confirm-message');
+  message.textContent = `${formatAmount(chips)} チップをすべて賭けます。本当にオールインしますか？`;
+  overlay.classList.add('visible');
+}
+
+function hideAllInConfirm() {
+  const overlay = document.getElementById('allin-confirm-overlay');
+  overlay.classList.remove('visible');
+  pendingAllInAction = null;
+}
+
+function confirmAllIn() {
+  hideAllInConfirm();
+  if (pendingAllInAction) {
+    const { type, amount } = pendingAllInAction;
+    pendingAllInAction = null;
+    executeAction(type, amount);
+  }
+}
+
+function executeAction(type, amount) {
+  // Direct action execution (bypasses all-in check)
+  if (actionLock) return;
+  if (onlineState.role === 'player') {
+    if (gameState) {
+      const actor = gameState.players[gameState.currentPlayerIndex];
+      localPendingActionKey = `${actor.id}:${gameState.currentMaxBet}:${gameState.phase}`;
+      renderActionPanel();
+    }
+    sendActionRequest(type, amount);
+  } else {
+    const result = processAction(gameState, type, amount);
+    if (result.error) return;
+    gameState = result.state;
+    render();
+    document.getElementById('raise-area').classList.remove('visible');
+    startActionTimer();
+  }
 }
 
 function handleFoldAttempt() {
@@ -5007,6 +5289,7 @@ function doAction(type, amount = 0) {
 function render() {
   renderPlayers();
   renderPot();
+  renderStatusBar();
   renderCommunityCards();
   renderPhase();
   renderActionPanel();
@@ -5110,6 +5393,16 @@ function toggleSplit() {
     });
     document.getElementById('confirm-winner-btn').disabled = selectedWinners.length === 0;
   }
+}
+
+function cancelShowdown() {
+  // Reset selections and close overlay
+  selectedWinners = [];
+  splitMode = false;
+  document.querySelectorAll('.winner-btn').forEach(btn => btn.classList.remove('selected'));
+  document.getElementById('split-toggle').classList.remove('on');
+  document.getElementById('confirm-winner-btn').disabled = true;
+  document.getElementById('showdown-overlay').classList.remove('visible');
 }
 
 function confirmWinner() {
@@ -6079,6 +6372,20 @@ document.addEventListener('DOMContentLoaded', () => {
     bindOnce(foldConfirmBtn, 'click', () => {
       hideFoldConfirm();
       doAction('fold');
+    });
+  }
+
+  // All-in confirm dialog handlers
+  const allinCancelBtn = document.getElementById('allin-cancel-btn');
+  const allinConfirmBtn = document.getElementById('allin-confirm-btn');
+  if (allinCancelBtn) {
+    bindOnce(allinCancelBtn, 'click', () => {
+      hideAllInConfirm();
+    });
+  }
+  if (allinConfirmBtn) {
+    bindOnce(allinConfirmBtn, 'click', () => {
+      confirmAllIn();
     });
   }
 
