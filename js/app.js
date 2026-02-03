@@ -1511,21 +1511,21 @@ function getSlotAnchors(playerCount) {
       { key: 'mid-right', x: 86, y: 46 }
     ],
     6: [
-      { key: 'low-left', x: 14, y: 50 },
+      { key: 'low-left', x: 14, y: 54 },
       { key: 'mid-left', x: 14, y: 34 },
       { key: 'top-left', x: 24, y: 20 },
       { key: 'top-right', x: 76, y: 20 },
       { key: 'mid-right', x: 86, y: 34 },
-      { key: 'low-right', x: 86, y: 50 }
+      { key: 'low-right', x: 86, y: 54 }
     ],
     7: [
-      { key: 'low-left', x: 14, y: 50 },
+      { key: 'low-left', x: 14, y: 54 },
       { key: 'mid-left', x: 14, y: 34 },
       { key: 'top-left', x: 24, y: 20 },
       { key: 'top-center', x: 50, y: 10 },
       { key: 'top-right', x: 76, y: 20 },
       { key: 'mid-right', x: 86, y: 34 },
-      { key: 'low-right', x: 86, y: 50 }
+      { key: 'low-right', x: 86, y: 54 }
     ]
   };
   const opponentCount = Math.max(0, playerCount - 1);
@@ -1542,19 +1542,35 @@ function createPlayerSlot(player, idx, posLabel, isActivePlayer, isOfflineMode, 
   slot.style.setProperty('--slot-y', `${anchor.y}%`);
   slot.appendChild(createPlayerPanel(player, idx, posLabel, isActivePlayer, isOfflineMode));
 
-  const postedChip = document.createElement('div');
-  postedChip.className = 'posted-chip';
-  if (player.currentBet > 0) {
-    postedChip.innerHTML = `
-      <img class="bet-chip-icon" src="img/betchip.png" alt="chip">
-      <span>${formatAmount(player.currentBet)}</span>
-    `;
-  } else {
-    postedChip.classList.add('hidden');
-  }
-  slot.appendChild(postedChip);
-
   return slot;
+}
+
+function getBetMarkerPosition(anchorKey) {
+  switch (anchorKey) {
+    case 'top-center': return { x: 50, y: 32 };
+    case 'top-left': return { x: 34, y: 34 };
+    case 'top-right': return { x: 66, y: 34 };
+    case 'mid-left': return { x: 30, y: 48 };
+    case 'mid-right': return { x: 70, y: 48 };
+    case 'low-left': return { x: 34, y: 60 };
+    case 'low-right': return { x: 66, y: 60 };
+    case 'bottom': return { x: 50, y: 70 };
+    default: return { x: 50, y: 50 };
+  }
+}
+
+function renderBetMarker(container, player, anchorKey) {
+  if (!player || player.currentBet <= 0) return;
+  const pos = getBetMarkerPosition(anchorKey);
+  const betEl = document.createElement('div');
+  betEl.className = 'table-bet-marker';
+  betEl.style.left = `${pos.x}%`;
+  betEl.style.top = `${pos.y}%`;
+  betEl.innerHTML = `
+    <img class="bet-chip-icon" src="img/betchip.png" alt="chip">
+    <span>${formatAmount(player.currentBet)}</span>
+  `;
+  container.appendChild(betEl);
 }
 
 function renderPlayers() {
@@ -1624,6 +1640,7 @@ function renderPlayers() {
     const { player, idx } = frontPlayer;
     const slot = createPlayerSlot(player, idx, positionLabels[idx], true, isOfflineMode, anchors[0]);
     slotsEl.appendChild(slot);
+    if (betsContainer) renderBetMarker(betsContainer, player, anchors[0].key);
   }
 
   // Render opponents in slot order (left -> right)
@@ -1633,6 +1650,7 @@ function renderPlayers() {
     const { player, idx } = item;
     const slot = createPlayerSlot(player, idx, positionLabels[idx], false, isOfflineMode, anchor);
     slotsEl.appendChild(slot);
+    if (betsContainer) renderBetMarker(betsContainer, player, anchor.key);
   });
 
   document.body.classList.toggle('debug-layout', !!window.__DEBUG_LAYOUT__);

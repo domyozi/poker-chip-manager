@@ -1140,49 +1140,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin-right: 0;
 }
 
-.posted-chip {
-  position: absolute;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 26px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(12,20,16,0.75);
-  border: 1px solid rgba(212,175,55,0.35);
-  color: var(--gold);
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.bet-chip-icon {
+ .bet-chip-icon {
   width: 1em;
   height: 1em;
   object-fit: contain;
-}
-.posted-chip.hidden {
-  display: none;
-}
-.player-slot[data-anchor="bottom"] .posted-chip {
-  top: -8px;
-}
-.player-slot[data-anchor^="top"] .posted-chip {
-  top: 92px;
-}
-.player-slot[data-anchor^="low"] .posted-chip {
-  top: 10px;
-}
-.player-slot[data-anchor="mid-left"] .posted-chip {
-  top: 18px;
-  left: 78%;
-}
-.player-slot[data-anchor="mid-right"] .posted-chip {
-  top: 18px;
-  left: 22%;
 }
 
 /* Opponent oval layout (2-4 players) */
@@ -1257,6 +1218,25 @@ summary.setup-label::-webkit-details-marker { display: none; }
   inset: 0;
   pointer-events: none;
   z-index: 4;
+}
+
+.table-bet-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 26px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(12,20,16,0.75);
+  border: 1px solid rgba(212,175,55,0.35);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
 }
 
 .table-bet {
