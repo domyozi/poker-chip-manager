@@ -9,12 +9,41 @@
 // ═══════════════════════════════════════════════════════════════
 
 function findNextActivePlayer(state, fromIndex) {
-  const len = state.players.length;
+  const order = getSeatOrderIndices(state);
+  const len = order.length;
+  if (len === 0) return -1;
+  const startPos = order.indexOf(fromIndex);
+  const base = startPos === -1 ? 0 : startPos;
   for (let i = 1; i <= len; i++) {
-    const idx = (fromIndex + i) % len;
+    const idx = order[(base + i) % len];
     if (state.players[idx].status === "active") return idx;
   }
   return -1;
+}
+
+function findNextWithChips(state, fromIndex) {
+  const order = getSeatOrderIndices(state);
+  const len = order.length;
+  if (len === 0) return -1;
+  const startPos = order.indexOf(fromIndex);
+  const base = startPos === -1 ? 0 : startPos;
+  for (let i = 1; i <= len; i++) {
+    const idx = order[(base + i) % len];
+    if (state.players[idx].chips > 0) return idx;
+  }
+  return fromIndex;
+}
+
+function getSeatOrderIndices(state) {
+  if (!state || !Array.isArray(state.players)) return [];
+  return state.players
+    .map((p, i) => {
+      const rawSeat = p && typeof p.seatIndex !== 'undefined' ? p.seatIndex : i;
+      const seat = Number.isFinite(rawSeat) ? rawSeat : i;
+      return { index: i, seat };
+    })
+    .sort((a, b) => (a.seat - b.seat) || (a.index - b.index))
+    .map(item => item.index);
 }
 
 function countActivePlayers(state) {
@@ -34,7 +63,15 @@ function getPotTotal(state) {
 // ═══════════════════════════════════════════════════════════════
 
 function initGame(playerInput, smallBlind, bigBlind, initialChips = 1000) {
-  const players = playerInput.map((entry, i) => {
+  const sortedInput = (playerInput || [])
+    .map((entry, i) => {
+      const seatRaw = entry && typeof entry === 'object' ? (entry.seatIndex ?? entry.seat) : undefined;
+      const seatIndex = Number.isFinite(seatRaw) ? seatRaw : (typeof seatRaw === 'string' && seatRaw.trim() !== '' ? parseInt(seatRaw, 10) : i);
+      return { entry, seedIndex: i, seatIndex: Number.isFinite(seatIndex) ? seatIndex : i };
+    })
+    .sort((a, b) => (a.seatIndex - b.seatIndex) || (a.seedIndex - b.seedIndex));
+  const players = sortedInput.map((item, i) => {
+    const entry = item.entry;
     const name = typeof entry === 'string' ? entry : (entry?.name || '');
     const characterId = typeof entry === 'string' ? '' : (entry?.characterId || '');
     const finalName = name || `プレイヤー${i + 1}`;
@@ -42,7 +79,8 @@ function initGame(playerInput, smallBlind, bigBlind, initialChips = 1000) {
     return {
       id: `player_${i}`, name: finalName, characterId, chips: stack,
       status: "waiting", currentBet: 0, totalBet: 0,
-      actedThisRound: false
+      actedThisRound: false,
+      seatIndex: item.seatIndex
     };
   });
   return {
@@ -94,23 +132,15 @@ function startHand(state) {
   }
 
   const n = s.players.length;
-  const findNextWithChips = (fromIdx) => {
-    for (let i = 1; i <= n; i++) {
-      const idx = (fromIdx + i) % n;
-      if (s.players[idx].chips > 0) return idx;
-    }
-    return fromIdx;
-  };
-
-  const sbIdx = n === 2 ? s.dealerIndex : findNextWithChips(s.dealerIndex);
-  const bbIdx = findNextWithChips(sbIdx);
+  const sbIdx = n === 2 ? s.dealerIndex : findNextWithChips(s, s.dealerIndex);
+  const bbIdx = findNextWithChips(s, sbIdx);
   s = postBlind(s, sbIdx, s.smallBlind);
   s = postBlind(s, bbIdx, s.bigBlind);
   s.currentMaxBet = s.bigBlind;
   s.lastRaiseSize = s.bigBlind;
 
-  const firstToAct = findNextWithChips(bbIdx);
-  s.currentPlayerIndex = firstToAct !== bbIdx ? firstToAct : findNextWithChips(firstToAct);
+  const firstToAct = findNextWithChips(s, bbIdx);
+  s.currentPlayerIndex = firstToAct !== bbIdx ? firstToAct : findNextWithChips(s, firstToAct);
 
   return s;
 }
@@ -123,7 +153,11 @@ function endHand(state) {
 }
 
 function advanceDealer(state) {
-  return { ...state, dealerIndex: (state.dealerIndex + 1) % state.players.length };
+  const order = getSeatOrderIndices(state);
+  if (order.length === 0) return { ...state };
+  const pos = order.indexOf(state.dealerIndex);
+  const nextIndex = order[(pos === -1 ? 0 : (pos + 1) % order.length)];
+  return { ...state, dealerIndex: nextIndex };
 }
 
 // ═══════════════════════════════════════════════════════════════

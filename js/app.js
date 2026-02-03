@@ -212,6 +212,7 @@ let appMode = 'offline'; // offline | online
 let lastActionPanelLogKey = null;
 // Offline mode: display rotation - which player index appears at bottom (front)
 let offlineDisplayFrontIdx = 0;
+let offlineLastActorId = null;
 let debugBannerEl = null;
 
 const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
@@ -1172,7 +1173,7 @@ function getLocalPlayers() {
     const characterId = normalizeCharacterId(row.dataset.characterId || '', i);
     if (!name && !characterId) return;
     const finalName = name || `プレイヤー${i + 1}`;
-    players.push({ name: finalName, characterId });
+    players.push({ name: finalName, characterId, seatIndex: i });
   });
   return players;
 }
@@ -1199,7 +1200,8 @@ function getOnlinePlayers() {
   const list = getPresenceList();
   return list.map((p, i) => ({
     name: p.name || `Player ${i + 1}`,
-    characterId: normalizeCharacterId(p.characterId || '', i)
+    characterId: normalizeCharacterId(p.characterId || '', i),
+    seatIndex: p.seat ? parseInt(p.seat, 10) : i
   }));
 }
 
@@ -1317,6 +1319,7 @@ function startGameWithPlayers(players, settings) {
   // Initialize offline display rotation to first acting player
   if (onlineState.role === 'local') {
     offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+    offlineLastActorId = null;
   }
 
   setUiState('playing');
@@ -1406,19 +1409,152 @@ function buildPositionLabels(count, dealerIndex) {
   return labels;
 }
 
+function getCanonicalSeatOrder(state) {
+  if (!state || !Array.isArray(state.players)) return [];
+  return state.players
+    .map((p, i) => {
+      const rawSeat = typeof p?.seatIndex !== 'undefined' ? p.seatIndex : i;
+      const seat = Number.isFinite(rawSeat) ? rawSeat : i;
+      return { index: i, seat };
+    })
+    .sort((a, b) => (a.seat - b.seat) || (a.index - b.index))
+    .map(item => item.index);
+}
+
+function buildOfflineDisplayOrder(state, frontIdx, lastActorId) {
+  const order = getCanonicalSeatOrder(state);
+  if (order.length === 0) return [];
+  const frontPos = order.indexOf(frontIdx);
+  const start = frontPos === -1 ? 0 : frontPos;
+  const rotated = order.slice(start).concat(order.slice(0, start));
+  const opponents = rotated.slice(1);
+  if (lastActorId && opponents.length > 1) {
+    const lastActorIdx = state.players.findIndex(p => p.id === lastActorId);
+    const pos = opponents.indexOf(lastActorIdx);
+    if (pos !== -1 && pos !== opponents.length - 1) {
+      opponents.splice(pos, 1);
+      opponents.push(lastActorIdx);
+    }
+  }
+  return [rotated[0], ...opponents];
+}
+
+function debugOfflineRotation({ prevState, nextState, displayOrder, lastActorId }) {
+  if (!isDebugEnabled()) return;
+  if (!prevState || !nextState) return;
+  const seatOrder = getCanonicalSeatOrder(nextState);
+  const playersSummary = nextState.players.map((p, i) => ({
+    idx: i,
+    id: p.id,
+    name: p.name,
+    seatIndex: p.seatIndex
+  }));
+  const prevActor = prevState.players[prevState.currentPlayerIndex];
+  const nextActor = nextState.players[nextState.currentPlayerIndex];
+  const slots = {
+    front: displayOrder[0],
+    backLeft: displayOrder[1] ?? null,
+    backRight: displayOrder.length > 1 ? displayOrder[displayOrder.length - 1] : null
+  };
+  console.log('[offline-rotation]', {
+    players: playersSummary,
+    seatOrder,
+    currentActorId: prevActor?.id,
+    nextActorId: nextActor?.id,
+    lastActorId,
+    displayOrder,
+    slots
+  });
+}
+
+function truncateName(name, maxChars) {
+  const normalized = (name || '').trim();
+  if (!normalized) return normalized;
+  const chars = Array.from(normalized);
+  return chars.length > maxChars ? chars.slice(0, maxChars).join('') : normalized;
+}
+
+function getSlotAnchors(playerCount) {
+  const front = { key: 'bottom', x: 50, y: 82 };
+  const opponentAnchors = {
+    1: [{ key: 'top-center', x: 50, y: 12 }],
+    2: [
+      { key: 'top-left', x: 24, y: 18 },
+      { key: 'top-right', x: 76, y: 18 }
+    ],
+    3: [
+      { key: 'top-left', x: 22, y: 20 },
+      { key: 'top-center', x: 50, y: 10 },
+      { key: 'top-right', x: 78, y: 20 }
+    ],
+    4: [
+      { key: 'mid-left', x: 14, y: 46 },
+      { key: 'top-left', x: 24, y: 20 },
+      { key: 'top-right', x: 76, y: 20 },
+      { key: 'mid-right', x: 86, y: 46 }
+    ],
+    5: [
+      { key: 'mid-left', x: 14, y: 46 },
+      { key: 'top-left', x: 24, y: 20 },
+      { key: 'top-center', x: 50, y: 10 },
+      { key: 'top-right', x: 76, y: 20 },
+      { key: 'mid-right', x: 86, y: 46 }
+    ],
+    6: [
+      { key: 'low-left', x: 14, y: 50 },
+      { key: 'mid-left', x: 14, y: 34 },
+      { key: 'top-left', x: 24, y: 20 },
+      { key: 'top-right', x: 76, y: 20 },
+      { key: 'mid-right', x: 86, y: 34 },
+      { key: 'low-right', x: 86, y: 50 }
+    ],
+    7: [
+      { key: 'low-left', x: 14, y: 50 },
+      { key: 'mid-left', x: 14, y: 34 },
+      { key: 'top-left', x: 24, y: 20 },
+      { key: 'top-center', x: 50, y: 10 },
+      { key: 'top-right', x: 76, y: 20 },
+      { key: 'mid-right', x: 86, y: 34 },
+      { key: 'low-right', x: 86, y: 50 }
+    ]
+  };
+  const opponentCount = Math.max(0, playerCount - 1);
+  const anchors = opponentAnchors[opponentCount];
+  if (!anchors) return null;
+  return [front, ...anchors];
+}
+
+function createPlayerSlot(player, idx, posLabel, isActivePlayer, isOfflineMode, anchor) {
+  const slot = document.createElement('div');
+  slot.className = 'player-slot';
+  slot.dataset.anchor = anchor.key;
+  slot.style.setProperty('--slot-x', `${anchor.x}%`);
+  slot.style.setProperty('--slot-y', `${anchor.y}%`);
+  slot.appendChild(createPlayerPanel(player, idx, posLabel, isActivePlayer, isOfflineMode));
+
+  const postedChip = document.createElement('div');
+  postedChip.className = 'posted-chip';
+  if (player.currentBet > 0) {
+    postedChip.textContent = formatAmount(player.currentBet);
+  } else {
+    postedChip.classList.add('hidden');
+  }
+  slot.appendChild(postedChip);
+
+  return slot;
+}
+
 function renderPlayers() {
-  const opponentsArea = $('opponents-area');
-  const localPlayerArea = $('local-player-area');
+  const slotsEl = $('player-slots');
   const betsContainer = $('table-bets');
 
-  if (!opponentsArea || !localPlayerArea) {
-    warnMissing('opponents-area or local-player-area');
+  if (!slotsEl) {
+    warnMissing('player-slots');
     return;
   }
 
   // Clear all areas
-  opponentsArea.innerHTML = '';
-  localPlayerArea.innerHTML = '';
+  slotsEl.innerHTML = '';
   if (betsContainer) betsContainer.innerHTML = '';
 
   if (!gameState || !gameState.players.length) return;
@@ -1451,43 +1587,46 @@ function renderPlayers() {
   }
 
   // Build front player and opponents in CLOCKWISE order from front player's perspective
-  // This ensures visual consistency: player to front's LEFT is first opponent, etc.
-  const frontPlayer = { player: gameState.players[frontPlayerIdx], idx: frontPlayerIdx };
-  const opponents = [];
-  for (let i = 1; i < playerCount; i++) {
-    const idx = (frontPlayerIdx + i) % playerCount;
-    opponents.push({ player: gameState.players[idx], idx });
+  // Offline uses canonical seat order + last-actor alignment
+  let displayOrder = [];
+  if (isOfflineMode) {
+    displayOrder = buildOfflineDisplayOrder(gameState, frontPlayerIdx, offlineLastActorId);
+  } else {
+    displayOrder = [frontPlayerIdx];
+    for (let i = 1; i < playerCount; i++) {
+      const idx = (frontPlayerIdx + i) % playerCount;
+      displayOrder.push(idx);
+    }
+  }
+  const frontPlayer = { player: gameState.players[displayOrder[0]], idx: displayOrder[0] };
+  const opponents = displayOrder.slice(1).map(idx => ({ player: gameState.players[idx], idx }));
+  const anchors = getSlotAnchors(playerCount);
+  if (!anchors || anchors.length !== playerCount) {
+    if (isDebugEnabled()) console.warn('[layout] missing anchors for count', playerCount);
+    return;
   }
 
-  // Render opponents in top area
-  const opponentCount = opponents.length;
-  opponents.forEach((item, opIdx) => {
-    const { player, idx } = item;
-    const card = createPlayerCard(player, idx, positionLabels[idx], false, isOfflineMode);
-    opponentsArea.appendChild(card);
-
-    // Render opponent bet on table
-    if (player.currentBet > 0 && betsContainer) {
-      const betClass = getBetPositionClass(opponentCount, opIdx, false);
-      renderTableBet(betsContainer, player, positionLabels[idx], betClass);
-    }
-  });
-
-  // Render front player in bottom area
+  // Render front player (slot 0)
   if (frontPlayer) {
     const { player, idx } = frontPlayer;
-    const card = createPlayerCard(player, idx, positionLabels[idx], true, isOfflineMode);
-    localPlayerArea.appendChild(card);
-
-    // Render front player bet on table
-    if (player.currentBet > 0 && betsContainer) {
-      renderTableBet(betsContainer, player, positionLabels[idx], 'bet-bottom');
-    }
+    const slot = createPlayerSlot(player, idx, positionLabels[idx], true, isOfflineMode, anchors[0]);
+    slotsEl.appendChild(slot);
   }
+
+  // Render opponents in slot order (left -> right)
+  opponents.forEach((item, i) => {
+    const anchor = anchors[i + 1];
+    if (!anchor) return;
+    const { player, idx } = item;
+    const slot = createPlayerSlot(player, idx, positionLabels[idx], false, isOfflineMode, anchor);
+    slotsEl.appendChild(slot);
+  });
+
+  document.body.classList.toggle('debug-layout', !!window.__DEBUG_LAYOUT__);
 }
 
-// Create a player element - Active (front) or Back (opponent)
-function createPlayerCard(player, idx, posLabel, isActivePlayer, isOfflineMode = false) {
+// Create a player panel - Active (front) or Back (opponent)
+function createPlayerPanel(player, idx, posLabel, isActivePlayer, isOfflineMode = false) {
   const isDealer = idx === gameState.dealerIndex;
   const isFolded = player.status === "folded";
   const isAllIn = player.status === "allIn";
@@ -1509,7 +1648,8 @@ function createPlayerCard(player, idx, posLabel, isActivePlayer, isOfflineMode =
     fallbackIndex: idx
   });
   const showName = !!player.name;
-  const displayName = showName ? player.name : `P${idx + 1}`;
+  const fullName = showName ? player.name : `P${idx + 1}`;
+  const displayName = fullName;
 
   // Timer ring for active player only
   const isActorTurn = idx === gameState.currentPlayerIndex && gameState.isHandActive;
@@ -1531,28 +1671,65 @@ function createPlayerCard(player, idx, posLabel, isActivePlayer, isOfflineMode =
   // Dealer badge
   const dealerBadgeHtml = isDealer ? '<div class="dealer-badge">D</div>' : '';
 
-  const el = document.createElement('div');
-  el.className = classes;
-  el.dataset.playerId = player.id;
+  const panel = document.createElement('div');
+  panel.className = `player-panel ${classes}`;
+  panel.dataset.playerId = player.id;
 
-  // New structure: avatar overlaps pill from left
-  el.innerHTML = `
+  panel.innerHTML = `
     <div class="allin-badge">ALL IN</div>
-    <div class="avatar">
+    <div class="avatar avatar-img">
       ${timerRingHtml}
       ${avatarMarkup}
       ${dealerBadgeHtml}
     </div>
-    <div class="info-pill">
+    <div class="info-pill player-meta">
       <div class="player-info">
-        <span class="name">${displayName}</span>
-        <span class="chips">${formatAmount(player.chips)}</span>
+        <span class="name player-name">${displayName}</span>
       </div>
-      ${positionBadgeHtml}
+      <div class="chips player-stack">${formatAmount(player.chips)}</div>
     </div>
+    <div class="badge-row">${positionBadgeHtml}</div>
+    <div class="name-tooltip" aria-hidden="true"></div>
   `;
 
-  return el;
+  if (isOfflineMode) {
+    attachNameTooltip(panel, fullName);
+  }
+
+  return panel;
+}
+
+function attachNameTooltip(cardEl, name) {
+  if (!cardEl || !name) return;
+  const tooltip = cardEl.querySelector('.name-tooltip');
+  if (!tooltip) return;
+  tooltip.textContent = name;
+  let hideTimer = null;
+  let pressTimer = null;
+  const show = () => {
+    tooltip.classList.add('visible');
+    tooltip.setAttribute('aria-hidden', 'false');
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      tooltip.classList.remove('visible');
+      tooltip.setAttribute('aria-hidden', 'true');
+    }, 1600);
+  };
+  bindOnce(cardEl, 'click', () => show());
+  bindOnce(cardEl, 'pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    pressTimer = setTimeout(show, 450);
+  }, { passive: true });
+  bindOnce(cardEl, 'pointerup', () => {
+    if (!pressTimer) return;
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }, { passive: true });
+  bindOnce(cardEl, 'pointercancel', () => {
+    if (!pressTimer) return;
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }, { passive: true });
 }
 
 // Get bet position class based on opponent count and index
@@ -1632,6 +1809,7 @@ function animatePotToWinners(winnerIds) {
 function renderPot() {
   const total = (gameState?.pots || []).reduce((s, p) => s + p.amount, 0);
   const el = $('pot-amount');
+  const blindsEl = $('pot-blinds');
   if (!el) {
     warnMissing('pot-amount');
     return;
@@ -1639,6 +1817,9 @@ function renderPot() {
   const prev = parseInt(el.dataset.value || '0', 10) || 0;
   el.dataset.value = String(total);
   setText('pot-amount', formatAmount(total));
+  if (blindsEl && gameState) {
+    blindsEl.textContent = `Blinds: ${formatAmount(gameState.smallBlind)},${formatAmount(gameState.bigBlind)}`;
+  }
   if (total !== prev && total > 0) {
     el.classList.remove('bump');
     void el.offsetWidth; // reflow
@@ -2108,9 +2289,22 @@ function executeAction(type, amount) {
     }
     sendActionRequest(type, amount);
   } else {
+    const prevState = gameState;
+    const prevActorId = gameState?.players?.[gameState.currentPlayerIndex]?.id || null;
     const result = processAction(gameState, type, amount);
     if (result.error) return;
     gameState = result;
+    if (onlineState.role === 'local' && gameState.isHandActive) {
+      offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+      offlineLastActorId = prevActorId;
+      const displayOrder = buildOfflineDisplayOrder(gameState, offlineDisplayFrontIdx, offlineLastActorId);
+      debugOfflineRotation({
+        prevState,
+        nextState: gameState,
+        displayOrder,
+        lastActorId: offlineLastActorId
+      });
+    }
     render();
     document.getElementById('raise-area').classList.remove('visible');
     startActionTimer();
@@ -2158,6 +2352,7 @@ function doAction(type, amount = 0) {
   }
   if (!gameState) return;
   const prevState = gameState;
+  const prevActorId = gameState.players[gameState.currentPlayerIndex]?.id || null;
   const actorId = gameState.players[gameState.currentPlayerIndex]?.id;
   const actionKey = `${actorId}:${gameState.currentPlayerIndex}:${gameState.currentMaxBet}:${gameState.phase}`;
   if (lastActionId === actionKey) return;
@@ -2174,6 +2369,14 @@ function doAction(type, amount = 0) {
   // Offline mode: rotate display so next acting player is at bottom
   if (onlineState.role === 'local' && gameState.isHandActive) {
     offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+    offlineLastActorId = prevActorId;
+    const displayOrder = buildOfflineDisplayOrder(gameState, offlineDisplayFrontIdx, offlineLastActorId);
+    debugOfflineRotation({
+      prevState,
+      nextState: gameState,
+      displayOrder,
+      lastActorId: offlineLastActorId
+    });
   }
 
   render();
@@ -2628,6 +2831,7 @@ function advanceToNextHandAndBroadcast() {
   // Initialize offline display rotation to first acting player
   if (onlineState.role === 'local') {
     offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+    offlineLastActorId = null;
   }
 
   if (gameState.phase === 'finished') {
