@@ -3131,13 +3131,19 @@ function showRebuyDialog(playerId) {
   const player = gameState?.players?.find(p => p.id === playerId);
   if (!player) return;
 
-  const defaultChips = currentGameSettings?.initialChips || 1000;
+  const maxChips = getLateJoinMaxChips();
+  const baseDefault = currentGameSettings?.initialChips || 1000;
+  const defaultChips = Number.isFinite(maxChips) ? Math.min(baseDefault, maxChips) : baseDefault;
   const input = prompt(`${player.name} のチップ追加額を入力:`, defaultChips);
   if (input === null) return;
 
   const chips = parseInt(input, 10);
   if (!Number.isFinite(chips) || chips <= 0) {
     alert('有効なチップ数を入力してください');
+    return;
+  }
+  if (chips > maxChips) {
+    alert(`最大スタックは ${maxChips.toLocaleString()} です`);
     return;
   }
 

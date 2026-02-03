@@ -80,8 +80,13 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   padding-top: calc(16px + env(safe-area-inset-top));
   padding-bottom: 40px;
 }
+#settings-screen {
+  --settings-header-height: 150px;
+  padding-top: var(--settings-header-height);
+}
 /* 小さい画面向け調整 */
 @media (max-height: 700px) {
+  #settings-screen { --settings-header-height: 120px; }
   #settings-screen .brand-header { margin-bottom: 8px; }
   #settings-screen .brand-logo { width: 48px; height: 48px; }
   #settings-screen .brand-title { font-size: 20px; }
@@ -113,6 +118,25 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+#settings-screen .settings-fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  height: var(--settings-header-height);
+  padding: calc(12px + env(safe-area-inset-top)) 16px 8px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(12,20,16,0.98), rgba(12,20,16,0.88) 70%, rgba(12,20,16,0));
+  backdrop-filter: blur(8px);
+}
+#settings-screen .settings-fixed-header .screen-header {
+  margin-bottom: 6px;
+  padding-top: 0;
+}
+#settings-screen .settings-fixed-header .brand-header {
+  margin-bottom: 0;
 }
 .brand-logo {
   width: 60px;
