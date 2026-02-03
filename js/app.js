@@ -1218,6 +1218,12 @@ function collectSettingsFromForm() {
   };
 }
 
+function getLateJoinMaxChips() {
+  const input = document.getElementById('late-join-max-chips');
+  const raw = parseInt(input?.value || '0', 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
+}
+
 function applySettings(settings) {
   timerSettings.duration = settings.timerDuration;
   timerSettings.soundEnabled = settings.soundEnabled;
@@ -1645,22 +1651,46 @@ function renderPlayers() {
   if (!gameState || !gameState.players.length) return;
 
   // leftプレイヤーを除外して有効プレイヤーを計算
-  const visiblePlayers = gameState.players.filter(p => p.status !== 'left');
-  const visibleCount = visiblePlayers.length;
+  const visibleIndices = gameState.players
+    .map((p, i) => (p.status !== 'left' ? i : -1))
+    .filter(i => i !== -1);
+  const visibleCount = visibleIndices.length;
   if (visibleCount === 0) return;
 
-  const positionLabels = buildPositionLabels(gameState.players.length, gameState.dealerIndex);
+  const seatOrder = getCanonicalSeatOrder(gameState);
+  const visibleSeatOrder = seatOrder.filter(idx => gameState.players[idx]?.status !== 'left');
+  const dealerIndex = gameState.dealerIndex;
+  let dealerVisiblePos = visibleSeatOrder.indexOf(dealerIndex);
+  if (dealerVisiblePos === -1) {
+    const dealerPosInSeat = seatOrder.indexOf(dealerIndex);
+    if (dealerPosInSeat !== -1) {
+      for (let i = 1; i <= seatOrder.length; i++) {
+        const idx = seatOrder[(dealerPosInSeat + i) % seatOrder.length];
+        if (gameState.players[idx]?.status !== 'left') {
+          dealerVisiblePos = visibleSeatOrder.indexOf(idx);
+          break;
+        }
+      }
+    }
+  }
+  if (dealerVisiblePos === -1) dealerVisiblePos = 0;
+  const positionLabels = buildPositionLabels(visibleCount, dealerVisiblePos);
+  const labelByIndex = new Map();
+  visibleSeatOrder.forEach((idx, pos) => {
+    labelByIndex.set(idx, positionLabels[pos] || '');
+  });
   const isOfflineMode = onlineState.role === 'local';
-  const playerCount = gameState.players.length;
 
   // Determine which player appears at front (bottom)
   let frontPlayerIdx;
   if (isOfflineMode) {
     // Offline: use display rotation (current acting player at front)
     frontPlayerIdx = offlineDisplayFrontIdx;
-    // Validate index
-    if (frontPlayerIdx < 0 || frontPlayerIdx >= playerCount) {
+    if (!visibleSeatOrder.includes(frontPlayerIdx)) {
       frontPlayerIdx = gameState.currentPlayerIndex;
+    }
+    if (!visibleSeatOrder.includes(frontPlayerIdx)) {
+      frontPlayerIdx = visibleSeatOrder[0] ?? frontPlayerIdx;
     }
   } else {
     // Online: find "you" player
@@ -1671,8 +1701,8 @@ function renderPlayers() {
       }
     });
     // Fallback
-    if (frontPlayerIdx === -1) {
-      frontPlayerIdx = playerCount - 1;
+    if (frontPlayerIdx === -1 || !visibleSeatOrder.includes(frontPlayerIdx)) {
+      frontPlayerIdx = visibleSeatOrder[visibleSeatOrder.length - 1] ?? -1;
     }
   }
 
@@ -1680,26 +1710,36 @@ function renderPlayers() {
   // Offline uses canonical seat order + last-actor alignment
   let displayOrder = [];
   if (isOfflineMode) {
-    displayOrder = buildOfflineDisplayOrder(gameState, frontPlayerIdx, offlineLastActorId);
-  } else {
-    displayOrder = [frontPlayerIdx];
-    for (let i = 1; i < playerCount; i++) {
-      const idx = (frontPlayerIdx + i) % playerCount;
-      displayOrder.push(idx);
+    const frontPos = visibleSeatOrder.indexOf(frontPlayerIdx);
+    const start = frontPos === -1 ? 0 : frontPos;
+    const rotated = visibleSeatOrder.slice(start).concat(visibleSeatOrder.slice(0, start));
+    const opponents = rotated.slice(1);
+    if (offlineLastActorId && opponents.length > 1) {
+      const lastActorIdx = gameState.players.findIndex(p => p.id === offlineLastActorId);
+      const pos = opponents.indexOf(lastActorIdx);
+      if (pos !== -1 && pos !== opponents.length - 1) {
+        opponents.splice(pos, 1);
+        opponents.push(lastActorIdx);
+      }
     }
+    displayOrder = [rotated[0], ...opponents];
+  } else {
+    const frontPos = visibleSeatOrder.indexOf(frontPlayerIdx);
+    const start = frontPos === -1 ? 0 : frontPos;
+    displayOrder = visibleSeatOrder.slice(start).concat(visibleSeatOrder.slice(0, start));
   }
   const frontPlayer = { player: gameState.players[displayOrder[0]], idx: displayOrder[0] };
   const opponents = displayOrder.slice(1).map(idx => ({ player: gameState.players[idx], idx }));
-  const anchors = getSlotAnchors(playerCount);
-  if (!anchors || anchors.length !== playerCount) {
-    if (isDebugEnabled()) console.warn('[layout] missing anchors for count', playerCount);
+  const anchors = getSlotAnchors(visibleCount);
+  if (!anchors || anchors.length !== visibleCount) {
+    if (isDebugEnabled()) console.warn('[layout] missing anchors for count', visibleCount);
     return;
   }
 
   // Render front player (slot 0)
   if (frontPlayer) {
     const { player, idx } = frontPlayer;
-    const slot = createPlayerSlot(player, idx, positionLabels[idx], true, isOfflineMode, anchors[0]);
+    const slot = createPlayerSlot(player, idx, labelByIndex.get(idx) || '', true, isOfflineMode, anchors[0]);
     slotsEl.appendChild(slot);
     if (betsContainer) renderBetMarker(betsContainer, player, anchors[0].key);
   }
@@ -1709,7 +1749,7 @@ function renderPlayers() {
     const anchor = anchors[i + 1];
     if (!anchor) return;
     const { player, idx } = item;
-    const slot = createPlayerSlot(player, idx, positionLabels[idx], false, isOfflineMode, anchor);
+    const slot = createPlayerSlot(player, idx, labelByIndex.get(idx) || '', false, isOfflineMode, anchor);
     slotsEl.appendChild(slot);
     if (betsContainer) renderBetMarker(betsContainer, player, anchor.key);
   });
@@ -2166,7 +2206,7 @@ function renderActionPanel() {
   // Hide raise area initially
   const raiseArea = $('raise-area');
   if (raiseArea) {
-    raiseArea.classList.remove('visible');
+    setRaiseAreaOpen(false);
   } else {
     warnMissing('raise-area');
   }
@@ -2334,6 +2374,14 @@ function updateActivePreset() {
   });
 }
 
+function setRaiseAreaOpen(isOpen) {
+  const area = document.getElementById('raise-area');
+  const panel = document.getElementById('action-panel');
+  if (!area || !panel) return;
+  area.classList.toggle('visible', isOpen);
+  panel.classList.toggle('raise-open', isOpen);
+}
+
 function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
   if (area.classList.contains('visible')) {
@@ -2352,7 +2400,7 @@ function toggleRaiseArea() {
     }
     doAction('raise', raiseValue);
   } else {
-    area.classList.add('visible');
+    setRaiseAreaOpen(true);
     updateRaisePresets();
   }
 }
@@ -2420,7 +2468,7 @@ function executeAction(type, amount) {
       });
     }
     render();
-    document.getElementById('raise-area').classList.remove('visible');
+    setRaiseAreaOpen(false);
     startActionTimer();
   }
 }
@@ -2482,7 +2530,7 @@ function doAction(type, amount = 0) {
     lastActionId = actionKey;
 
     // Hide raise area after action
-    document.getElementById('raise-area').classList.remove('visible');
+    setRaiseAreaOpen(false);
 
     // Offline mode: rotate display so next acting player is at bottom
     if (onlineState.role === 'local' && gameState.isHandActive) {
@@ -3245,8 +3293,9 @@ function showChipAdjust() {
   const listEl = document.getElementById('chip-adjust-list');
   if (!listEl) return;
   const players = [...gameState.players].sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
-  listEl.innerHTML = players.map(p => `
+  listEl.innerHTML = players.map((p, idx) => `
     <div class="chip-adjust-row" data-player-id="${p.id}">
+      <div class="player-manage-rank">${idx + 1}</div>
       <div class="chip-adjust-name">${p.name}</div>
       <input class="chip-adjust-input" type="number" value="${p.chips}">
     </div>
@@ -3267,8 +3316,9 @@ function showChipAdjustFromNextHand() {
   if (!listEl) return;
   const activePlayers = gameState.players.filter(p => p.status !== 'left');
   const players = [...activePlayers].sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
-  listEl.innerHTML = players.map(p => `
+  listEl.innerHTML = players.map((p, idx) => `
     <div class="chip-adjust-row" data-player-id="${p.id}">
+      <div class="player-manage-rank">${idx + 1}</div>
       <div class="chip-adjust-name">${p.name}</div>
       <input class="chip-adjust-input" type="number" value="${p.chips}">
     </div>
@@ -3473,6 +3523,11 @@ function addPlayerFromMenu() {
   const name = rawName || defaultName;
   const chipsVal = parseInt(chipsInput?.value || '0', 10);
   const chips = Number.isFinite(chipsVal) && chipsVal >= 0 ? chipsVal : (currentGameSettings?.initialChips || 1000);
+  const maxChips = getLateJoinMaxChips();
+  if (chips > maxChips) {
+    alert(`最大スタックは ${maxChips.toLocaleString()} です`);
+    return;
+  }
   const seatIndex = Math.max(0, ...gameState.players.map(p => Number.isFinite(p.seatIndex) ? p.seatIndex : 0)) + 1;
   const maxIdNum = Math.max(0, ...gameState.players.map(p => {
     const m = String(p.id || '').match(/player_(\d+)/);
@@ -3573,13 +3628,19 @@ function rebuyPlayer(playerId) {
   const player = gameState.players.find(p => p.id === playerId);
   if (!player) return;
 
-  const defaultChips = currentGameSettings?.initialChips || 1000;
+  const maxChips = getLateJoinMaxChips();
+  const baseDefault = currentGameSettings?.initialChips || 1000;
+  const defaultChips = Number.isFinite(maxChips) ? Math.min(baseDefault, maxChips) : baseDefault;
   const input = prompt(`${player.name} のリバイチップ数を入力:`, defaultChips);
   if (input === null) return;
 
   const chips = parseInt(input, 10);
   if (!Number.isFinite(chips) || chips <= 0) {
     alert('有効なチップ数を入力してください');
+    return;
+  }
+  if (chips > maxChips) {
+    alert(`最大スタックは ${maxChips.toLocaleString()} です`);
     return;
   }
 
