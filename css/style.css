@@ -2456,7 +2456,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
   box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 0 12px rgba(212,175,55,0.2);
 }
 .winner-btn .w-name { font-weight: 600; }
-.winner-btn .w-chips { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.winner-btn .w-stack { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+.winner-btn .w-chips { font-size: 10px; color: var(--text-muted); margin-left: 8px; }
 
 /* Confirm / split toggle */
 .split-toggle {
@@ -2950,6 +2951,19 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-radius: 10px;
   font-size: 12px;
 }
+.player-manage-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f1512;
+  background: #d1b24b;
+  flex-shrink: 0;
+}
 .chip-adjust-name,
 .player-manage-name {
   flex: 1;
@@ -2972,7 +2986,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .player-manage-form {
   display: grid;
-  grid-template-columns: 1fr 120px auto;
+  grid-template-columns: minmax(0, 1fr) 96px 64px;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -2983,6 +2997,15 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(0,0,0,0.2);
   color: var(--text-primary);
   font-size: 12px;
+  box-sizing: border-box;
+}
+.player-manage-form .confirm-winner-btn {
+  width: 100%;
+  padding: 8px 0;
+  box-sizing: border-box;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: none;
 }
 .player-manage-remove {
   padding: 6px 10px;

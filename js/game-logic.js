@@ -227,15 +227,10 @@ function addToMainPot(pots, amount) {
 }
 
 function buildPotsFromBets(players) {
-  // オールインプレイヤーのtotalBetレベルでのみポットを分割する
-  const allInPlayers = players.filter(p => p.status === 'allIn');
-  const allInLevels = allInPlayers.map(p => p.totalBet || 0).filter(v => v > 0);
-
-  // 全員のtotalBetの最大値も含める（メインポットの上限）
-  const maxBet = Math.max(...players.map(p => p.totalBet || 0), 0);
-
-  // オールインレベル + 最大ベットでユニークなレベルを作成
-  const levels = Array.from(new Set([...allInLevels, maxBet].filter(v => v > 0))).sort((a, b) => a - b);
+  // totalBetのレベルごとにポットを分割し、同一のeligibleは後で統合する
+  const levels = Array.from(new Set(players.map(p => p.totalBet || 0).filter(v => v > 0)))
+    .sort((a, b) => a - b);
+  if (levels.length === 0) return [];
 
   const pots = [];
   let prev = 0;
@@ -253,7 +248,18 @@ function buildPotsFromBets(players) {
     });
     prev = level;
   });
-  return pots;
+
+  // 隣接ポットでeligibleが同じ場合は統合（オールインが無い時は1つにまとまる）
+  const merged = [];
+  pots.forEach(pot => {
+    const last = merged[merged.length - 1];
+    if (last && last.eligiblePlayerIds.join(',') === pot.eligiblePlayerIds.join(',')) {
+      last.amount += pot.amount;
+    } else {
+      merged.push({ ...pot });
+    }
+  });
+  return merged;
 }
 
 function applyAction(state, playerIdx, type, amount, meta = {}) {

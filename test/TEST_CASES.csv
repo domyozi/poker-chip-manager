@@ -1,0 +1,43 @@
+type,id,priority,feature,precondition,steps,expected,actual,notes,automation
+UAT,UAT-001,P1,Offline視点ローテーション,オフラインで3人以上/ハンド中,"任意のプレイヤーがアクション→次のアクターを確認→繰り返す","次アクターが常に手前表示、直前アクターは右奥へ移動","","",manual
+UAT,UAT-002,P1,座席の正順,seatIndex付きプレイヤーで開始,"順番が固定でローテ/表示されるか確認","配列順ではなくseatIndex順で回転・表示","","",manual
+UAT,UAT-003,P1,縦型テーブル画像,ゲーム画面,"テーブル表示を確認","table-tate.pngが中心に比率維持で表示","","",manual
+UAT,UAT-004,P1,プレイヤー配置(2-5人),2〜5人で開始,"人数を変えて画面確認","各プレイヤーが重ならず配置","","",manual
+UAT,UAT-005,P2,プレイヤー配置(6-8人),6〜8人で開始,"人数を変えて画面確認","重なりがなくテーブル周辺に配置","","",manual
+UAT,UAT-006,P2,ベットチップ位置,任意のベットがある,"各プレイヤーのベット表示を確認","テーブル側へ固定位置で表示","","",manual
+UAT,UAT-007,P2,POT/Blinds分離,ゲーム画面,"POTとBlinds表示を確認","POTは1行、Blindsは別行","","",manual
+UAT,UAT-008,P2,ストックチップ表示,POT表示中,"POT上部のストックチップ表示を確認","ストックチップ表示が残っている","","",manual
+UAT,UAT-009,P2,勝利後表示,POT決着時,"結果画面上部を確認","「POT総額 ◯◯ チップ」表記","","",manual
+UAT,UAT-010,P2,オフライン接続表示,オフラインモード,"ヘッダーを確認","接続中表示が出ない","","",manual
+UAT,UAT-011,P2,音量トグル,メニュー,"音量ON/OFF切り替え","表示と動作が一致","","",manual
+UAT,UAT-012,P2,履歴のアバターサイズ,履歴表示,"履歴の見た目確認","アバターが小さく視認性良好","","",manual
+UAT,UAT-013,P1,ショーダウン・ポット別タブ,サイドポットあり,"ショーダウンを開きタブ切替","メイン/サイドが表示・切替可能","","",manual
+UAT,UAT-014,P1,ショーダウン候補並び,ショーダウン画面,"勝者候補の並び確認","チップ量の降順","","",manual
+UAT,UAT-015,P1,ショーダウン自動割当,サイドポットあり,"メインの最上位単独選択→サイドタブへ","該当者が自動選択される","","",manual
+UAT,UAT-016,P1,MIN RAISE未満のALL IN,スタックがMIN RAISE未満,"アクションにALL INが出る→実行","ALL INが可能","","",manual
+UAT,UAT-017,P1,チップ調整（メニュー）,ハンド中ではない,"メニュー→チップ調整→編集→保存","チップが更新・履歴に記録","","",manual
+UAT,UAT-018,P1,プレイヤー追加（メニュー）,ハンド中ではない,"追加フォームで追加","プレイヤー追加・履歴に記録","","",manual
+UAT,UAT-019,P1,プレイヤー退席（メニュー）,ハンド中ではない,"退席ボタン押下","プレイヤー削除・履歴に記録","","",manual
+UAT,UAT-020,P1,ハンド中の調整禁止,ハンド進行中,"チップ調整/追加/退席を試す","ブロックされる","","",manual
+UAT,UAT-021,P2,デフォルトプレイヤー名,オフライン設定画面,"プレイヤー追加","プレイヤー1から連番","","",manual
+UAT,UAT-022,P2,固定ヘッダー(設定画面),設定画面,"ヘッダーと戻るボタン確認","固定ヘッダーとして表示","","",manual
+UAT,UAT-023,P2,POT位置/カード,ゲーム画面,"POT位置を確認","カード上にPOTが表示","","",manual
+UAT,UAT-024,P2,Blinds表記,色含む,"Blinds表示を確認","白文字/指定トーンで表示","","",manual
+UAT,UAT-025,P2,プレイヤー名表示,ゲーム画面,"名前表示の省略/表示確認","仕様通り表示","","",manual
+INTEGRATION,INT-001,P0,サイドポット配分,複数オールイン,"ショーダウンでポット別勝者確定","各ポットで配分が正しい","","",manual
+INTEGRATION,INT-002,P1,ショーダウン配信,オンライン参加者あり,"ホストで勝者確定","参加者に同期反映","","",manual
+INTEGRATION,INT-003,P1,チップ調整同期,ホスト/参加者,"ホストでチップ調整保存","参加者に反映","","",manual
+INTEGRATION,INT-004,P1,追加/退席同期,ホスト/参加者,"ホストで追加/退席","参加者に反映","","",manual
+INTEGRATION,INT-005,P1,履歴記録,複数操作後,"履歴画面を開く","手動調整/追加/退席が記録","","",manual
+INTEGRATION,INT-006,P1,オフライン回転+表示順,オフライン複数人,"連続アクション","表示順が崩れない","","",manual
+INTEGRATION,INT-007,P1,MIN RAISE未満ALL IN処理,短いオールインあり,"アクション実行","再オープンしない/状態が正しい","","",manual
+INTEGRATION,INT-008,P2,Odd chip配分,複数勝者で余り発生,"ショーダウン確定","余りが左回りの最初に付与","","",manual
+INTEGRATION,INT-009,P2,BB/Chip表記切替,ゲーム画面,"メニューで切替","表示が切替・維持","","",manual
+UNIT,UT-001,P1,buildPotsFromBets,ユニットテスト,"totalBetの異なる配列で計算","ポット数・金額が正しい","","",manual
+UNIT,UT-002,P1,distributePot(複数ポット),ユニットテスト,"perPotWinnersで配分","ポット単位で配分される","","",manual
+UNIT,UT-003,P1,validateAction(raise),ユニットテスト,"MIN RAISE未満ALL IN判定","短いALL INが許可","","",manual
+UNIT,UT-004,P1,seat order,ユニットテスト,"seatIndexあり/なし","順序がseatIndex準拠","","",manual
+UNIT,UT-005,P2,offline display order,ユニットテスト,"lastActor/nextActor入力","表示順が想定通り","","",manual
+UNIT,UT-006,P2,history record hand,ユニットテスト,"recordHandResult","winners/losers/ pot が記録","","",manual
+UNIT,UT-007,P2,history record adjust,ユニットテスト,"recordChipAdjustment","changesが記録","","",manual
+UNIT,UT-008,P2,history record player,ユニットテスト,"recordPlayerChange","add/removeが記録","","",manual
