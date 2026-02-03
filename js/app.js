@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.14";
+const APP_VERSION = "v0.8.15";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2081,10 +2081,16 @@ function renderActionPanel() {
   // Raise (only if chips remain after a potential call)
   const minRaise = gameState.currentMaxBet + gameState.lastRaiseSize;
   const maxRaise = actor.chips + actor.currentBet;
+  const allInTo = actor.currentBet + actor.chips;
   if (maxRaise >= minRaise) {
     setRaiseValue(minRaise);
     btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', formatAmount(raiseValue), () => toggleRaiseArea()));
     setupRaiseSlider(minRaise, maxRaise);
+  } else if (allInTo > gameState.currentMaxBet && actor.chips > 0) {
+    btnsEl.appendChild(makeActionBtn('btn-raise', 'ALL IN', formatAmount(allInTo), () => {
+      pendingAllInAction = { type: 'raise', amount: allInTo };
+      showAllInConfirm(actor.chips);
+    }));
   }
 
   // Hide raise area initially
