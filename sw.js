@@ -1,4 +1,4 @@
-const CACHE_NAME = 'poker-v6';
+const CACHE_NAME = 'poker-v7';
 const urlsToCache = [
   './',
   './index.html',
@@ -20,8 +20,7 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
-  // 即座にアクティベート
-  self.skipWaiting();
+  // skipWaiting()を削除 - ユーザーの確認後に更新
 });
 
 // アクティベート時に古いキャッシュを削除
@@ -38,12 +37,17 @@ self.addEventListener('activate', event => {
       );
     })
   );
-  // 即座にクライアントを制御
   self.clients.claim();
 });
 
+// クライアントからのメッセージを受信
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // フェッチ時の戦略: Network First (最新優先)
-// HTMLファイルはネットワーク優先、静的アセットはキャッシュ優先
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -58,7 +62,6 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          // ネットワーク成功: キャッシュを更新して返す
           if (response && response.status === 200) {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then(cache => {
@@ -68,19 +71,17 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => {
-          // オフライン: キャッシュから返す
           return caches.match(event.request);
         })
     );
     return;
   }
 
-  // 静的アセット (フォント、画像) はキャッシュ優先
+  // 静的アセットはキャッシュ優先
   event.respondWith(
     caches.match(event.request)
       .then(response => {
         if (response) {
-          // バックグラウンドでキャッシュを更新
           fetch(event.request).then(networkResponse => {
             if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
               caches.open(CACHE_NAME).then(cache => {
@@ -104,8 +105,6 @@ self.addEventListener('fetch', event => {
           return networkResponse;
         });
       })
-      .catch(() => {
-        // オフラインでキャッシュもない場合
-      })
+      .catch(() => {})
   );
 });

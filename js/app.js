@@ -4235,6 +4235,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── SERVICE WORKER & UPDATE NOTIFICATION ─────
+let pendingWorker = null;
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     if (location.protocol !== 'http:' && location.protocol !== 'https:') {
@@ -4253,6 +4255,7 @@ if ('serviceWorker' in navigator) {
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             // New version available
+            pendingWorker = newWorker;
             showUpdateNotification();
           }
         });
@@ -4262,22 +4265,16 @@ if ('serviceWorker' in navigator) {
 }
 
 function showUpdateNotification() {
-  const banner = document.createElement('div');
-  banner.id = 'update-banner';
-  banner.innerHTML = `
-    <span>新しいバージョンが利用可能です</span>
-    <button onclick="location.reload()">更新</button>
-  `;
-  banner.style.cssText = `
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--gold); color: #0f1a16; padding: 12px 20px;
-    border-radius: 8px; font-family: inherit; font-size: 14px;
-    display: flex; align-items: center; gap: 12px; z-index: 9999;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  `;
-  banner.querySelector('button').style.cssText = `
-    background: #0f1a16; color: var(--gold); border: none;
-    padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;
-  `;
-  document.body.appendChild(banner);
+  const banner = document.getElementById('update-banner');
+  if (banner) {
+    banner.style.display = 'flex';
+  }
+}
+
+function applyUpdate() {
+  if (pendingWorker) {
+    pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+  }
+  // Reload after a short delay to allow SW to activate
+  setTimeout(() => location.reload(), 300);
 }

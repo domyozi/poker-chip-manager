@@ -3305,3 +3305,32 @@ summary.setup-label::-webkit-details-marker { display: none; }
   .action-panel { padding: 8px 12px; }
   .action-btn { padding: 8px 6px; font-size: 12px; }
 }
+
+/* ─── Update Banner ─────────────────────────────── */
+.update-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gold);
+  color: #0f1a16;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.update-btn {
+  background: #0f1a16;
+  color: var(--gold);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
+}
