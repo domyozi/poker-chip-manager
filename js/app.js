@@ -2192,15 +2192,24 @@ function renderActionPanel() {
   const minRaise = gameState.currentMaxBet + gameState.lastRaiseSize;
   const maxRaise = actor.chips + actor.currentBet;
   const allInTo = actor.currentBet + actor.chips;
+  let addedRaise = false;
   if (maxRaise >= minRaise) {
     setRaiseValue(minRaise);
     btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', '—', () => toggleRaiseArea()));
     setupRaiseSlider(minRaise, maxRaise);
+    addedRaise = true;
   } else if (allInTo > gameState.currentMaxBet && actor.chips > 0) {
     btnsEl.appendChild(makeActionBtn('btn-raise', 'ALL IN', formatAmount(allInTo), () => {
       pendingAllInAction = { type: 'raise', amount: allInTo };
       showAllInConfirm(actor.chips);
     }));
+    addedRaise = true;
+  }
+  if (!addedRaise) {
+    const spacer = document.createElement('div');
+    spacer.className = 'action-btn action-btn-spacer';
+    spacer.setAttribute('aria-hidden', 'true');
+    btnsEl.appendChild(spacer);
   }
 
   // Hide raise area initially
