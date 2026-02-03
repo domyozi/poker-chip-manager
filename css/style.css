@@ -868,7 +868,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Game Screen ────────────────────────────── */
 #game-screen {
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -878,6 +879,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background-position: center;
   background-repeat: no-repeat;
   padding: 0;
+  overflow: hidden;
 }
 #game-screen::before {
   content: "";
@@ -2145,7 +2147,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Status Bar (常時表示) ───────────────────── */
 .status-bar {
-  display: flex;
+  display: none;
   justify-content: center;
   gap: 10px;
   padding: 2px 12px;
@@ -2188,7 +2190,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Action Panel ───────────────────────────── */
 .action-panel {
-  --action-panel-height: clamp(152px, 23vh, 192px);
+  --action-panel-height: clamp(190px, 28vh, 240px);
   background: var(--felt-edge);
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
