@@ -1147,7 +1147,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   min-width: 26px;
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(212,175,55,0.12);
+  background: rgba(12,20,16,0.75);
   border: 1px solid rgba(212,175,55,0.35);
   color: var(--gold);
   font-size: 11px;
@@ -1155,26 +1155,34 @@ summary.setup-label::-webkit-details-marker { display: none; }
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bet-chip-icon {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
 }
 .posted-chip.hidden {
   display: none;
 }
 .player-slot[data-anchor="bottom"] .posted-chip {
-  top: -18px;
+  top: -8px;
 }
 .player-slot[data-anchor^="top"] .posted-chip {
-  top: 46px;
+  top: 92px;
 }
 .player-slot[data-anchor^="low"] .posted-chip {
-  top: 18px;
+  top: 10px;
 }
 .player-slot[data-anchor="mid-left"] .posted-chip {
-  top: 8px;
-  left: 64%;
+  top: 18px;
+  left: 78%;
 }
 .player-slot[data-anchor="mid-right"] .posted-chip {
-  top: 8px;
-  left: 36%;
+  top: 18px;
+  left: 22%;
 }
 
 /* Opponent oval layout (2-4 players) */
@@ -1901,7 +1909,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* ─── Pot Center ─────────────────────────────── */
 .pot-center {
   position: absolute;
-  top: 58%; left: 50%;
+  top: 48%; left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: row;
@@ -1911,10 +1919,35 @@ summary.setup-label::-webkit-details-marker { display: none; }
   z-index: 3;
   pointer-events: none;
   padding: 6px 12px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(12,20,16,0.55);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.pot-stack {
+  position: absolute;
+  top: 41%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.85);
+  color: #0f1a16;
+  z-index: 3;
+  pointer-events: none;
+}
+.pot-chip {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+.pot-stack-amount {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f1a16;
 }
 .pot-label {
   font-size: 10px; font-weight: 700;
@@ -1931,12 +1964,12 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .blinds-center {
   position: absolute;
-  top: 63%;
+  top: 54%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 11px;
   font-weight: 600;
-  color: #ffffff;
+  color: rgba(255,255,255,0.7);
   opacity: 0.85;
   letter-spacing: 0.2px;
   z-index: 3;

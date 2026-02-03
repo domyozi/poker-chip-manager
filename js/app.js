@@ -1535,7 +1535,10 @@ function createPlayerSlot(player, idx, posLabel, isActivePlayer, isOfflineMode, 
   const postedChip = document.createElement('div');
   postedChip.className = 'posted-chip';
   if (player.currentBet > 0) {
-    postedChip.textContent = formatAmount(player.currentBet);
+    postedChip.innerHTML = `
+      <img class="bet-chip-icon" src="img/betchip.png" alt="chip">
+      <span>${formatAmount(player.currentBet)}</span>
+    `;
   } else {
     postedChip.classList.add('hidden');
   }
@@ -1810,6 +1813,7 @@ function renderPot() {
   const total = (gameState?.pots || []).reduce((s, p) => s + p.amount, 0);
   const el = $('pot-amount');
   const blindsEl = $('pot-blinds');
+  const potStackEl = $('pot-stack-amount');
   if (!el) {
     warnMissing('pot-amount');
     return;
@@ -1817,6 +1821,9 @@ function renderPot() {
   const prev = parseInt(el.dataset.value || '0', 10) || 0;
   el.dataset.value = String(total);
   setText('pot-amount', formatAmount(total));
+  if (potStackEl) {
+    potStackEl.textContent = formatAmount(total);
+  }
   if (blindsEl && gameState) {
     blindsEl.textContent = `Blinds: ${formatAmount(gameState.smallBlind)},${formatAmount(gameState.bigBlind)}`;
   }
