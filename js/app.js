@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.9";
+const APP_VERSION = "v0.8.11";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -908,14 +908,7 @@ async function joinRoom(role, code, isAuto = false) {
       setWinnerHighlight(winnerIds);
       animatePotToWinners(winnerIds);
       playWinChime();
-      let gainText = '';
-      if (winnerIds.length === 1) {
-        gainText = `+${totalPot.toLocaleString()} チップ`;
-      } else {
-        gainText = rem > 0
-          ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
-          : `各 +${per.toLocaleString()} チップ`;
-      }
+      const gainText = `POT総額 ${totalPot.toLocaleString()} チップ`;
       setTimeout(() => showNextHand(winners, gainText), 220);
     })
     .on('broadcast', { event: 'next-hand-request' }, () => {
@@ -1324,8 +1317,8 @@ function startGameWithPlayers(players, settings) {
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
   handHistory = [];
-  gameState = startHand(gameState);
   saveChipsBeforeHand();
+  gameState = startHand(gameState);
   // Initialize offline display rotation to first acting player
   if (onlineState.role === 'local') {
     offlineDisplayFrontIdx = gameState.currentPlayerIndex;
@@ -2668,14 +2661,7 @@ function confirmWinner() {
   animatePotToWinners(winnerIds);
   playWinChime();
 
-  let gainText = '';
-  if (selectedWinners.length === 1) {
-    gainText = `+${totalPot.toLocaleString()} チップ`;
-  } else {
-    gainText = rem > 0
-      ? `各 +${per.toLocaleString()} / 先頭 +${(per + rem).toLocaleString()} チップ`
-      : `各 +${per.toLocaleString()} チップ`;
-  }
+  const gainText = `POT総額 ${totalPot.toLocaleString()} チップ`;
   setTimeout(() => showNextHand(winners, gainText), 220);
 
   // Broadcast resolution so non-host clients can exit showdown
@@ -2873,8 +2859,8 @@ function showGameOver() {
 
 function advanceToNextHandAndBroadcast() {
   gameState = advanceDealer(gameState);
-  gameState = startHand(gameState);
   saveChipsBeforeHand();
+  gameState = startHand(gameState);
   // Initialize offline display rotation to first acting player
   if (onlineState.role === 'local') {
     offlineDisplayFrontIdx = gameState.currentPlayerIndex;
