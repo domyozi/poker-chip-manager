@@ -329,15 +329,19 @@ function processAction(state, actionType, amount = 0) {
 
 function distributePot(state, winnerIds) {
   const s = { ...state, players: state.players.map(p => ({...p})) };
-  if (!winnerIds || winnerIds.length === 0) return s;
+  if (!winnerIds || (Array.isArray(winnerIds) && winnerIds.length === 0)) return s;
   const order = getSeatOrderIndices(s);
   const buttonPos = order.indexOf(s.dealerIndex);
   const orderFromButton = buttonPos === -1
     ? order
     : order.slice(buttonPos + 1).concat(order.slice(0, buttonPos + 1));
+  const potWinners = Array.isArray(winnerIds[0])
+    ? winnerIds
+    : (s.pots || []).map(() => winnerIds);
 
-  (s.pots || []).forEach(pot => {
-    const eligibleWinners = winnerIds.filter(id => pot.eligiblePlayerIds.includes(id));
+  (s.pots || []).forEach((pot, potIndex) => {
+    const winnersForPot = potWinners[potIndex] || [];
+    const eligibleWinners = winnersForPot.filter(id => pot.eligiblePlayerIds.includes(id));
     if (eligibleWinners.length === 0) return;
     const per = Math.floor(pot.amount / eligibleWinners.length);
     const rem = pot.amount - per * eligibleWinners.length;

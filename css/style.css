@@ -2335,6 +2335,36 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin-bottom: 4px;
 }
 .showdown-pot-label { font-size: 10px; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 24px; }
+.showdown-pot-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.showdown-pot-tab {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.showdown-pot-tab.active {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+  background: rgba(212,175,55,0.12);
+}
+.showdown-pot-target {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
 
 /* Winner select buttons */
 .winner-select { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }

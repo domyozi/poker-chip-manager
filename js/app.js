@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.15";
+const APP_VERSION = "v0.8.16";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -165,8 +165,11 @@ function hasNewAllIn(prevState, nextState) {
 // ========================================================
 let gameState = null;
 let raiseValue = 0;           // 現在のレイズ額（絶対値）
-let selectedWinners = [];     // showdown時の勝者選択
-let isSplitMode = false;
+let selectedWinners = [];     // showdown: 現在のポットの勝者選択
+let showdownPotIndex = 0;
+let showdownPotSelections = [];
+let showdownPotSplitModes = [];
+let showdownPotEligiblePlayers = [];
 let handHistory = [];         // ハンド履歴
 let chipsBeforeHand = {};     // ハンド開始時のチップ
 let lastCommunityCount = 0;
@@ -894,19 +897,22 @@ async function joinRoom(role, code, isAuto = false) {
     })
     .on('broadcast', { event: 'showdown-resolved' }, payload => {
       if (onlineState.role === 'host') return;
+      const perPotWinners = payload?.payload?.perPotWinners || null;
       const winnerIds = payload?.payload?.winnerIds || [];
-      if (!gameState || winnerIds.length === 0) return;
+      const winnerSet = new Set(winnerIds);
+      if (Array.isArray(perPotWinners) && winnerSet.size === 0) {
+        perPotWinners.forEach(ids => (ids || []).forEach(id => winnerSet.add(id)));
+      }
+      if (!gameState || (winnerSet.size === 0 && !perPotWinners)) return;
       const totalPot = getPotTotal(gameState);
-      const per = Math.floor(totalPot / winnerIds.length);
-      const rem = totalPot - per * winnerIds.length;
-      const winners = winnerIds.map(id => {
+      const winners = Array.from(winnerSet).map(id => {
         const p = gameState.players.find(pl => pl.id === id);
         return { name: p?.name || '—', characterId: p?.characterId || '' };
       });
-      gameState = distributePot(gameState, winnerIds);
+      gameState = distributePot(gameState, perPotWinners || winnerIds);
       render();
-      setWinnerHighlight(winnerIds);
-      animatePotToWinners(winnerIds);
+      setWinnerHighlight(Array.from(winnerSet));
+      animatePotToWinners(Array.from(winnerSet));
       playWinChime();
       const gainText = `POT総額 ${totalPot.toLocaleString()} チップ`;
       setTimeout(() => showNextHand(winners, gainText), 220);
@@ -2534,6 +2540,140 @@ function runSmokeChecks() {
 window.runSmokeChecks = runSmokeChecks;
 
 // ─── SHOWDOWN ─────────────────────────────────
+function getPotLabel(index) {
+  return index === 0 ? 'メイン' : `サイド${index}`;
+}
+
+function buildShowdownPotData() {
+  const fallbackEligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
+  const pots = (gameState?.pots && gameState.pots.length > 0)
+    ? gameState.pots
+    : [{ amount: getPotTotal(gameState), eligiblePlayerIds: fallbackEligible.map(p => p.id) }];
+  showdownPotEligiblePlayers = pots.map(pot => {
+    const players = (pot.eligiblePlayerIds || [])
+      .map(id => gameState.players.find(p => p.id === id))
+      .filter(Boolean);
+    return players.sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
+  });
+  showdownPotSelections = pots.map(() => []);
+  showdownPotSplitModes = pots.map(() => false);
+  return pots;
+}
+
+function renderShowdownPotTabs(pots) {
+  const tabsEl = document.getElementById('showdown-pot-tabs');
+  if (!tabsEl) return;
+  tabsEl.innerHTML = '';
+  if (pots.length <= 1) {
+    tabsEl.style.display = 'none';
+    return;
+  }
+  tabsEl.style.display = 'flex';
+  pots.forEach((pot, i) => {
+    const btn = document.createElement('button');
+    btn.className = `showdown-pot-tab${i === showdownPotIndex ? ' active' : ''}`;
+    btn.textContent = getPotLabel(i);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      setShowdownPotIndex(i, pots);
+    });
+    tabsEl.appendChild(btn);
+  });
+}
+
+function updateShowdownPotTarget(pots) {
+  const targetEl = document.getElementById('showdown-pot-target');
+  if (!targetEl) return;
+  const pot = pots[showdownPotIndex];
+  const label = getPotLabel(showdownPotIndex);
+  const amountText = pot ? formatAmount(pot.amount) : '—';
+  targetEl.textContent = `対象: ${label}ポット (${amountText})`;
+}
+
+function updateShowdownTabActive() {
+  document.querySelectorAll('.showdown-pot-tab').forEach((btn, idx) => {
+    btn.classList.toggle('active', idx === showdownPotIndex);
+  });
+}
+
+function updateShowdownConfirmState() {
+  const confirmBtn = document.getElementById('confirm-winner-btn');
+  if (!confirmBtn) return;
+  const ok = showdownPotSelections.every((sel, idx) => {
+    const eligible = showdownPotEligiblePlayers[idx] || [];
+    if (eligible.length === 0) return true;
+    return Array.isArray(sel) && sel.length > 0;
+  });
+  confirmBtn.disabled = !ok;
+}
+
+function updateSplitToggleDisplay(players) {
+  const splitToggle = document.getElementById('split-toggle');
+  const splitWrap = splitToggle ? splitToggle.closest('.split-toggle') : null;
+  if (splitWrap) splitWrap.style.display = players.length >= 2 ? 'flex' : 'none';
+  if (splitToggle) {
+    splitToggle.classList.toggle('on', showdownPotSplitModes[showdownPotIndex] === true);
+  }
+}
+
+function renderShowdownWinnerList(pots) {
+  const selectEl = document.getElementById('winner-select');
+  if (!selectEl) return;
+  selectEl.innerHTML = '';
+  const players = showdownPotEligiblePlayers[showdownPotIndex] || [];
+  selectedWinners = showdownPotSelections[showdownPotIndex]
+    ? showdownPotSelections[showdownPotIndex].slice()
+    : [];
+
+  updateSplitToggleDisplay(players);
+  players.forEach(player => {
+    const btn = document.createElement('button');
+    btn.className = 'winner-btn';
+    btn.dataset.playerId = player.id;
+    btn.innerHTML = `
+      ${renderAvatarMarkup(player.characterId || '', {
+        isYou: isPlayerYou(player, gameState.players.indexOf(player)),
+        sizeClass: 'avatar--sm',
+        hideYou: true
+      })}
+      <span class="w-name">${player.name}</span>
+      <span class="w-chips">${formatAmount(player.chips)}</span>
+    `;
+    if (selectedWinners.includes(player.id)) btn.classList.add('selected');
+    const handleSelect = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectWinner(btn, player.id, pots);
+    };
+    btn.addEventListener('click', handleSelect);
+    btn.addEventListener('touchend', handleSelect);
+    selectEl.appendChild(btn);
+  });
+}
+
+function setShowdownPotIndex(index, pots) {
+  showdownPotIndex = index;
+  updateShowdownTabActive();
+  renderShowdownWinnerList(pots);
+  updateShowdownPotTarget(pots);
+  updateShowdownConfirmState();
+}
+
+function autoAssignSidePotsFromMain(pots) {
+  if (showdownPotIndex !== 0) return;
+  const mainEligible = showdownPotEligiblePlayers[0] || [];
+  const topPlayerId = mainEligible[0]?.id;
+  if (!topPlayerId || selectedWinners.length !== 1) return;
+  if (selectedWinners[0] !== topPlayerId) return;
+  for (let i = 1; i < pots.length; i += 1) {
+    const eligibleIds = pots[i]?.eligiblePlayerIds || [];
+    if (eligibleIds.includes(topPlayerId)) {
+      showdownPotSelections[i] = [topPlayerId];
+      showdownPotSplitModes[i] = false;
+    }
+  }
+}
+
 function showShowdown() {
   const total = (gameState.pots||[]).reduce((s,p) => s + p.amount, 0);
   document.getElementById('showdown-pot-amount').textContent = formatAmount(total);
@@ -2554,57 +2694,31 @@ function showShowdown() {
     return;
   }
 
-  // Eligible players (not folded AND not out)
-  const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
-  const selectEl = document.getElementById('winner-select');
-  selectEl.innerHTML = '';
+  const pots = buildShowdownPotData();
+  showdownPotIndex = 0;
   selectedWinners = [];
-  isSplitMode = false;
-  const splitToggle = document.getElementById('split-toggle');
-  const splitWrap = splitToggle ? splitToggle.closest('.split-toggle') : null;
   const confirmBtn = document.getElementById('confirm-winner-btn');
-  if (splitToggle) splitToggle.classList.remove('on');
-  if (splitWrap) splitWrap.style.display = eligible.length >= 2 ? 'flex' : 'none';
   if (confirmBtn) confirmBtn.disabled = true;
 
   // 1人しかいない場合は自動選択
-  if (eligible.length === 1) {
-    selectedWinners = [eligible[0].id];
-    if (confirmBtn) confirmBtn.disabled = false;
+  const mainEligible = showdownPotEligiblePlayers[0] || [];
+  if (mainEligible.length === 1) {
+    showdownPotSelections[0] = [mainEligible[0].id];
+    selectedWinners = showdownPotSelections[0].slice();
+    updateShowdownConfirmState();
     confirmWinner();
     return;
-  } else {
-    eligible.forEach(player => {
-      const btn = document.createElement('button');
-      btn.className = 'winner-btn';
-      btn.dataset.playerId = player.id;
-      btn.innerHTML = `
-      ${renderAvatarMarkup(player.characterId || '', {
-        isYou: isPlayerYou(player, gameState.players.indexOf(player)),
-        sizeClass: 'avatar--sm',
-        hideYou: true
-      })}
-      <span class="w-name">${player.name}</span>
-      <span class="w-chips">${formatAmount(player.chips)}</span>
-      `;
-      // タッチとクリック両対応
-      const handleSelect = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        selectWinner(btn, player.id);
-      };
-      btn.addEventListener('click', handleSelect);
-      btn.addEventListener('touchend', handleSelect);
-      selectEl.appendChild(btn);
-    });
   }
 
+  renderShowdownPotTabs(pots);
+  setShowdownPotIndex(0, pots);
   document.getElementById('showdown-overlay').classList.add('visible');
 }
 
-function selectWinner(btn, playerId) {
+function selectWinner(btn, playerId, pots) {
   if (onlineState.role === 'player') return;
-  if (isSplitMode) {
+  const splitMode = showdownPotSplitModes[showdownPotIndex] === true;
+  if (splitMode) {
     btn.classList.toggle('selected');
     if (selectedWinners.includes(playerId)) {
       selectedWinners = selectedWinners.filter(id => id !== playerId);
@@ -2612,33 +2726,36 @@ function selectWinner(btn, playerId) {
       selectedWinners.push(playerId);
     }
   } else {
-    // Single select
     document.querySelectorAll('.winner-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     selectedWinners = [playerId];
   }
-  document.getElementById('confirm-winner-btn').disabled = selectedWinners.length === 0;
+  showdownPotSelections[showdownPotIndex] = selectedWinners.slice();
+  autoAssignSidePotsFromMain(pots);
+  updateShowdownConfirmState();
 }
 
 function toggleSplit() {
   if (onlineState.role === 'player') return;
-  isSplitMode = !isSplitMode;
-  document.getElementById('split-toggle').classList.toggle('on', isSplitMode);
-  if (!isSplitMode) {
-    // Reset to single select
+  const next = !(showdownPotSplitModes[showdownPotIndex] === true);
+  showdownPotSplitModes[showdownPotIndex] = next;
+  document.getElementById('split-toggle').classList.toggle('on', next);
+  if (!next) {
     if (selectedWinners.length > 1) selectedWinners = [selectedWinners[0]];
     document.querySelectorAll('.winner-btn').forEach(b => {
       const keep = selectedWinners.includes(b.dataset.playerId);
       b.classList.toggle('selected', keep);
     });
-    document.getElementById('confirm-winner-btn').disabled = selectedWinners.length === 0;
+    showdownPotSelections[showdownPotIndex] = selectedWinners.slice();
   }
+  updateShowdownConfirmState();
 }
 
 function cancelShowdown() {
-  // Reset selections and close overlay
   selectedWinners = [];
-  splitMode = false;
+  showdownPotSelections = [];
+  showdownPotSplitModes = [];
+  showdownPotEligiblePlayers = [];
   document.querySelectorAll('.winner-btn').forEach(btn => btn.classList.remove('selected'));
   document.getElementById('split-toggle').classList.remove('on');
   document.getElementById('confirm-winner-btn').disabled = true;
@@ -2647,19 +2764,27 @@ function cancelShowdown() {
 
 function confirmWinner() {
   if (onlineState.role === 'player') return;
-  if (confirmLock || selectedWinners.length === 0) return;
+  if (confirmLock) return;
+  const ready = showdownPotSelections.every((sel, idx) => {
+    const eligible = showdownPotEligiblePlayers[idx] || [];
+    if (eligible.length === 0) return true;
+    return Array.isArray(sel) && sel.length > 0;
+  });
+  if (!ready) return;
   confirmLock = true;
   setTimeout(() => { confirmLock = false; }, 200);
   const totalPot = getPotTotal(gameState);
-  const per = selectedWinners.length ? Math.floor(totalPot / selectedWinners.length) : 0;
-  const rem = totalPot - per * selectedWinners.length;
 
-  const winnerIds = selectedWinners.slice();
-  const winners = selectedWinners.map(id => {
+  const perPotWinners = showdownPotSelections.map(sel => sel.slice());
+  const winnerIdSet = new Set();
+  perPotWinners.forEach(ids => (ids || []).forEach(id => winnerIdSet.add(id)));
+  const winnerIds = Array.from(winnerIdSet);
+  const winners = winnerIds.map(id => {
     const p = gameState.players.find(p => p.id === id);
     return { name: p?.name || '—', characterId: p?.characterId || '' };
   });
-  gameState = distributePot(gameState, selectedWinners);
+
+  gameState = distributePot(gameState, perPotWinners);
   recordHandResult(winners, totalPot);
   document.getElementById('showdown-overlay').classList.remove('visible');
   render();
@@ -2670,12 +2795,11 @@ function confirmWinner() {
   const gainText = `POT総額 ${totalPot.toLocaleString()} チップ`;
   setTimeout(() => showNextHand(winners, gainText), 220);
 
-  // Broadcast resolution so non-host clients can exit showdown
   if (onlineState.role === 'host' && roomChannel) {
     roomChannel.send({
       type: 'broadcast',
       event: 'showdown-resolved',
-      payload: { winnerIds: selectedWinners }
+      payload: { perPotWinners, winnerIds }
     });
     broadcastState();
   }
