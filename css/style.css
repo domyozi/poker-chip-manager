@@ -133,7 +133,7 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-content: flex-start;
+  justify-content: center;
   flex-wrap: nowrap;
 }
 #settings-screen .settings-fixed-header .screen-header {
