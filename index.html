@@ -532,8 +532,36 @@
   <button class="header-menu-item" id="menu-join-status" style="padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#f0ece0; cursor:default; display:none;" disabled>参加状態: 観戦</button>
   <button class="header-menu-item" id="menu-sound-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">音量: ON</button>
   <button class="header-menu-item" id="menu-display-toggle" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">表記切替: CHIP</button>
+  <button class="header-menu-item" id="menu-chip-adjust-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">チップ調整</button>
+  <button class="header-menu-item" id="menu-player-manage-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">プレイヤー追加/退席</button>
   <button class="header-menu-item" id="menu-history-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">履歴を表示</button>
   <button class="header-menu-item" id="menu-reset-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">ゲーム終了して戻る</button>
+</div>
+
+<!-- ─── CHIP ADJUST OVERLAY ─────────────────── -->
+<div class="chip-status-overlay" id="chip-adjust-overlay">
+  <div class="chip-status-card">
+    <div class="chip-status-title">チップ調整</div>
+    <div class="chip-adjust-list" id="chip-adjust-list"></div>
+    <div class="chip-adjust-actions">
+      <button class="showdown-cancel-btn" onclick="hideChipAdjust()">キャンセル</button>
+      <button class="confirm-winner-btn" onclick="saveChipAdjust()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── PLAYER MANAGE OVERLAY ───────────────── -->
+<div class="chip-status-overlay" id="player-manage-overlay">
+  <div class="chip-status-card">
+    <div class="chip-status-title">プレイヤー追加/退席</div>
+    <div class="player-manage-form">
+      <input type="text" id="player-manage-name" placeholder="プレイヤー名">
+      <input type="number" id="player-manage-chips" placeholder="チップ">
+      <button class="confirm-winner-btn" onclick="addPlayerFromMenu()">追加</button>
+    </div>
+    <div class="player-manage-list" id="player-manage-list"></div>
+    <button class="showdown-cancel-btn" onclick="hidePlayerManage()">閉じる</button>
+  </div>
 </div>
 </body>
 </html>

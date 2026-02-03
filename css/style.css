@@ -2754,6 +2754,72 @@ summary.setup-label::-webkit-details-marker { display: none; }
   font-size: 13px;
 }
 
+.chip-adjust-list,
+.player-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.chip-adjust-row,
+.player-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.chip-adjust-name,
+.player-manage-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.chip-adjust-input {
+  width: 110px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.2);
+  color: var(--text-primary);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px;
+}
+.chip-adjust-actions {
+  display: flex;
+  gap: 10px;
+}
+.player-manage-form {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.player-manage-form input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.2);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.player-manage-remove {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.player-manage-remove:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--text-primary);
+}
+
 /* ─── Winner celebration flash ────────────────── */
 .win-flash {
   position: fixed; inset: 0;

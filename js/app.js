@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.16";
+const APP_VERSION = "v0.8.17";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -180,6 +180,7 @@ let nextHandLock = false;
 let perPlayerStackChips = {};
 let winnerHighlightIds = [];
 let winnerHighlightTimer = null;
+let currentGameSettings = null;
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -1295,6 +1296,7 @@ function startGameWithPlayers(players, settings) {
   lastActionId = null;
   lastTurnKey = null;
   pendingAllInAction = null;
+  currentGameSettings = { ...settings };
   applySettings(settings);
   const perPlayerEnabled = getPerPlayerStackEnabled();
   const stackInputs = getPerPlayerStackInputs();
@@ -2883,23 +2885,47 @@ function showHistory() {
     listEl.innerHTML = '<div class="history-empty">まだ履歴がありません</div>';
   } else {
     listEl.innerHTML = handHistory.map((h, i) => {
-      const winnerText = h.winners.map(w => {
+      const type = h.type || 'hand';
+      if (type === 'adjust') {
+        const rows = (h.changes || []).map(c => {
+          return `<div class="history-loser"><span>${c.name}: ${c.from.toLocaleString()} → ${c.to.toLocaleString()}</span></div>`;
+        }).join('');
+        return `
+          <div class="history-item">
+            <div class="history-header">チップ調整</div>
+            <div class="history-result">${rows}</div>
+          </div>
+        `;
+      }
+      if (type === 'player') {
+        const label = h.action === 'add' ? 'プレイヤー追加' : 'プレイヤー退席';
+        const chipText = typeof h.chips === 'number' ? ` (${h.chips.toLocaleString()})` : '';
+        return `
+          <div class="history-item">
+            <div class="history-header">${label}</div>
+            <div class="history-result">
+              <div class="history-winner"><span>${h.name}${chipText}</span></div>
+            </div>
+          </div>
+        `;
+      }
+      const winnerText = (h.winners || []).map(w => {
         const icon = renderAvatarMarkup(w.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
         return `<div class="history-winner">${icon}<span>${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span></div>`;
       }).join(' ');
-      const loserText = h.losers.map(l => {
+      const loserText = (h.losers || []).map(l => {
         const icon = renderAvatarMarkup(l.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
         return `<div class="history-loser">${icon}<span>${l.name} -${l.loss.toLocaleString()}</span></div>`;
       }).join(' ');
       return `
-        <div class="history-item">
-          <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
-          <div class="history-result">
-            ${winnerText}
-            ${loserText}
+          <div class="history-item">
+            <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
+            <div class="history-result">
+              ${winnerText}
+              ${loserText}
+            </div>
           </div>
-        </div>
-      `;
+        `;
     }).join('');
   }
   document.getElementById('history-overlay').classList.add('visible');
@@ -2908,6 +2934,161 @@ function showHistory() {
 
 function hideHistory() {
   document.getElementById('history-overlay').classList.remove('visible');
+}
+
+function showChipAdjust() {
+  if (!gameState || !gameState.players) return;
+  if (onlineState.role === 'player') return;
+  if (gameState.isHandActive) {
+    alert('ハンド中はチップ調整できません');
+    return;
+  }
+  const listEl = document.getElementById('chip-adjust-list');
+  if (!listEl) return;
+  const players = [...gameState.players].sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
+  listEl.innerHTML = players.map(p => `
+    <div class="chip-adjust-row" data-player-id="${p.id}">
+      <div class="chip-adjust-name">${p.name}</div>
+      <input class="chip-adjust-input" type="number" value="${p.chips}">
+    </div>
+  `).join('');
+  document.getElementById('chip-adjust-overlay').classList.add('visible');
+  document.getElementById('header-menu').style.display = 'none';
+}
+
+function hideChipAdjust() {
+  document.getElementById('chip-adjust-overlay').classList.remove('visible');
+}
+
+function saveChipAdjust() {
+  if (!gameState || !gameState.players) return;
+  const listEl = document.getElementById('chip-adjust-list');
+  if (!listEl) return;
+  const changes = [];
+  listEl.querySelectorAll('.chip-adjust-row').forEach(row => {
+    const playerId = row.dataset.playerId;
+    const input = row.querySelector('.chip-adjust-input');
+    const next = parseInt(input?.value || '0', 10);
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return;
+    const nextChips = Number.isFinite(next) && next >= 0 ? next : player.chips;
+    if (nextChips !== player.chips) {
+      changes.push({ id: player.id, name: player.name, from: player.chips, to: nextChips });
+      player.chips = nextChips;
+    }
+  });
+  if (changes.length > 0) {
+    recordChipAdjustment(changes);
+    saveChipsBeforeHand();
+    render();
+    if (onlineState.role === 'host') broadcastState();
+  }
+  hideChipAdjust();
+}
+
+function showPlayerManage() {
+  if (!gameState || !gameState.players) return;
+  if (onlineState.role === 'player') return;
+  if (gameState.isHandActive) {
+    alert('ハンド中はプレイヤー追加/退席できません');
+    return;
+  }
+  const listEl = document.getElementById('player-manage-list');
+  if (!listEl) return;
+  rebuildPlayerManageList();
+  const chipsInput = document.getElementById('player-manage-chips');
+  if (chipsInput) {
+    const fallback = currentGameSettings?.initialChips || 1000;
+    chipsInput.value = String(fallback);
+  }
+  document.getElementById('player-manage-overlay').classList.add('visible');
+  document.getElementById('header-menu').style.display = 'none';
+}
+
+function hidePlayerManage() {
+  document.getElementById('player-manage-overlay').classList.remove('visible');
+}
+
+function rebuildPlayerManageList() {
+  const listEl = document.getElementById('player-manage-list');
+  if (!listEl || !gameState) return;
+  listEl.innerHTML = gameState.players.map(p => `
+    <div class="player-manage-row" data-player-id="${p.id}">
+      <div class="player-manage-name">${p.name}</div>
+      <div class="player-manage-name">${formatAmount(p.chips)}</div>
+      <button class="player-manage-remove" onclick="removePlayerFromMenu('${p.id}')">退席</button>
+    </div>
+  `).join('');
+}
+
+function toZenkakuNumber(num) {
+  return String(num).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+}
+
+function addPlayerFromMenu() {
+  if (!gameState || !gameState.players) return;
+  if (gameState.isHandActive) {
+    alert('ハンド中はプレイヤー追加できません');
+    return;
+  }
+  const nameInput = document.getElementById('player-manage-name');
+  const chipsInput = document.getElementById('player-manage-chips');
+  const rawName = (nameInput?.value || '').trim();
+  const nextIndex = gameState.players.length + 1;
+  const defaultName = `プレイヤー${toZenkakuNumber(nextIndex)}`;
+  const name = rawName || defaultName;
+  const chipsVal = parseInt(chipsInput?.value || '0', 10);
+  const chips = Number.isFinite(chipsVal) && chipsVal >= 0 ? chipsVal : (currentGameSettings?.initialChips || 1000);
+  const seatIndex = Math.max(0, ...gameState.players.map(p => Number.isFinite(p.seatIndex) ? p.seatIndex : 0)) + 1;
+  const maxIdNum = Math.max(0, ...gameState.players.map(p => {
+    const m = String(p.id || '').match(/player_(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+  }));
+  const newPlayer = {
+    id: `player_${maxIdNum + 1}`,
+    name,
+    characterId: '',
+    chips,
+    status: 'waiting',
+    currentBet: 0,
+    totalBet: 0,
+    actedThisRound: false,
+    seatIndex
+  };
+  gameState.players.push(newPlayer);
+  recordPlayerChange('add', newPlayer);
+  saveChipsBeforeHand();
+  render();
+  if (onlineState.role === 'host') broadcastState();
+  if (nameInput) nameInput.value = '';
+  rebuildPlayerManageList();
+}
+
+function removePlayerFromMenu(playerId) {
+  if (!gameState || !gameState.players) return;
+  if (gameState.isHandActive) {
+    alert('ハンド中は退席できません');
+    return;
+  }
+  const idx = gameState.players.findIndex(p => p.id === playerId);
+  if (idx === -1) return;
+  if (gameState.players.length <= 2) {
+    alert('プレイヤーは最低2人必要です');
+    return;
+  }
+  const removed = gameState.players.splice(idx, 1)[0];
+  recordPlayerChange('remove', removed);
+  if (gameState.currentPlayerIndex >= gameState.players.length) {
+    gameState.currentPlayerIndex = Math.max(0, gameState.players.length - 1);
+  }
+  if (gameState.dealerIndex >= gameState.players.length) {
+    gameState.dealerIndex = Math.max(0, gameState.players.length - 1);
+  }
+  offlineDisplayFrontIdx = Math.min(offlineDisplayFrontIdx, gameState.players.length - 1);
+  saveChipsBeforeHand();
+  render();
+  if (onlineState.role === 'host') broadcastState();
+  rebuildPlayerManageList();
 }
 
 function showDisconnectDialog() {
@@ -2932,10 +3113,32 @@ function recordHandResult(winners, totalPot) {
     !winners.some(w => w.name === p.name) && chipsBeforeHand[p.id] !== p.chips
   );
   handHistory.push({
+    type: 'hand',
     hand: handHistory.length + 1,
     winners: winners.map(w => ({ name: w.name, characterId: w.characterId })),
     losers: losers.map(l => ({ name: l.name, characterId: l.characterId, loss: chipsBeforeHand[l.id] - l.chips })),
     pot: totalPot
+  });
+}
+
+function recordChipAdjustment(changes) {
+  if (!changes || changes.length === 0) return;
+  handHistory.push({
+    type: 'adjust',
+    changes: changes.map(c => ({ name: c.name, from: c.from, to: c.to })),
+    at: Date.now()
+  });
+}
+
+function recordPlayerChange(action, player) {
+  if (!player) return;
+  handHistory.push({
+    type: 'player',
+    action,
+    name: player.name || '—',
+    characterId: player.characterId || '',
+    chips: typeof player.chips === 'number' ? player.chips : null,
+    at: Date.now()
   });
 }
 
@@ -3463,6 +3666,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuHistoryBtn) {
       menuHistoryBtn.addEventListener('click', () => {
         showHistory();
+      });
+    }
+    const menuChipAdjustBtn = document.getElementById('menu-chip-adjust-btn');
+    if (menuChipAdjustBtn) {
+      menuChipAdjustBtn.addEventListener('click', () => {
+        showChipAdjust();
+      });
+    }
+    const menuPlayerManageBtn = document.getElementById('menu-player-manage-btn');
+    if (menuPlayerManageBtn) {
+      menuPlayerManageBtn.addEventListener('click', () => {
+        showPlayerManage();
       });
     }
     const menuSoundToggle = document.getElementById('menu-sound-toggle');

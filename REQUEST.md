@@ -24,6 +24,7 @@ Track incoming feature requests and UX changes separately from progress and requ
 - P2: 音量ON/OFFトグル復帰（メニュー）｜Acceptance: メニューから音量が切り替えられる
 - P2: 履歴リストのアバター縮小｜Acceptance: 履歴の画像が小さくなり視認性が改善する
 - P1: ショーダウンでポット別勝者選択タブ｜Acceptance: メイン/サイドごとに勝者を選択でき、自動割当が動作する
+- P1: メニューにチップ調整＋追加/退席｜Acceptance: 降順のチップ編集と追加/退席ができ、履歴に記録される
 
 ## Guidelines
 - UI flow or screen structure changes must update:
