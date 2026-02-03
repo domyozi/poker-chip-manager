@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.2";
+const APP_VERSION = "v0.8.4";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -1547,13 +1547,13 @@ function createPlayerSlot(player, idx, posLabel, isActivePlayer, isOfflineMode, 
 
 function getBetMarkerPosition(anchorKey) {
   switch (anchorKey) {
-    case 'top-center': return { x: 50, y: 32 };
-    case 'top-left': return { x: 34, y: 34 };
-    case 'top-right': return { x: 66, y: 34 };
-    case 'mid-left': return { x: 30, y: 48 };
-    case 'mid-right': return { x: 70, y: 48 };
-    case 'low-left': return { x: 34, y: 60 };
-    case 'low-right': return { x: 66, y: 60 };
+    case 'top-center': return { x: 50, y: 18 };
+    case 'top-left': return { x: 34, y: 25 };
+    case 'top-right': return { x: 66, y: 25 };
+    case 'mid-left': return { x: 30, y: 34 };
+    case 'mid-right': return { x: 70, y: 34 };
+    case 'low-left': return { x: 27, y: 55 };
+    case 'low-right': return { x: 73, y: 55 };
     case 'bottom': return { x: 50, y: 70 };
     default: return { x: 50, y: 50 };
   }
