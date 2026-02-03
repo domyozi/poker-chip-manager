@@ -29,7 +29,9 @@ function findNextWithChips(state, fromIndex) {
   const base = startPos === -1 ? 0 : startPos;
   for (let i = 1; i <= len; i++) {
     const idx = order[(base + i) % len];
-    if (state.players[idx].chips > 0) return idx;
+    const p = state.players[idx];
+    // leftプレイヤーはスキップ
+    if (p && p.chips > 0 && p.status !== 'left') return idx;
   }
   return fromIndex;
 }
@@ -51,7 +53,7 @@ function countActivePlayers(state) {
 }
 
 function countEligiblePlayers(state) {
-  return state.players.filter(p => p.status !== "folded").length;
+  return state.players.filter(p => p.status !== "folded" && p.status !== "out" && p.status !== "left").length;
 }
 
 function getPotTotal(state) {
@@ -114,17 +116,26 @@ function postBlind(state, playerIndex, amount) {
 function startHand(state) {
   let s = {
     ...state, isHandActive: true, phase: "preflop",
-    players: state.players.map(p => ({
-      ...p,
-      status: p.chips > 0 ? "active" : "out",
-      currentBet: 0,
-      totalBet: 0,
-      actedThisRound: false
-    })),
-    pots: [{ amount: 0, eligiblePlayerIds: state.players.filter(p => p.chips > 0).map(p => p.id) }],
+    players: state.players.map(p => {
+      // 退席(left)プレイヤーはそのまま
+      if (p.status === 'left') return { ...p, currentBet: 0, totalBet: 0, actedThisRound: false };
+      // 離席中(sitout)プレイヤーはsitoutのまま、ブラインドは払う
+      if (p.status === 'sitout') return { ...p, currentBet: 0, totalBet: 0, actedThisRound: true };
+      // 通常のプレイヤー
+      return {
+        ...p,
+        status: p.chips > 0 ? "active" : "out",
+        currentBet: 0,
+        totalBet: 0,
+        actedThisRound: false
+      };
+    }),
+    pots: [{ amount: 0, eligiblePlayerIds: state.players.filter(p => p.chips > 0 && p.status !== 'left').map(p => p.id) }],
     actionHistory: []
   };
 
+  // 有効なプレイヤー（activeまたはsitout）
+  const eligibleForPlay = s.players.filter(p => p.status === "active" || p.status === "sitout");
   const activePlayers = s.players.filter(p => p.status === "active");
   if (activePlayers.length <= 1) {
     s.isHandActive = false;
@@ -132,19 +143,38 @@ function startHand(state) {
     return s;
   }
 
-  const n = s.players.length;
-  const sbIdx = n === 2 ? s.dealerIndex : findNextWithChips(s, s.dealerIndex);
-  const bbIdx = findNextWithChips(s, sbIdx);
+  const n = eligibleForPlay.length;
+  // ディーラーから次のプレイヤーを探す（sitoutも含む）
+  const sbIdx = n === 2 ? s.dealerIndex : findNextEligible(s, s.dealerIndex);
+  const bbIdx = findNextEligible(s, sbIdx);
+
+  // ブラインドを投稿（sitoutプレイヤーも自動で払う）
   s = postBlind(s, sbIdx, s.smallBlind);
   s = postBlind(s, bbIdx, s.bigBlind);
   s.currentMaxBet = s.bigBlind;
   s.lastRaiseSize = s.bigBlind;
   s.pots = buildPotsFromBets(s.players);
 
-  const firstToAct = findNextWithChips(s, bbIdx);
-  s.currentPlayerIndex = firstToAct !== bbIdx ? firstToAct : findNextWithChips(s, firstToAct);
+  // 最初のアクションプレイヤーを探す（activeのみ）
+  const firstToAct = findNextActivePlayer(s, bbIdx);
+  s.currentPlayerIndex = firstToAct !== -1 ? firstToAct : s.dealerIndex;
 
   return s;
+}
+
+// sitoutプレイヤーも含めて次のプレイヤーを探す
+function findNextEligible(state, fromIndex) {
+  const order = getSeatOrderIndices(state);
+  const len = order.length;
+  if (len === 0) return -1;
+  const startPos = order.indexOf(fromIndex);
+  const base = startPos === -1 ? 0 : startPos;
+  for (let i = 1; i <= len; i++) {
+    const idx = order[(base + i) % len];
+    const p = state.players[idx];
+    if (p && (p.status === "active" || p.status === "sitout") && p.chips > 0) return idx;
+  }
+  return -1;
 }
 
 function endHand(state) {
@@ -197,8 +227,16 @@ function addToMainPot(pots, amount) {
 }
 
 function buildPotsFromBets(players) {
-  const totals = players.map(p => Math.max(0, p.totalBet || 0));
-  const levels = Array.from(new Set(totals.filter(v => v > 0))).sort((a, b) => a - b);
+  // オールインプレイヤーのtotalBetレベルでのみポットを分割する
+  const allInPlayers = players.filter(p => p.status === 'allIn');
+  const allInLevels = allInPlayers.map(p => p.totalBet || 0).filter(v => v > 0);
+
+  // 全員のtotalBetの最大値も含める（メインポットの上限）
+  const maxBet = Math.max(...players.map(p => p.totalBet || 0), 0);
+
+  // オールインレベル + 最大ベットでユニークなレベルを作成
+  const levels = Array.from(new Set([...allInLevels, maxBet].filter(v => v > 0))).sort((a, b) => a - b);
+
   const pots = [];
   let prev = 0;
   levels.forEach(level => {
@@ -208,7 +246,7 @@ function buildPotsFromBets(players) {
       prev = level;
       return;
     }
-    const eligible = contributors.filter(p => p.status !== "folded" && p.status !== "out");
+    const eligible = contributors.filter(p => p.status !== "folded" && p.status !== "out" && p.status !== "left");
     pots.push({
       amount,
       eligiblePlayerIds: eligible.map(p => p.id)

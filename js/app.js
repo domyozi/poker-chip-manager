@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.17";
+const APP_VERSION = "v0.8.34";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -185,10 +185,11 @@ let currentGameSettings = null;
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
 let actionTimer = null;
+let timerWarningPlayed = false;
 let timeRemaining = 0;
 let timerStartTime = 0;
 
-// Tournament state
+// Tournament state (online only)
 let tournamentSettings = { enabled: false, levelDuration: 15 };
 let tournamentTimer = null;
 let tournamentTimeRemaining = 0;
@@ -444,6 +445,7 @@ function setUiState(state) {
   updatePlayerBadge();
   updateDebugBanner();
   updateConnectionIndicatorVisibility();
+  updateTournamentUiVisibility();
 }
 
 function updateHeaderMenuVisibility() {
@@ -501,6 +503,42 @@ function updateConnectionIndicator(status) {
 
 function updateConnectionIndicatorVisibility() {
   updateConnectionIndicator(onlineState.connected ? 'connected' : 'disconnected');
+}
+
+function updateTournamentUiVisibility() {
+  const config = document.getElementById('tournament-config');
+  const toggle = document.getElementById('tournament-mode-toggle');
+  const options = document.getElementById('tournament-options');
+  const bar = document.getElementById('tournament-bar');
+  const isOnlineHost = appMode === 'online' && onlineState.role === 'host';
+  if (config) config.style.display = isOnlineHost ? 'block' : 'none';
+  if (!isOnlineHost && toggle) toggle.checked = false;
+  if (options) options.style.display = (isOnlineHost && toggle && toggle.checked) ? 'block' : 'none';
+  if (bar && (appMode !== 'online' || !tournamentSettings.enabled)) {
+    bar.style.display = 'none';
+  }
+}
+
+function syncTournamentOptions() {
+  const toggle = document.getElementById('tournament-mode-toggle');
+  const options = document.getElementById('tournament-options');
+  if (!toggle || !options) return;
+  options.style.display = toggle.checked ? 'block' : 'none';
+}
+
+function normalizeActorState(state) {
+  if (!state || !Array.isArray(state.players)) return state;
+  if (!state.isHandActive) return state;
+  const actor = state.players[state.currentPlayerIndex];
+  if (actor && actor.status === 'active') return state;
+  const next = findNextActivePlayer(state, state.currentPlayerIndex);
+  if (next !== -1) {
+    return { ...state, currentPlayerIndex: next };
+  }
+  if (countEligiblePlayers(state) <= 1) {
+    return endHand(state);
+  }
+  return state;
 }
 
 function setRoomControls(connected) {
@@ -877,12 +915,14 @@ async function joinRoom(role, code, isAuto = false) {
       syncLocalPlayerIdentityFromState();
       setUiState('playing');
       const tournamentBar = document.getElementById('tournament-bar');
-      if (tournamentSettings.enabled) {
-        tournamentBar.style.display = 'flex';
-        tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
-        updateTournamentDisplay();
-      } else {
-        tournamentBar.style.display = 'none';
+      if (tournamentBar) {
+        if (appMode === 'online' && tournamentSettings.enabled) {
+          tournamentBar.style.display = 'flex';
+          startTournamentTimer();
+        } else {
+          tournamentBar.style.display = 'none';
+          stopTournamentTimer();
+        }
       }
       render();
       if (gameState?.isHandActive) startActionTimer();
@@ -967,7 +1007,7 @@ function applyRemoteAction(type, amount) {
   const prevState = gameState;
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); actionLock = false; return; }
-  gameState = result;
+  gameState = normalizeActorState(result);
   if (hasNewAllIn(prevState, gameState)) playAllInHit();
   render();
   if (gameState.isHandActive) {
@@ -985,9 +1025,13 @@ function startActionTimer() {
     const actor = gameState.players[gameState.currentPlayerIndex];
     if (!actor || actor.name !== onlineState.displayName) return;
   }
+  if (!gameState || !gameState.isHandActive) return;
+  const actor = gameState.players[gameState.currentPlayerIndex];
+  if (!actor || actor.status !== 'active') return;
 
   timeRemaining = timerSettings.duration;
   timerStartTime = Date.now();
+  timerWarningPlayed = false;
   updateTimerDisplay();
 
   actionTimer = setInterval(() => {
@@ -996,8 +1040,9 @@ function startActionTimer() {
 
     updateTimerDisplay();
 
-    // 残り5秒で警告音
-    if (timerSettings.soundEnabled && Math.ceil(timeRemaining) === 5) {
+    // 残り5秒で警告音（1回だけ）
+    if (timerSettings.soundEnabled && Math.ceil(timeRemaining) === 5 && !timerWarningPlayed) {
+      timerWarningPlayed = true;
       playTimerWarning();
     }
 
@@ -1086,46 +1131,6 @@ function playTimeoutSound() {
   } catch (e) {}
 }
 
-// ─── TOURNAMENT FUNCTIONS ────────────────────────
-function startTournamentTimer() {
-  stopTournamentTimer();
-  if (!tournamentSettings.enabled) return;
-  if (onlineState.role === 'player') return;
-
-  tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
-  updateTournamentDisplay();
-
-  tournamentTimer = setInterval(() => {
-    tournamentTimeRemaining--;
-    updateTournamentDisplay();
-
-    if (tournamentTimeRemaining <= 0) {
-      advanceBlindLevel();
-    }
-  }, 1000);
-}
-
-function stopTournamentTimer() {
-  if (tournamentTimer) {
-    clearInterval(tournamentTimer);
-    tournamentTimer = null;
-  }
-}
-
-function updateTournamentDisplay() {
-  const bar = document.getElementById('tournament-bar');
-  if (!bar || !tournamentSettings.enabled) return;
-
-  const mins = Math.floor(tournamentTimeRemaining / 60);
-  const secs = tournamentTimeRemaining % 60;
-
-  bar.querySelector('.next-level span').textContent =
-    `${mins}:${secs.toString().padStart(2, '0')}`;
-  bar.querySelector('.level').textContent = `Level ${currentBlindLevel}`;
-  bar.querySelector('.blinds').textContent =
-    `${gameState.smallBlind} / ${gameState.bigBlind}`;
-}
-
 function advanceBlindLevel() {
   if (!gameState) return;
   currentBlindLevel++;
@@ -1137,7 +1142,6 @@ function advanceBlindLevel() {
     broadcastState();
   }
 
-  // Play level up sound
   if (timerSettings.soundEnabled) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1154,23 +1158,61 @@ function advanceBlindLevel() {
   }
 }
 
+function startTournamentTimer() {
+  stopTournamentTimer();
+  if (!tournamentSettings.enabled) return;
+  if (appMode !== 'online') return;
+
+  tournamentTimeRemaining = tournamentSettings.levelDuration * 60;
+  updateTournamentDisplay();
+
+  tournamentTimer = setInterval(() => {
+    tournamentTimeRemaining--;
+    updateTournamentDisplay();
+    if (tournamentTimeRemaining <= 0) {
+      advanceBlindLevel();
+    }
+  }, 1000);
+}
+
+function stopTournamentTimer() {
+  if (tournamentTimer) {
+    clearInterval(tournamentTimer);
+    tournamentTimer = null;
+  }
+}
+
+function updateTournamentDisplay() {
+  const bar = document.getElementById('tournament-bar');
+  if (!bar || !tournamentSettings.enabled || appMode !== 'online') return;
+  const mins = Math.floor(tournamentTimeRemaining / 60);
+  const secs = tournamentTimeRemaining % 60;
+  bar.querySelector('.next-level span').textContent =
+    `${mins}:${secs.toString().padStart(2, '0')}`;
+  bar.querySelector('.level').textContent = `Level ${currentBlindLevel}`;
+  bar.querySelector('.blinds').textContent =
+    `${gameState.smallBlind} / ${gameState.bigBlind}`;
+}
+
 function collectSettingsFromForm() {
+  const tournamentToggle = document.getElementById('tournament-mode-toggle');
+  const levelSelect = document.getElementById('blind-level-select');
   return {
     smallBlind: parseInt(document.getElementById('sb-input').value) || 10,
     bigBlind: parseInt(document.getElementById('bb-input').value) || 20,
     initialChips: parseInt(document.getElementById('initial-chips-input').value) || 1000,
     timerDuration: parseInt(document.getElementById('timer-select').value) || 0,
     soundEnabled: document.getElementById('timer-sound-toggle').checked,
-    tournamentEnabled: document.getElementById('tournament-mode-toggle').checked,
-    levelDuration: parseInt(document.getElementById('blind-level-select').value) || 15
+    tournamentEnabled: tournamentToggle ? tournamentToggle.checked : false,
+    levelDuration: levelSelect ? parseInt(levelSelect.value) || 15 : 15
   };
 }
 
 function applySettings(settings) {
   timerSettings.duration = settings.timerDuration;
   timerSettings.soundEnabled = settings.soundEnabled;
-  tournamentSettings.enabled = settings.tournamentEnabled;
-  tournamentSettings.levelDuration = settings.levelDuration;
+  tournamentSettings.enabled = !!settings.tournamentEnabled && appMode === 'online';
+  tournamentSettings.levelDuration = settings.levelDuration || 15;
   currentBlindLevel = 1;
 }
 
@@ -1343,13 +1385,6 @@ function startGameWithPlayers(players, settings) {
     roomChannel: !!roomChannel
   });
 
-  const tournamentBar = document.getElementById('tournament-bar');
-  if (tournamentSettings.enabled) {
-    tournamentBar.style.display = 'flex';
-    startTournamentTimer();
-  } else {
-    tournamentBar.style.display = 'none';
-  }
 
   render();
   startActionTimer();
@@ -1395,6 +1430,9 @@ function updateSettingsPanels() {
   }
   updateInitialChipsBB();
   renderPerPlayerStackList();
+  updateRemoveButtons();
+  updateAddPlayerVisibility();
+  updateTournamentUiVisibility();
 }
 
 // calcPositions is no longer used in vertical lane layout
@@ -1541,6 +1579,13 @@ function createPlayerSlot(player, idx, posLabel, isActivePlayer, isOfflineMode, 
   slot.dataset.anchor = anchor.key;
   slot.style.setProperty('--slot-x', `${anchor.x}%`);
   slot.style.setProperty('--slot-y', `${anchor.y}%`);
+
+  // leftプレイヤーは非表示
+  if (player.status === 'left') {
+    slot.style.display = 'none';
+    return slot;
+  }
+
   slot.appendChild(createPlayerPanel(player, idx, posLabel, isActivePlayer, isOfflineMode));
 
   return slot;
@@ -1588,6 +1633,11 @@ function renderPlayers() {
   if (betsContainer) betsContainer.innerHTML = '';
 
   if (!gameState || !gameState.players.length) return;
+
+  // leftプレイヤーを除外して有効プレイヤーを計算
+  const visiblePlayers = gameState.players.filter(p => p.status !== 'left');
+  const visibleCount = visiblePlayers.length;
+  if (visibleCount === 0) return;
 
   const positionLabels = buildPositionLabels(gameState.players.length, gameState.dealerIndex);
   const isOfflineMode = onlineState.role === 'local';
@@ -1662,6 +1712,7 @@ function createPlayerPanel(player, idx, posLabel, isActivePlayer, isOfflineMode 
   const isDealer = idx === gameState.dealerIndex;
   const isFolded = player.status === "folded";
   const isAllIn = player.status === "allIn";
+  const isSitout = player.status === "sitout";
   const isWinner = winnerHighlightIds.includes(player.id);
 
   // Use different class based on active/back status
@@ -1669,6 +1720,7 @@ function createPlayerPanel(player, idx, posLabel, isActivePlayer, isOfflineMode 
   let classes = baseClass;
   if (isFolded) classes += ' folded';
   if (isAllIn) classes += ' allin';
+  if (isSitout) classes += ' sitout';
   if (isWinner) classes += ' is-winner';
 
   const characterId = normalizeCharacterId(player.characterId || '', idx);
@@ -2075,7 +2127,7 @@ function renderActionPanel() {
   const canCheck = callAmt === 0;
 
   // Fold
-  btnsEl.appendChild(makeActionBtn('btn-fold', 'FOLD', '—', () => handleFoldAttempt()));
+  btnsEl.appendChild(makeActionBtn('btn-fold', 'FOLD', '', () => handleFoldAttempt()));
 
   // Check or Call
   if (canCheck) {
@@ -2092,7 +2144,7 @@ function renderActionPanel() {
   const allInTo = actor.currentBet + actor.chips;
   if (maxRaise >= minRaise) {
     setRaiseValue(minRaise);
-    btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', formatAmount(raiseValue), () => toggleRaiseArea()));
+    btnsEl.appendChild(makeActionBtn('btn-raise', 'RAISE', '—', () => toggleRaiseArea()));
     setupRaiseSlider(minRaise, maxRaise);
   } else if (allInTo > gameState.currentMaxBet && actor.chips > 0) {
     btnsEl.appendChild(makeActionBtn('btn-raise', 'ALL IN', formatAmount(allInTo), () => {
@@ -2113,8 +2165,10 @@ function renderActionPanel() {
 let actionProcessing = false;
 function makeActionBtn(cls, label, sub, onClick) {
   const btn = document.createElement('button');
-  btn.className = 'action-btn ' + cls;
-  btn.innerHTML = `<span class="btn-label">${label}</span><span class="btn-sub">${sub}</span>`;
+  btn.className = 'action-btn ' + cls + (sub ? '' : ' no-sub');
+  btn.innerHTML = sub
+    ? `<span class="btn-label">${label}</span><span class="btn-sub">${sub}</span>`
+    : `<span class="btn-label">${label}</span>`;
 
   // デバウンス処理で二重発火防止
   const handleClick = (e) => {
@@ -2139,6 +2193,17 @@ let actionLock = false;
 let lastActionId = null;
 let lastTurnKey = null;
 let localPendingActionKey = null;
+function getRaiseStep() {
+  if (!gameState || !gameState.bigBlind) return 1;
+  const step = gameState.bigBlind * 0.5;
+  return step >= 1 ? step : 1;
+}
+
+function snapRaiseValue(value) {
+  const step = getRaiseStep();
+  return Math.round(value / step) * step;
+}
+
 function setupRaiseSlider(min, max) {
   raiseMin = min;
   raiseMax = max;
@@ -2153,7 +2218,8 @@ function setupRaiseSlider(min, max) {
 }
 
 function setRaiseValue(value) {
-  const clamped = Math.max(raiseMin, Math.min(raiseMax, Math.round(value)));
+  const snapped = snapRaiseValue(value);
+  const clamped = Math.max(raiseMin, Math.min(raiseMax, snapped));
   raiseValue = clamped;
   const display = document.getElementById('raise-amount-display');
   if (display) setTextWithBump(display, formatAmount(raiseValue));
@@ -2163,7 +2229,7 @@ function setRaiseValue(value) {
     slider.value = Math.round(pct * 100);
   }
   const raiseBtn = document.querySelector('.btn-raise .btn-sub');
-  if (raiseBtn) setTextWithBump(raiseBtn, formatAmount(raiseValue));
+  if (raiseBtn) setTextWithBump(raiseBtn, `${formatAmount(raiseValue)}`);
   updateActivePreset();
   updateRaiseMinLabel();
   updateRaiseError();
@@ -2172,7 +2238,7 @@ function setRaiseValue(value) {
 function onRaiseSlide() {
   const slider = document.getElementById('raise-slider');
   const pct = parseInt(slider.value) / 100;
-  setRaiseValue(Math.round(raiseMin + (raiseMax - raiseMin) * pct));
+  setRaiseValue(raiseMin + (raiseMax - raiseMin) * pct);
 }
 
 function updateRaisePresets() {
@@ -2184,7 +2250,7 @@ function updateRaisePresets() {
   const totalPot = getPotTotal(gameState);
 
   const addPreset = (label, targetValue, extraClass = '') => {
-    const value = Math.max(raiseMin, Math.min(raiseMax, Math.round(targetValue)));
+    const value = Math.max(raiseMin, Math.min(raiseMax, snapRaiseValue(targetValue)));
     const btn = document.createElement('button');
     btn.className = `raise-preset-btn${extraClass ? ' ' + extraClass : ''}`;
     btn.textContent = label;
@@ -2224,7 +2290,7 @@ function updateRaiseMinLabel() {
   if (!el || !gameState) return;
   const minRaiseTo = gameState.currentMaxBet + gameState.lastRaiseSize;
   raiseMinTo = minRaiseTo;
-  setTextWithBump(el, `Min Raise: ${formatAmount(minRaiseTo)}`);
+  el.style.display = 'none';
 }
 
 function updateInitialChipsBB() {
@@ -2367,14 +2433,17 @@ function handleFoldAttempt() {
 
 function handlePhaseTransition() {
   if (!gameState) { lastPhase = null; return; }
-  if (gameState.phase === 'showdown' && lastPhase !== 'showdown') {
+  const currentPhase = gameState.phase;
+  if (currentPhase === 'showdown' && lastPhase !== 'showdown') {
+    lastPhase = currentPhase; // ループ防止のため先に更新
     stopActionTimer();
     showShowdown();
+    return;
   }
-  if (gameState.phase !== 'showdown' && lastPhase === 'showdown') {
+  if (currentPhase !== 'showdown' && lastPhase === 'showdown') {
     document.getElementById('showdown-overlay').classList.remove('visible');
   }
-  lastPhase = gameState.phase;
+  lastPhase = currentPhase;
 }
 
 function doAction(type, amount = 0) {
@@ -2395,38 +2464,41 @@ function doAction(type, amount = 0) {
   const actionKey = `${actorId}:${gameState.currentPlayerIndex}:${gameState.currentMaxBet}:${gameState.phase}`;
   if (lastActionId === actionKey) return;
   actionLock = true;
-  const result = processAction(gameState, type, amount);
-  if (result.error) { console.warn(result.error); actionLock = false; return; }
-  gameState = result;
-  if (hasNewAllIn(prevState, gameState)) playAllInHit();
-  lastActionId = actionKey;
+  try {
+    const result = processAction(gameState, type, amount);
+    if (result.error) { console.warn(result.error); return; }
+    gameState = normalizeActorState(result);
+    if (hasNewAllIn(prevState, gameState)) playAllInHit();
+    lastActionId = actionKey;
 
-  // Hide raise area after action
-  document.getElementById('raise-area').classList.remove('visible');
+    // Hide raise area after action
+    document.getElementById('raise-area').classList.remove('visible');
 
-  // Offline mode: rotate display so next acting player is at bottom
-  if (onlineState.role === 'local' && gameState.isHandActive) {
-    offlineDisplayFrontIdx = gameState.currentPlayerIndex;
-    offlineLastActorId = prevActorId;
-    const displayOrder = buildOfflineDisplayOrder(gameState, offlineDisplayFrontIdx, offlineLastActorId);
-    debugOfflineRotation({
-      prevState,
-      nextState: gameState,
-      displayOrder,
-      lastActorId: offlineLastActorId
-    });
+    // Offline mode: rotate display so next acting player is at bottom
+    if (onlineState.role === 'local' && gameState.isHandActive) {
+      offlineDisplayFrontIdx = gameState.currentPlayerIndex;
+      offlineLastActorId = prevActorId;
+      const displayOrder = buildOfflineDisplayOrder(gameState, offlineDisplayFrontIdx, offlineLastActorId);
+      debugOfflineRotation({
+        prevState,
+        nextState: gameState,
+        displayOrder,
+        lastActorId: offlineLastActorId
+      });
+    }
+
+    render();
+
+    if (gameState.isHandActive) {
+      // Restart timer for next player
+      startActionTimer();
+    }
+    if (onlineState.role === 'host') {
+      broadcastState();
+    }
+  } finally {
+    actionLock = false;
   }
-
-  render();
-
-  if (gameState.isHandActive) {
-    // Restart timer for next player
-    startActionTimer();
-  }
-  if (onlineState.role === 'host') {
-    broadcastState();
-  }
-  actionLock = false;
 }
 
 function render() {
@@ -2682,6 +2754,33 @@ function showShowdown() {
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
 
+  const eligible = gameState.players.filter(p => p.status !== 'folded' && p.status !== 'out');
+  if (eligible.length === 1 && onlineState.role !== 'player') {
+    const winner = eligible[0];
+    const perPotWinners = (gameState.pots && gameState.pots.length > 0)
+      ? gameState.pots.map(p => (p.eligiblePlayerIds || []).includes(winner.id) ? [winner.id] : [])
+      : [[winner.id]];
+    const winners = [{ name: winner.name, characterId: winner.characterId || '' }];
+    gameState = distributePot(gameState, perPotWinners);
+    recordHandResult(winners, total);
+    document.getElementById('showdown-overlay').classList.remove('visible');
+    render();
+    setWinnerHighlight([winner.id]);
+    animatePotToWinners([winner.id]);
+    playWinChime();
+    const gainText = `POT総額 ${total.toLocaleString()} チップ`;
+    setTimeout(() => showNextHand(winners, gainText), 220);
+    if (onlineState.role === 'host' && roomChannel) {
+      roomChannel.send({
+        type: 'broadcast',
+        event: 'showdown-resolved',
+        payload: { perPotWinners, winnerIds: [winner.id] }
+      });
+      broadcastState();
+    }
+    return;
+  }
+
   if (onlineState.role === 'player') {
     const card = document.querySelector('#showdown-overlay .showdown-card');
     if (card) {
@@ -2808,48 +2907,189 @@ function confirmWinner() {
 }
 
 // ─── NEXT HAND ────────────────────────────────
+// チップゼロプレイヤーの選択状態を追跡
+let zeroChipDecisions = {};
+
 function showNextHand(winners, gainText = '') {
   const winnersEl = document.getElementById('next-hand-winners');
-  winnersEl.innerHTML = winners.map(w => `
-    <div class="next-hand-winner-item">
-      ${renderAvatarMarkup(w.characterId || '', { sizeClass: 'avatar--sm', hideYou: true })}
-      <div class="next-hand-winner-name">${w.name}</div>
-    </div>
-  `).join('');
+  const names = winners.map(w => w.name).join(' / ');
+  winnersEl.innerHTML = `
+    <div class="next-hand-winner-name">${names} の勝ち！</div>
+  `;
+  const subEl = document.querySelector('.next-hand-sub');
+  if (subEl) subEl.textContent = '';
   document.getElementById('next-hand-gain').textContent = gainText;
+
+  // 敗退プレイヤー（left）を含めてソート
+  const activePlayers = gameState?.players?.filter(p => p.status !== 'left') || [];
+  const leftPlayers = gameState?.players?.filter(p => p.status === 'left') || [];
+
   const chipStatusEl = document.getElementById('next-hand-chip-status');
   if (chipStatusEl && gameState?.players) {
-    chipStatusEl.innerHTML = gameState.players.map(p => {
+    const sortedActive = [...activePlayers].sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
+    const allSorted = [...sortedActive, ...leftPlayers];
+
+    chipStatusEl.innerHTML = allSorted.map((p, index) => {
       const before = chipsBeforeHand[p.id] ?? p.chips;
       const change = p.chips - before;
       const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
-      const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '±0';
+      const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '+0';
+      const rank = index + 1;
+      const rankClass = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : 'rank-normal';
+      const isEliminated = p.status === 'left';
+      const rowClass = isEliminated ? 'next-hand-chip-row eliminated' : 'next-hand-chip-row';
+      const eliminatedLabel = isEliminated ? '<span class="eliminated-label">敗退</span>' : '';
       return `
-        <div class="next-hand-chip-row">
+        <div class="${rowClass}">
+          <div class="next-hand-chip-rank ${rankClass}">${rank}</div>
           ${renderAvatarMarkup(p.characterId || '', { sizeClass: 'avatar--xs', hideYou: true })}
-          <div class="next-hand-chip-name">${p.name}</div>
-          <div class="next-hand-chip-change ${changeClass}">${changeText}</div>
+          <div class="next-hand-chip-line">
+            <span class="next-hand-chip-name">${p.name}${eliminatedLabel}</span>
+            <span class="next-hand-chip-stack">${p.chips.toLocaleString()}</span>
+            <span class="next-hand-chip-delta ${changeClass}">(${changeText})</span>
+          </div>
         </div>
       `;
     }).join('');
   }
+
+  // チップゼロプレイヤーの検出と選択UI
+  const zeroChipPlayers = activePlayers.filter(p => p.chips === 0 && p.status !== 'left');
+  const zeroChipSection = document.getElementById('zero-chip-section');
+  const zeroChipList = document.getElementById('zero-chip-list');
+  const nextHandBtn = document.getElementById('next-hand-btn');
+
+  if (zeroChipPlayers.length > 0 && onlineState.role !== 'player') {
+    zeroChipDecisions = {};
+    zeroChipList.innerHTML = zeroChipPlayers.map(p => `
+      <div class="zero-chip-player" data-player-id="${p.id}">
+        <div class="zero-chip-player-info">
+          ${renderAvatarMarkup(p.characterId || '', { sizeClass: 'avatar--xs', hideYou: true })}
+          <span class="zero-chip-player-name">${p.name}</span>
+        </div>
+        <div class="zero-chip-actions">
+          <button class="zero-chip-btn rebuy" onclick="handleZeroChipDecision('${p.id}', 'rebuy')">チップ追加</button>
+          <button class="zero-chip-btn sitout" onclick="handleZeroChipDecision('${p.id}', 'sitout')">離席中</button>
+          <button class="zero-chip-btn leave" onclick="handleZeroChipDecision('${p.id}', 'leave')">退席</button>
+        </div>
+      </div>
+    `).join('');
+    zeroChipSection.style.display = 'block';
+    nextHandBtn.style.display = 'none';
+  } else {
+    zeroChipSection.style.display = 'none';
+    nextHandBtn.style.display = 'block';
+  }
+
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
-  const btn = document.querySelector('.next-hand-btn');
-  if (btn) {
+
+  if (nextHandBtn) {
     if (onlineState.role !== 'player') {
-      btn.disabled = false;
-      btn.textContent = '次のハンド';
+      nextHandBtn.disabled = false;
+      nextHandBtn.textContent = '次のハンド';
     } else {
-      btn.disabled = true;
-      btn.textContent = 'ホストの操作を待っています';
+      nextHandBtn.disabled = true;
+      nextHandBtn.textContent = 'ホストの操作を待っています';
     }
   }
+
   // flash
   const flash = document.getElementById('win-flash');
   flash.classList.add('visible');
   setTimeout(() => flash.classList.remove('visible'), 600);
+}
+
+function handleZeroChipDecision(playerId, decision) {
+  if (!gameState) return;
+  const player = gameState.players.find(p => p.id === playerId);
+  if (!player) return;
+
+  const playerEl = document.querySelector(`.zero-chip-player[data-player-id="${playerId}"]`);
+
+  if (decision === 'rebuy') {
+    // リバイダイアログを表示
+    showRebuyDialog(playerId);
+    return;
+  }
+
+  if (decision === 'sitout') {
+    player.status = 'sitout';
+    zeroChipDecisions[playerId] = 'sitout';
+  } else if (decision === 'leave') {
+    player.status = 'left';
+    zeroChipDecisions[playerId] = 'left';
+    recordPlayerChange('leave', player);
+  }
+
+  // ボタンの見た目を更新
+  if (playerEl) {
+    const btns = playerEl.querySelectorAll('.zero-chip-btn');
+    btns.forEach(btn => btn.style.opacity = '0.4');
+    const activeBtn = playerEl.querySelector(`.zero-chip-btn.${decision === 'sitout' ? 'sitout' : 'leave'}`);
+    if (activeBtn) {
+      activeBtn.style.opacity = '1';
+      activeBtn.style.outline = '2px solid var(--gold)';
+    }
+  }
+
+  checkAllZeroChipDecisions();
+}
+
+function showRebuyDialog(playerId) {
+  const player = gameState?.players?.find(p => p.id === playerId);
+  if (!player) return;
+
+  const defaultChips = currentGameSettings?.initialChips || 1000;
+  const input = prompt(`${player.name} のチップ追加額を入力:`, defaultChips);
+  if (input === null) return;
+
+  const chips = parseInt(input, 10);
+  if (!Number.isFinite(chips) || chips <= 0) {
+    alert('有効なチップ数を入力してください');
+    return;
+  }
+
+  player.chips = chips;
+  player.status = 'active';
+  zeroChipDecisions[playerId] = 'rebuy';
+
+  // ボタンの見た目を更新
+  const playerEl = document.querySelector(`.zero-chip-player[data-player-id="${playerId}"]`);
+  if (playerEl) {
+    const btns = playerEl.querySelectorAll('.zero-chip-btn');
+    btns.forEach(btn => btn.style.opacity = '0.4');
+    const activeBtn = playerEl.querySelector('.zero-chip-btn.rebuy');
+    if (activeBtn) {
+      activeBtn.style.opacity = '1';
+      activeBtn.style.outline = '2px solid var(--gold)';
+      activeBtn.textContent = `+${chips.toLocaleString()}`;
+    }
+  }
+
+  checkAllZeroChipDecisions();
+}
+
+function checkAllZeroChipDecisions() {
+  const activePlayers = gameState?.players?.filter(p => p.status !== 'left') || [];
+  const zeroChipPlayers = activePlayers.filter(p => p.chips === 0 && p.status !== 'left' && p.status !== 'sitout');
+
+  // 全てのチップゼロプレイヤーに決定がされたか確認
+  const allDecided = zeroChipPlayers.length === 0 ||
+    zeroChipPlayers.every(p => zeroChipDecisions[p.id]);
+
+  // rebuy以外で残っているプレイヤー + sitoutプレイヤーが確定
+  const pendingCount = gameState?.players?.filter(p =>
+    p.chips === 0 && p.status !== 'left' && p.status !== 'sitout' && !zeroChipDecisions[p.id]
+  ).length || 0;
+
+  if (pendingCount === 0) {
+    const nextHandBtn = document.getElementById('next-hand-btn');
+    if (nextHandBtn) {
+      nextHandBtn.style.display = 'block';
+    }
+  }
 }
 
 function showChipStatus() {
@@ -2880,6 +3120,16 @@ function hideChipStatus() {
 }
 
 function showHistory() {
+  const formatHistoryTime = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
+  };
   const listEl = document.getElementById('history-list');
   if (handHistory.length === 0) {
     listEl.innerHTML = '<div class="history-empty">まだ履歴がありません</div>';
@@ -2892,37 +3142,42 @@ function showHistory() {
         }).join('');
         return `
           <div class="history-item">
-            <div class="history-header">チップ調整</div>
+            <div class="history-header">チップ調整 ${formatHistoryTime(h.at)}</div>
             <div class="history-result">${rows}</div>
           </div>
         `;
       }
       if (type === 'player') {
-        const label = h.action === 'add' ? 'プレイヤー追加' : 'プレイヤー退席';
-        const chipText = typeof h.chips === 'number' ? ` (${h.chips.toLocaleString()})` : '';
+        const actionLabels = {
+          add: 'プレイヤー追加',
+          remove: 'プレイヤー退席',
+          leave: 'プレイヤー敗退',
+          rebuy: 'リバイ'
+        };
+        const label = actionLabels[h.action] || 'プレイヤー変更';
+        const chipText = typeof h.chips === 'number' && h.chips > 0 ? ` (${h.chips.toLocaleString()})` : '';
+        const rowClass = h.action === 'leave' ? 'history-loser' : 'history-winner';
         return `
           <div class="history-item">
-            <div class="history-header">${label}</div>
+            <div class="history-header">${label} ${formatHistoryTime(h.at)}</div>
             <div class="history-result">
-              <div class="history-winner"><span>${h.name}${chipText}</span></div>
+              <div class="${rowClass}"><span>${h.name}${chipText}</span></div>
             </div>
           </div>
         `;
       }
-      const winnerText = (h.winners || []).map(w => {
-        const icon = renderAvatarMarkup(w.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
-        return `<div class="history-winner">${icon}<span>${w.name} +${Math.floor(h.pot / h.winners.length).toLocaleString()}</span></div>`;
-      }).join(' ');
-      const loserText = (h.losers || []).map(l => {
-        const icon = renderAvatarMarkup(l.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
-        return `<div class="history-loser">${icon}<span>${l.name} -${l.loss.toLocaleString()}</span></div>`;
+      const rows = (h.results || []).filter(r => (typeof r.delta === 'number' ? r.delta : 0) !== 0).map(r => {
+        const icon = renderAvatarMarkup(r.characterId || '', { sizeClass: 'avatar--xs', hideYou: true });
+        const delta = typeof r.delta === 'number' ? r.delta : 0;
+        const deltaText = delta > 0 ? `+${delta.toLocaleString()}` : delta < 0 ? delta.toLocaleString() : '+0';
+        const cls = delta > 0 ? 'history-winner' : delta < 0 ? 'history-loser' : 'history-neutral';
+        return `<div class="${cls}">${icon}<span>${r.name} ${r.chips.toLocaleString()} (${deltaText})</span></div>`;
       }).join(' ');
       return `
           <div class="history-item">
-            <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
+            <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()}) ${formatHistoryTime(h.at)}</div>
             <div class="history-result">
-              ${winnerText}
-              ${loserText}
+              ${rows}
             </div>
           </div>
         `;
@@ -3001,6 +3256,12 @@ function showPlayerManage() {
     const fallback = currentGameSettings?.initialChips || 1000;
     chipsInput.value = String(fallback);
   }
+  // プレイヤー追加フォームの表示制御（7名以下で表示）
+  const addForm = document.querySelector('.player-manage-form');
+  const activeCount = gameState.players.filter(p => p.status !== 'left').length;
+  if (addForm) {
+    addForm.style.display = activeCount < 8 ? 'flex' : 'none';
+  }
   document.getElementById('player-manage-overlay').classList.add('visible');
   document.getElementById('header-menu').style.display = 'none';
 }
@@ -3012,13 +3273,41 @@ function hidePlayerManage() {
 function rebuildPlayerManageList() {
   const listEl = document.getElementById('player-manage-list');
   if (!listEl || !gameState) return;
-  listEl.innerHTML = gameState.players.map(p => `
-    <div class="player-manage-row" data-player-id="${p.id}">
-      <div class="player-manage-name">${p.name}</div>
-      <div class="player-manage-name">${formatAmount(p.chips)}</div>
-      <button class="player-manage-remove" onclick="removePlayerFromMenu('${p.id}')">退席</button>
-    </div>
-  `).join('');
+
+  // アクティブなプレイヤー
+  const activePlayers = gameState.players.filter(p => p.status !== 'left');
+  // 敗退したプレイヤー
+  const leftPlayers = gameState.players.filter(p => p.status === 'left');
+
+  let html = activePlayers.map(p => {
+    const statusLabel = p.status === 'sitout' ? '<span style="color:#f59e0b;font-size:10px;margin-left:4px;">(離席中)</span>' : '';
+    const actionBtn = p.status === 'sitout'
+      ? `<button class="player-manage-remove" style="background:#22c55e;" onclick="returnFromSitout('${p.id}')">復帰</button>`
+      : `<button class="player-manage-remove" onclick="removePlayerFromMenu('${p.id}')">退席</button>`;
+    return `
+      <div class="player-manage-row" data-player-id="${p.id}">
+        <div class="player-manage-name">${p.name}${statusLabel}</div>
+        <div class="player-manage-name">${formatAmount(p.chips)}</div>
+        ${actionBtn}
+      </div>
+    `;
+  }).join('');
+
+  // 敗退プレイヤーセクション
+  if (leftPlayers.length > 0) {
+    html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">';
+    html += '<div style="font-size:11px;color:#f87171;margin-bottom:8px;">敗退プレイヤー</div>';
+    html += leftPlayers.map(p => `
+      <div class="player-manage-row" data-player-id="${p.id}" style="opacity:0.7;">
+        <div class="player-manage-name">${p.name}</div>
+        <div class="player-manage-name">0</div>
+        <button class="player-manage-remove" style="background:#22c55e;" onclick="rebuyPlayer('${p.id}')">リバイ</button>
+      </div>
+    `).join('');
+    html += '</div>';
+  }
+
+  listEl.innerHTML = html;
 }
 
 function toZenkakuNumber(num) {
@@ -3029,6 +3318,12 @@ function addPlayerFromMenu() {
   if (!gameState || !gameState.players) return;
   if (gameState.isHandActive) {
     alert('ハンド中はプレイヤー追加できません');
+    return;
+  }
+  // leftプレイヤーを除いたアクティブプレイヤー数で制限
+  const activePlayerCount = gameState.players.filter(p => p.status !== 'left').length;
+  if (activePlayerCount >= 8) {
+    alert('プレイヤーは最大8人です');
     return;
   }
   const nameInput = document.getElementById('player-manage-name');
@@ -3072,19 +3367,64 @@ function removePlayerFromMenu(playerId) {
   }
   const idx = gameState.players.findIndex(p => p.id === playerId);
   if (idx === -1) return;
-  if (gameState.players.length <= 2) {
+  const activeCount = gameState.players.filter(p => p.status !== 'left').length;
+  if (activeCount <= 2) {
     alert('プレイヤーは最低2人必要です');
     return;
   }
-  const removed = gameState.players.splice(idx, 1)[0];
-  recordPlayerChange('remove', removed);
-  if (gameState.currentPlayerIndex >= gameState.players.length) {
-    gameState.currentPlayerIndex = Math.max(0, gameState.players.length - 1);
+  const player = gameState.players[idx];
+  // leftステータスに変更（配列からは削除しない）
+  player.status = 'left';
+  recordPlayerChange('leave', player);
+  saveChipsBeforeHand();
+  render();
+  if (onlineState.role === 'host') broadcastState();
+  rebuildPlayerManageList();
+}
+
+function returnFromSitout(playerId) {
+  if (!gameState || !gameState.players) return;
+  const player = gameState.players.find(p => p.id === playerId);
+  if (!player || player.status !== 'sitout') return;
+
+  // チップがある場合はactiveに戻す
+  if (player.chips > 0) {
+    player.status = 'active';
+  } else {
+    // チップがない場合はリバイが必要
+    rebuyPlayer(playerId);
+    return;
   }
-  if (gameState.dealerIndex >= gameState.players.length) {
-    gameState.dealerIndex = Math.max(0, gameState.players.length - 1);
+
+  saveChipsBeforeHand();
+  render();
+  if (onlineState.role === 'host') broadcastState();
+  rebuildPlayerManageList();
+}
+
+function rebuyPlayer(playerId) {
+  if (!gameState || !gameState.players) return;
+  if (gameState.isHandActive) {
+    alert('ハンド中はリバイできません');
+    return;
   }
-  offlineDisplayFrontIdx = Math.min(offlineDisplayFrontIdx, gameState.players.length - 1);
+  const player = gameState.players.find(p => p.id === playerId);
+  if (!player) return;
+
+  const defaultChips = currentGameSettings?.initialChips || 1000;
+  const input = prompt(`${player.name} のリバイチップ数を入力:`, defaultChips);
+  if (input === null) return;
+
+  const chips = parseInt(input, 10);
+  if (!Number.isFinite(chips) || chips <= 0) {
+    alert('有効なチップ数を入力してください');
+    return;
+  }
+
+  player.chips = chips;
+  player.status = 'active';
+  recordPlayerChange('rebuy', player);
+
   saveChipsBeforeHand();
   render();
   if (onlineState.role === 'host') broadcastState();
@@ -3109,15 +3449,27 @@ function saveChipsBeforeHand() {
 
 function recordHandResult(winners, totalPot) {
   if (!gameState || !gameState.players) return;
+  const results = gameState.players.map(p => {
+    const before = chipsBeforeHand[p.id] ?? p.chips;
+    const delta = p.chips - before;
+    return {
+      name: p.name,
+      characterId: p.characterId,
+      chips: p.chips,
+      delta
+    };
+  });
   const losers = gameState.players.filter(p =>
-    !winners.some(w => w.name === p.name) && chipsBeforeHand[p.id] !== p.chips
+    !winners.some(w => w.name === p.name) && (chipsBeforeHand[p.id] ?? p.chips) !== p.chips
   );
   handHistory.push({
     type: 'hand',
     hand: handHistory.length + 1,
     winners: winners.map(w => ({ name: w.name, characterId: w.characterId })),
     losers: losers.map(l => ({ name: l.name, characterId: l.characterId, loss: chipsBeforeHand[l.id] - l.chips })),
-    pot: totalPot
+    pot: totalPot,
+    results,
+    at: Date.now()
   });
 }
 
@@ -3210,17 +3562,31 @@ function advanceToNextHandAndBroadcast() {
   if (onlineState.role === 'host') {
     broadcastState();
   }
+  const tournamentBar = document.getElementById('tournament-bar');
+  if (tournamentBar) {
+    if (appMode === 'online' && tournamentSettings.enabled) {
+      tournamentBar.style.display = 'flex';
+      startTournamentTimer();
+    } else {
+      tournamentBar.style.display = 'none';
+      stopTournamentTimer();
+    }
+  }
 }
 
 // ─── SETUP SCREEN LOGIC ───────────────────────
 function addPlayer() {
   const inputs = document.getElementById('player-inputs');
-  const playerNum = inputs.querySelectorAll('.player-row').length + 1;
+  const current = inputs.querySelectorAll('.player-row').length;
+  if (current >= 8) return;
+  const playerNum = current + 1;
   const row = document.createElement('div');
   row.className = 'player-row';
   const zenkakuNum = String(playerNum).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
-  row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー${zenkakuNum}"><div class="icon-picker"></div><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
+  row.innerHTML = `<div class="player-name-row"><input type="text" class="player-name-input" placeholder="プレイヤー名" value="プレイヤー${zenkakuNum}"><button class="remove-btn" onclick="removePlayer(this)">×</button></div><div class="icon-picker"></div>`;
   inputs.appendChild(row);
+  updateRemoveButtons();
+  updateAddPlayerVisibility();
   refreshCharacterPickers();
 }
 
@@ -3228,6 +3594,8 @@ function removePlayer(btn) {
   const inputs = document.querySelectorAll('.player-row');
   if (inputs.length <= 2) return; // 最低2人
   btn.closest('.player-row').remove();
+  updateRemoveButtons();
+  updateAddPlayerVisibility();
   refreshCharacterPickers();
 }
 
@@ -3273,7 +3641,7 @@ function loadSavedPlayerNames() {
     const container = document.getElementById('player-inputs');
     container.innerHTML = '';
 
-    savedData.forEach((entry, index) => {
+    savedData.slice(0, 8).forEach((entry, index) => {
       const rawName = typeof entry === 'string' ? entry : (entry?.name || '');
       const isDefaultLike = /^プレイヤー[0-9０-９]+$/.test(rawName || '');
       const defaultName = `プレイヤー${String(index + 1).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0))}`;
@@ -3282,20 +3650,15 @@ function loadSavedPlayerNames() {
       const row = document.createElement('div');
       row.className = 'player-row';
       row.dataset.characterId = normalizeCharacterId(characterId, index);
-      row.innerHTML = `<input type="text" class="player-name-input" placeholder="プレイヤー名" value="${name}"><div class="icon-picker"></div><button class="remove-btn" onclick="removePlayer(this)">×</button>`;
+      row.innerHTML = `<div class="player-name-row"><input type="text" class="player-name-input" placeholder="プレイヤー名" value="${name}"><button class="remove-btn" onclick="removePlayer(this)">×</button></div><div class="icon-picker"></div>`;
       container.appendChild(row);
     });
+    updateRemoveButtons();
+    updateAddPlayerVisibility();
     refreshCharacterPickers();
   } catch (e) {
     console.log('Failed to load saved player names:', e);
   }
-}
-
-function syncTournamentOptions() {
-  const toggle = document.getElementById('tournament-mode-toggle');
-  const options = document.getElementById('tournament-options');
-  if (!toggle || !options) return;
-  options.style.display = toggle.checked ? 'block' : 'none';
 }
 
 // ランダム表示名生成（ポーカー風のニックネーム）
@@ -3306,15 +3669,16 @@ function generateRandomName() {
   return `${animal}${num}`;
 }
 
-const CHARACTERS = [
-  { id: 'chara1', src: 'img/chara1.png', label: 'Chara 1' },
-  { id: 'chara2', src: 'img/chara2.png', label: 'Chara 2' },
-  { id: 'chara3', src: 'img/chara3.png', label: 'Chara 3' },
-  { id: 'chara4', src: 'img/chara4.png', label: 'Chara 4' },
-  { id: 'chara5', src: 'img/chara5.png', label: 'Chara 5' },
-  { id: 'chara6', src: 'img/chara6.png', label: 'Chara 6' }
-];
-const CHARACTER_IDS = new Set(CHARACTERS.map(c => c.id));
+  const CHARACTERS = [
+    { id: 'chara1', src: 'img/chara1.png', label: 'Chara 1' },
+    { id: 'chara2', src: 'img/chara2.png', label: 'Chara 2' },
+    { id: 'chara3', src: 'img/chara3.png', label: 'Chara 3' },
+    { id: 'chara4', src: 'img/chara4.png', label: 'Chara 4' },
+    { id: 'chara5', src: 'img/chara5.png', label: 'Chara 5' },
+    { id: 'chara6', src: 'img/chara6.png', label: 'Chara 6' },
+    { id: 'coming-soon', src: '', label: 'Comming Soon...' }
+  ];
+  const CHARACTER_IDS = new Set(CHARACTERS.filter(c => c.id !== 'coming-soon').map(c => c.id));
 const DEFAULT_CHARACTER_ID = 'chara1';
 const LEGACY_ICON_MAP = {
   'char-01': 'chara1',
@@ -3415,6 +3779,14 @@ function buildCharacterPicker(row, selectedId, index) {
   CHARACTERS.forEach((chara) => {
     const btn = document.createElement('button');
     btn.type = 'button';
+    if (chara.id === 'coming-soon') {
+      btn.className = 'icon-btn coming-soon';
+      btn.disabled = true;
+      btn.setAttribute('aria-label', chara.label);
+      btn.textContent = chara.label;
+      picker.appendChild(btn);
+      return;
+    }
     btn.className = 'icon-btn character-btn' + (chara.id === current ? ' selected' : '');
     btn.dataset.characterId = chara.id;
     btn.setAttribute('aria-label', chara.label);
@@ -3434,6 +3806,38 @@ function buildCharacterPicker(row, selectedId, index) {
 function refreshCharacterPickers() {
   const rows = document.querySelectorAll('.player-row');
   rows.forEach((row, i) => buildCharacterPicker(row, row.dataset.characterId, i));
+}
+
+function updateRemoveButtons() {
+  const rows = document.querySelectorAll('.player-row');
+  rows.forEach((row, i) => {
+    const btn = row.querySelector('.remove-btn');
+    if (i < 2) {
+      if (btn) btn.remove();
+    } else if (!btn) {
+      const newBtn = document.createElement('button');
+      newBtn.className = 'remove-btn';
+      newBtn.textContent = '×';
+      newBtn.addEventListener('click', () => removePlayer(newBtn));
+      const nameRow = row.querySelector('.player-name-row');
+      const input = row.querySelector('.player-name-input');
+      if (nameRow && input) {
+        input.insertAdjacentElement('afterend', newBtn);
+        nameRow.appendChild(newBtn);
+      } else if (input) {
+        input.insertAdjacentElement('afterend', newBtn);
+      } else {
+        row.appendChild(newBtn);
+      }
+    }
+  });
+}
+
+function updateAddPlayerVisibility() {
+  const addBtn = document.querySelector('.add-player-btn');
+  const inputs = document.querySelectorAll('.player-row');
+  if (!addBtn) return;
+  addBtn.style.display = inputs.length >= 8 ? 'none' : 'block';
 }
 
 // Initialize on DOM ready
@@ -3474,6 +3878,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadSavedPlayerNames();
     refreshCharacterPickers();
+    updateRemoveButtons();
+    updateAddPlayerVisibility();
     setUiState('room');
     const versionEl = document.getElementById('app-version');
     if (versionEl) versionEl.textContent = APP_VERSION;
@@ -3482,12 +3888,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNumericInput(document.getElementById('sb-input'));
     setupNumericInput(document.getElementById('bb-input'));
     setupNumericInput(document.getElementById('initial-chips-input'));
-
-    const toggle = document.getElementById('tournament-mode-toggle');
-    if (toggle) {
-      bindOnce(toggle, 'change', syncTournamentOptions);
+    const tournamentToggle = document.getElementById('tournament-mode-toggle');
+    if (tournamentToggle) {
+      bindOnce(tournamentToggle, 'change', syncTournamentOptions);
     }
     syncTournamentOptions();
+    updateTournamentUiVisibility();
+
     const perPlayerToggle = document.getElementById('per-player-stack-toggle');
     if (perPlayerToggle) {
       bindOnce(perPlayerToggle, 'change', renderPerPlayerStackList);
@@ -3659,7 +4066,7 @@ document.addEventListener('DOMContentLoaded', () => {
       displayToggleBtn.textContent = `表記切替: ${displayMode === 'bb' ? 'BB' : 'CHIP'}`;
       displayToggleBtn.addEventListener('click', () => {
         applyDisplayMode(displayMode === 'bb' ? 'chips' : 'bb');
-        if (menu) menu.style.display = 'none';
+        displayToggleBtn.textContent = `表記切替: ${displayMode === 'bb' ? 'BB' : 'CHIP'}`;
       });
     }
     const menuHistoryBtn = document.getElementById('menu-history-btn');
@@ -3688,7 +4095,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const toggle = document.getElementById('timer-sound-toggle');
         if (toggle) toggle.checked = timerSettings.soundEnabled;
         menuSoundToggle.textContent = `音量: ${timerSettings.soundEnabled ? 'ON' : 'OFF'}`;
-        if (menu) menu.style.display = 'none';
       });
     }
     if (menuResetBtn) {
@@ -3785,9 +4191,8 @@ function resetToSetup() {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
-  document.getElementById('tournament-bar').style.display = 'none';
-  stopTournamentTimer();
   stopActionTimer();
+  stopTournamentTimer();
   gameState = null;
   if (onlineState.role !== 'local') {
     leaveRoom();
