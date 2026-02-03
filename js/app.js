@@ -439,6 +439,7 @@ function setUiState(state) {
   updateHeaderMenuVisibility();
   updatePlayerBadge();
   updateDebugBanner();
+  updateConnectionIndicatorVisibility();
 }
 
 function updateHeaderMenuVisibility() {
@@ -470,6 +471,11 @@ function setRoomStatus(text) {
 function updateConnectionIndicator(status) {
   const indicator = document.getElementById('connection-indicator');
   if (!indicator) return;
+  if (appMode === 'offline' || onlineState.role === 'local') {
+    indicator.style.display = 'none';
+    return;
+  }
+  indicator.style.display = 'inline-flex';
   const dot = indicator.querySelector('.connection-dot');
   const text = indicator.querySelector('.connection-text');
 
@@ -487,6 +493,10 @@ function updateConnectionIndicator(status) {
     text.textContent = '切断';
     indicator.title = '接続状態: 切断されました';
   }
+}
+
+function updateConnectionIndicatorVisibility() {
+  updateConnectionIndicator(onlineState.connected ? 'connected' : 'disconnected');
 }
 
 function setRoomControls(connected) {
@@ -3304,6 +3314,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuHistoryBtn) {
       menuHistoryBtn.addEventListener('click', () => {
         showHistory();
+      });
+    }
+    const menuSoundToggle = document.getElementById('menu-sound-toggle');
+    if (menuSoundToggle) {
+      menuSoundToggle.textContent = `音量: ${timerSettings.soundEnabled ? 'ON' : 'OFF'}`;
+      menuSoundToggle.addEventListener('click', () => {
+        timerSettings.soundEnabled = !timerSettings.soundEnabled;
+        const toggle = document.getElementById('timer-sound-toggle');
+        if (toggle) toggle.checked = timerSettings.soundEnabled;
+        menuSoundToggle.textContent = `音量: ${timerSettings.soundEnabled ? 'ON' : 'OFF'}`;
+        if (menu) menu.style.display = 'none';
       });
     }
     if (menuResetBtn) {
