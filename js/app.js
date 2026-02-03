@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.4";
+const APP_VERSION = "v0.8.9";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -1841,7 +1841,6 @@ function renderPot() {
   const total = (gameState?.pots || []).reduce((s, p) => s + p.amount, 0);
   const el = $('pot-amount');
   const blindsEl = $('pot-blinds');
-  const potStackEl = $('pot-stack-amount');
   if (!el) {
     warnMissing('pot-amount');
     return;
@@ -1849,9 +1848,6 @@ function renderPot() {
   const prev = parseInt(el.dataset.value || '0', 10) || 0;
   el.dataset.value = String(total);
   setText('pot-amount', formatAmount(total));
-  if (potStackEl) {
-    potStackEl.textContent = formatAmount(total);
-  }
   if (blindsEl && gameState) {
     blindsEl.textContent = `Blinds: ${formatAmount(gameState.smallBlind)},${formatAmount(gameState.bigBlind)}`;
   }
@@ -2703,6 +2699,22 @@ function showNextHand(winners, gainText = '') {
     </div>
   `).join('');
   document.getElementById('next-hand-gain').textContent = gainText;
+  const chipStatusEl = document.getElementById('next-hand-chip-status');
+  if (chipStatusEl && gameState?.players) {
+    chipStatusEl.innerHTML = gameState.players.map(p => {
+      const before = chipsBeforeHand[p.id] ?? p.chips;
+      const change = p.chips - before;
+      const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+      const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '±0';
+      return `
+        <div class="next-hand-chip-row">
+          ${renderAvatarMarkup(p.characterId || '', { sizeClass: 'avatar--xs', hideYou: true })}
+          <div class="next-hand-chip-name">${p.name}</div>
+          <div class="next-hand-chip-change ${changeClass}">${changeText}</div>
+        </div>
+      `;
+    }).join('');
+  }
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
