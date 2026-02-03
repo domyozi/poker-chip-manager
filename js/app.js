@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.0";
+const APP_VERSION = "v0.9.1";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2985,6 +2985,12 @@ function showNextHand(winners, gainText = '') {
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
 
+  // ホスト/ローカルのみハンド間調整ボタンを表示
+  const betweenHandActions = document.getElementById('between-hand-actions');
+  if (betweenHandActions) {
+    betweenHandActions.style.display = onlineState.role !== 'player' ? 'flex' : 'none';
+  }
+
   if (nextHandBtn) {
     if (onlineState.role !== 'player') {
       nextHandBtn.disabled = false;
@@ -3215,6 +3221,40 @@ function hideChipAdjust() {
   document.getElementById('chip-adjust-overlay').classList.remove('visible');
 }
 
+// next-hand-overlayから呼び出す版（isHandActiveチェックをスキップ）
+function showChipAdjustFromNextHand() {
+  if (!gameState || !gameState.players) return;
+  if (onlineState.role === 'player') return;
+  const listEl = document.getElementById('chip-adjust-list');
+  if (!listEl) return;
+  const activePlayers = gameState.players.filter(p => p.status !== 'left');
+  const players = [...activePlayers].sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
+  listEl.innerHTML = players.map(p => `
+    <div class="chip-adjust-row" data-player-id="${p.id}">
+      <div class="chip-adjust-name">${p.name}</div>
+      <input class="chip-adjust-input" type="number" value="${p.chips}">
+    </div>
+  `).join('');
+  document.getElementById('chip-adjust-overlay').classList.add('visible');
+}
+
+function showPlayerManageFromNextHand() {
+  if (!gameState || !gameState.players) return;
+  if (onlineState.role === 'player') return;
+  rebuildPlayerManageList();
+  const chipsInput = document.getElementById('player-manage-chips');
+  if (chipsInput) {
+    const fallback = currentGameSettings?.initialChips || 1000;
+    chipsInput.value = String(fallback);
+  }
+  const addForm = document.querySelector('.player-manage-form');
+  const activeCount = gameState.players.filter(p => p.status !== 'left').length;
+  if (addForm) {
+    addForm.style.display = activeCount < 8 ? 'flex' : 'none';
+  }
+  document.getElementById('player-manage-overlay').classList.add('visible');
+}
+
 function saveChipAdjust() {
   if (!gameState || !gameState.players) return;
   const listEl = document.getElementById('chip-adjust-list');
@@ -3236,9 +3276,48 @@ function saveChipAdjust() {
     recordChipAdjustment(changes);
     saveChipsBeforeHand();
     render();
+    refreshNextHandChipStatus();
     if (onlineState.role === 'host') broadcastState();
   }
   hideChipAdjust();
+}
+
+// next-hand-overlayのチップ状況表示を更新
+function refreshNextHandChipStatus() {
+  if (!gameState?.players) return;
+  const overlay = document.getElementById('next-hand-overlay');
+  if (!overlay || !overlay.classList.contains('visible')) return;
+
+  const activePlayers = gameState.players.filter(p => p.status !== 'left');
+  const leftPlayers = gameState.players.filter(p => p.status === 'left');
+  const chipStatusEl = document.getElementById('next-hand-chip-status');
+  if (!chipStatusEl) return;
+
+  const sortedActive = [...activePlayers].sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'));
+  const allSorted = [...sortedActive, ...leftPlayers];
+
+  chipStatusEl.innerHTML = allSorted.map((p, index) => {
+    const before = chipsBeforeHand[p.id] ?? p.chips;
+    const change = p.chips - before;
+    const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+    const changeText = change > 0 ? `+${change.toLocaleString()}` : change < 0 ? change.toLocaleString() : '+0';
+    const rank = index + 1;
+    const rankClass = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : 'rank-normal';
+    const isEliminated = p.status === 'left';
+    const rowClass = isEliminated ? 'next-hand-chip-row eliminated' : 'next-hand-chip-row';
+    const eliminatedLabel = isEliminated ? '<span class="eliminated-label">敗退</span>' : '';
+    return `
+      <div class="${rowClass}">
+        <div class="next-hand-chip-rank ${rankClass}">${rank}</div>
+        ${renderAvatarMarkup(p.characterId || '', { sizeClass: 'avatar--xs', hideYou: true })}
+        <div class="next-hand-chip-line">
+          <span class="next-hand-chip-name">${p.name}${eliminatedLabel}</span>
+          <span class="next-hand-chip-stack">${p.chips.toLocaleString()}</span>
+          <span class="next-hand-chip-delta ${changeClass}">(${changeText})</span>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function showPlayerManage() {
@@ -3354,6 +3433,7 @@ function addPlayerFromMenu() {
   recordPlayerChange('add', newPlayer);
   saveChipsBeforeHand();
   render();
+  refreshNextHandChipStatus();
   if (onlineState.role === 'host') broadcastState();
   if (nameInput) nameInput.value = '';
   rebuildPlayerManageList();
@@ -3378,6 +3458,7 @@ function removePlayerFromMenu(playerId) {
   recordPlayerChange('leave', player);
   saveChipsBeforeHand();
   render();
+  refreshNextHandChipStatus();
   if (onlineState.role === 'host') broadcastState();
   rebuildPlayerManageList();
 }
@@ -3398,6 +3479,7 @@ function returnFromSitout(playerId) {
 
   saveChipsBeforeHand();
   render();
+  refreshNextHandChipStatus();
   if (onlineState.role === 'host') broadcastState();
   rebuildPlayerManageList();
 }
@@ -3427,6 +3509,7 @@ function rebuyPlayer(playerId) {
 
   saveChipsBeforeHand();
   render();
+  refreshNextHandChipStatus();
   if (onlineState.role === 'host') broadcastState();
   rebuildPlayerManageList();
 }

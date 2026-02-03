@@ -2728,6 +2728,29 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border: 1px solid rgba(248,113,113,0.4);
   color: #f87171;
 }
+.between-hand-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.between-hand-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.between-hand-btn:hover {
+  background: rgba(255,255,255,0.12);
+}
+.between-hand-btn:active {
+  transform: scale(0.97);
+}
 .next-hand-btn {
   width: 100%; padding: 12px;
   border-radius: 12px;
