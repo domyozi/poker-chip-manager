@@ -118,6 +118,7 @@ function startHand(state) {
       ...p,
       status: p.chips > 0 ? "active" : "out",
       currentBet: 0,
+      totalBet: 0,
       actedThisRound: false
     })),
     pots: [{ amount: 0, eligiblePlayerIds: state.players.filter(p => p.chips > 0).map(p => p.id) }],
@@ -138,6 +139,7 @@ function startHand(state) {
   s = postBlind(s, bbIdx, s.bigBlind);
   s.currentMaxBet = s.bigBlind;
   s.lastRaiseSize = s.bigBlind;
+  s.pots = buildPotsFromBets(s.players);
 
   const firstToAct = findNextWithChips(s, bbIdx);
   s.currentPlayerIndex = firstToAct !== bbIdx ? firstToAct : findNextWithChips(s, firstToAct);
@@ -194,6 +196,28 @@ function addToMainPot(pots, amount) {
   return pots.map((p, i) => i === 0 ? { ...p, amount: p.amount + amount } : p);
 }
 
+function buildPotsFromBets(players) {
+  const totals = players.map(p => Math.max(0, p.totalBet || 0));
+  const levels = Array.from(new Set(totals.filter(v => v > 0))).sort((a, b) => a - b);
+  const pots = [];
+  let prev = 0;
+  levels.forEach(level => {
+    const contributors = players.filter(p => (p.totalBet || 0) >= level);
+    const amount = (level - prev) * contributors.length;
+    if (amount <= 0) {
+      prev = level;
+      return;
+    }
+    const eligible = contributors.filter(p => p.status !== "folded" && p.status !== "out");
+    pots.push({
+      amount,
+      eligiblePlayerIds: eligible.map(p => p.id)
+    });
+    prev = level;
+  });
+  return pots;
+}
+
 function applyAction(state, playerIdx, type, amount, meta = {}) {
   const s = { ...state, players: state.players.map(p => ({...p})), pots: state.pots.map(p => ({...p})) };
   const player = s.players[playerIdx];
@@ -233,6 +257,7 @@ function applyAction(state, playerIdx, type, amount, meta = {}) {
       }
       break;
   }
+  s.pots = buildPotsFromBets(s.players);
   const next = findNextActivePlayer(s, playerIdx);
   s.currentPlayerIndex = next !== -1 ? next : playerIdx;
   return s;
@@ -304,16 +329,34 @@ function processAction(state, actionType, amount = 0) {
 
 function distributePot(state, winnerIds) {
   const s = { ...state, players: state.players.map(p => ({...p})) };
-  const total = (s.pots||[]).reduce((sum, p) => sum + p.amount, 0);
-  if (winnerIds.length === 0) return s;
-  const per = Math.floor(total / winnerIds.length);
-  const rem = total - per * winnerIds.length;
-  s.players = s.players.map((p, i) => {
-    if (winnerIds.includes(p.id)) {
-      const bonus = i === s.players.findIndex(pl => winnerIds.includes(pl.id)) ? rem : 0;
-      return { ...p, chips: p.chips + per + bonus };
+  if (!winnerIds || winnerIds.length === 0) return s;
+  const order = getSeatOrderIndices(s);
+  const buttonPos = order.indexOf(s.dealerIndex);
+  const orderFromButton = buttonPos === -1
+    ? order
+    : order.slice(buttonPos + 1).concat(order.slice(0, buttonPos + 1));
+
+  (s.pots || []).forEach(pot => {
+    const eligibleWinners = winnerIds.filter(id => pot.eligiblePlayerIds.includes(id));
+    if (eligibleWinners.length === 0) return;
+    const per = Math.floor(pot.amount / eligibleWinners.length);
+    const rem = pot.amount - per * eligibleWinners.length;
+    s.players = s.players.map(p => (
+      eligibleWinners.includes(p.id) ? { ...p, chips: p.chips + per } : p
+    ));
+    if (rem > 0) {
+      let bonusId = eligibleWinners[0];
+      for (const idx of orderFromButton) {
+        const pid = s.players[idx]?.id;
+        if (eligibleWinners.includes(pid)) {
+          bonusId = pid;
+          break;
+        }
+      }
+      s.players = s.players.map(p => (
+        p.id === bonusId ? { ...p, chips: p.chips + rem } : p
+      ));
     }
-    return p;
   });
   s.pots = [];
   return s;

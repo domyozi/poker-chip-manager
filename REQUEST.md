@@ -19,6 +19,7 @@ Track incoming feature requests and UX changes separately from progress and requ
 - P2: ベットチップ表示を固定座標に分離（table-bets内）｜Acceptance: 各プレイヤーのベット量がテーブル側に安定表示される
 - P2: POT表示とBlinds表示の分離｜Acceptance: POTは1行表示、Blindsは別行で表示される
 - P2: POT上にストックチップ表示（stockchip）｜Acceptance: POTとは別枠でチップ画像+合計量が表示される
+- P2: 勝利後の上部表示をPOT総額表記に統一｜Acceptance: 結果表示の上段が「POT総額 ◯◯」になる
 - P2: オフライン時の接続インジケータ非表示｜Acceptance: offline/localで「接続中」が出ない
 - P2: 音量ON/OFFトグル復帰（メニュー）｜Acceptance: メニューから音量が切り替えられる
 - P2: 履歴リストのアバター縮小｜Acceptance: 履歴の画像が小さくなり視認性が改善する

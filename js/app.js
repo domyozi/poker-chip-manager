@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.8.11";
+const APP_VERSION = "v0.8.14";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2941,7 +2941,10 @@ function loadSavedPlayerNames() {
     container.innerHTML = '';
 
     savedData.forEach((entry, index) => {
-      const name = typeof entry === 'string' ? entry : (entry?.name || '');
+      const rawName = typeof entry === 'string' ? entry : (entry?.name || '');
+      const isDefaultLike = /^プレイヤー[0-9０-９]+$/.test(rawName || '');
+      const defaultName = `プレイヤー${String(index + 1).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0))}`;
+      const name = rawName && !isDefaultLike ? rawName : defaultName;
       const characterId = typeof entry === 'string' ? '' : (entry?.characterId || entry?.icon || '');
       const row = document.createElement('div');
       row.className = 'player-row';
