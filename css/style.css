@@ -2195,7 +2195,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
   height: calc(var(--action-panel-height) + env(safe-area-inset-bottom));
-  margin-top: 40px;
   box-sizing: border-box;
   transition: opacity 0.3s;
 }
