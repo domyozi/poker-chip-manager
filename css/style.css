@@ -2190,7 +2190,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Action Panel ───────────────────────────── */
 .action-panel {
-  --action-panel-height: clamp(190px, 28vh, 240px);
+  --action-panel-height: clamp(190px, 28vh, 200px);
   background: var(--felt-edge);
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
@@ -2213,21 +2213,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin-bottom: 8px;
 }
 
-.action-actor-label {
-  text-align: center;
-  font-size: 13px; font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
-.action-panel.raise-open .action-actor-label {
-  font-size: 11px;
-  margin-bottom: 4px;
-}
-.action-panel.raise-open .action-actor-label strong {
-  font-size: 13px;
-}
-.action-actor-label strong { color: var(--gold); font-family: 'Playfair Display', serif; font-size: 16px; }
 .action-aux {
   display: none;
   align-items: center;
