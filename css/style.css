@@ -2299,12 +2299,12 @@ summary.setup-label::-webkit-details-marker { display: none; }
   pointer-events: none;
 }
 .action-panel.raise-open .action-btn {
-  min-height: 46px;
-  padding: 6px 6px;
-  font-size: 16px;
+  min-height: 54px;
+  padding: 10px 6px;
+  font-size: 20px;
 }
 .action-panel.raise-open .action-btn .btn-sub {
-  font-size: 12px;
+  font-size: 14px;
 }
 .action-btn.no-sub {
   justify-content: center;
