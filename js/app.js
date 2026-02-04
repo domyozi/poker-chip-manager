@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.18";
+const APP_VERSION = "v0.9.19";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2389,6 +2389,7 @@ function setRaiseAreaOpen(isOpen) {
   if (!area || !panel) return;
   area.classList.toggle('visible', isOpen);
   panel.classList.toggle('raise-open', isOpen);
+  requestAnimationFrame(() => updateActionPanelCompact());
 }
 
 function toggleRaiseArea() {
@@ -2411,6 +2412,24 @@ function toggleRaiseArea() {
   } else {
     setRaiseAreaOpen(true);
     updateRaisePresets();
+    requestAnimationFrame(() => updateActionPanelCompact());
+  }
+}
+
+function updateActionPanelCompact() {
+  const panel = document.getElementById('action-panel');
+  const area = document.getElementById('raise-area');
+  if (!panel || !area) return;
+  if (!area.classList.contains('visible')) {
+    panel.classList.remove('compact', 'compact-tight');
+    return;
+  }
+  panel.classList.remove('compact', 'compact-tight');
+  if (panel.scrollHeight > panel.clientHeight + 2) {
+    panel.classList.add('compact');
+  }
+  if (panel.scrollHeight > panel.clientHeight + 2) {
+    panel.classList.add('compact-tight');
   }
 }
 
@@ -4151,11 +4170,12 @@ document.addEventListener('DOMContentLoaded', () => {
       bindOnce(bbInput, 'change', updatePerPlayerBBDisplays);
     }
     const chipsInput = document.getElementById('initial-chips-input');
-    if (chipsInput) {
-      bindOnce(chipsInput, 'input', updateInitialChipsBB);
-      bindOnce(chipsInput, 'change', updateInitialChipsBB);
-      bindOnce(chipsInput, 'blur', updateInitialChipsBB);
-    }
+  if (chipsInput) {
+    bindOnce(chipsInput, 'input', updateInitialChipsBB);
+    bindOnce(chipsInput, 'change', updateInitialChipsBB);
+    bindOnce(chipsInput, 'blur', updateInitialChipsBB);
+  }
+  bindOnce(window, 'resize', () => updateActionPanelCompact());
     updateInitialChipsBB();
 
     const hostBtn = document.getElementById('room-host-btn');
