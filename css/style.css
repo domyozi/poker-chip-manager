@@ -3415,7 +3415,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 
 @media (max-width: 520px) {
-  .community-cards { gap: 10px; }
+  .community-cards { gap: 5px; }
   .community-slot { border-radius: 10px; }
   .icon-picker { width: 100%; }
   .remove-btn { align-self: auto; }
