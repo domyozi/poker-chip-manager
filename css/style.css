@@ -30,6 +30,16 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 
 /* Prevent double-tap zoom on buttons */
 button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
@@ -183,6 +193,14 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   text-transform: uppercase;
   margin-bottom: 40px;
   opacity: 0.8;
+}
+.intro-heading {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  margin-bottom: 6px;
+  text-align: center;
 }
 .intro-copy {
   max-width: min(420px, calc(100vw - 32px));
@@ -3341,6 +3359,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   #room-screen .brand-header { margin-bottom: 8px; }
   #room-screen .brand-logo { width: 48px; height: 48px; }
   #room-screen .brand-title { font-size: 28px; letter-spacing: 2px; }
+  #room-screen .intro-heading { font-size: 13px; }
   #room-screen .intro-copy { font-size: 11px; margin-bottom: 12px; }
   #room-screen .setup-section { margin-bottom: 16px; }
   #room-screen .setup-label { font-size: 12px; margin-bottom: 8px; }
