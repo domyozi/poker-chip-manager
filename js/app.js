@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.22";
+const APP_VERSION = "v0.9.23";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2962,17 +2962,6 @@ function toggleSplit() {
     showdownPotSelections[showdownPotIndex] = selectedWinners.slice();
   }
   updateShowdownConfirmState();
-}
-
-function cancelShowdown() {
-  selectedWinners = [];
-  showdownPotSelections = [];
-  showdownPotSplitModes = [];
-  showdownPotEligiblePlayers = [];
-  document.querySelectorAll('.winner-btn').forEach(btn => btn.classList.remove('selected'));
-  document.getElementById('split-toggle').classList.remove('on');
-  document.getElementById('confirm-winner-btn').disabled = true;
-  document.getElementById('showdown-overlay').classList.remove('visible');
 }
 
 function confirmWinner() {
