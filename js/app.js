@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.23";
+const APP_VERSION = "v0.9.24";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';

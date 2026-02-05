@@ -2487,6 +2487,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
   width: 100%; max-width: 380px;
   box-shadow: var(--shadow);
   text-align: center;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
 }
 .showdown-title {
   font-family: 'Playfair Display', serif;
@@ -2657,6 +2659,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
   padding: 28px 24px;
   text-align: center;
   width: 90%; max-width: 340px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
 }
 .next-hand-winners {
   display: flex;
@@ -2899,6 +2903,8 @@ summary.setup-label::-webkit-details-marker { display: none; }
   border-radius: 18px;
   padding: 24px;
   width: 90%; max-width: 360px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
 }
 .chip-status-title {
   font-family: 'Playfair Display', serif;
