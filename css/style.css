@@ -2334,7 +2334,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   letter-spacing: 0;
 }
 .action-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
-.action-btn:active { transform: translateY(1px) scale(0.98); box-shadow: 0 3px 8px rgba(0,0,0,0.25); }
+.action-btn:active { transform: translateY(1px); box-shadow: 0 3px 8px rgba(0,0,0,0.25); }
 
 .action-btn.btn-fold { border-color: rgba(192,57,43,0.2); background: rgba(192,57,43,0.06); }
 .action-btn.btn-fold:hover { background: rgba(192,57,43,0.12); border-color: rgba(192,57,43,0.35); }
