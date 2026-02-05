@@ -1451,6 +1451,98 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .next-hand-btn:hover { transform: translateY(-1px); }
 
+/* ─── Legal Overlay ─────────────────────────── */
+.legal-links {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.legal-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+}
+.legal-link:hover { color: var(--text-primary); }
+.legal-sep { opacity: 0.5; }
+
+.legal-overlay,
+.legal-consent-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.legal-overlay.visible,
+.legal-consent-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.legal-card {
+  background: var(--felt-edge);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100dvh - 48px);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.legal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: center;
+}
+.legal-body {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  overflow-y: auto;
+}
+.legal-body p { margin: 0 0 10px; }
+.legal-body ul { margin: 0 0 10px 18px; padding: 0; }
+.legal-body li { margin: 0 0 6px; }
+.legal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.legal-close-btn,
+.legal-accept-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text-primary);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.legal-close-btn:hover,
+.legal-accept-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 /* ─── Winner celebration flash ────────────────── */
 .win-flash {
   position: fixed; inset: 0;
@@ -1500,6 +1592,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
       </div>
       <div class="room-status" id="room-status">ローカルモード</div>
     </div>
+  </div>
+  <div class="legal-links">
+    <button class="legal-link" data-legal="disclaimer">免責・賭博禁止</button>
+    <span class="legal-sep">/</span>
+    <button class="legal-link" data-legal="privacy">プライバシーポリシー</button>
+    <span class="legal-sep">/</span>
+    <button class="legal-link" data-legal="terms">利用規約</button>
   </div>
 </div>
 
@@ -1849,6 +1948,36 @@ summary.setup-label::-webkit-details-marker { display: none; }
   </div>
 </div>
 
+<!-- ─── LEGAL OVERLAY ───────────────────────── -->
+<div class="legal-overlay" id="legal-overlay">
+  <div class="legal-card">
+    <div class="legal-title" id="legal-title">—</div>
+    <div class="legal-body" id="legal-body"></div>
+    <div class="legal-actions">
+      <button class="legal-close-btn" id="legal-close-btn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── LEGAL CONSENT OVERLAY ────────────────── -->
+<div class="legal-consent-overlay" id="legal-consent-overlay">
+  <div class="legal-card">
+    <div class="legal-title">利用に関する重要なお知らせ</div>
+    <div class="legal-body">
+      <p>本アプリは友人間のポーカーにおけるチップ管理を目的とした娯楽ツールです。現金賭博や違法行為を助長・支援するものではありません。</p>
+      <ul>
+        <li>現金の賭博や違法行為の目的での使用を禁止します。</li>
+        <li>18歳以上推奨（各地域の成人年齢以上）。未成年の利用は保護者の同意の下で行ってください。</li>
+        <li>各国・地域の法令遵守は利用者の責任です。</li>
+      </ul>
+      <p>詳細は「免責・賭博禁止」をご確認ください。</p>
+    </div>
+    <div class="legal-actions">
+      <button class="legal-accept-btn" id="legal-accept-btn">同意して続ける</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── WIN FLASH ─────────────────────────────── -->
 <div class="win-flash" id="win-flash"></div>
 
@@ -1862,6 +1991,98 @@ summary.setup-label::-webkit-details-marker { display: none; }
 // ========================================================
 let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
+
+const LEGAL_STORAGE_KEY = 'pocketpotLegalConsent';
+const LEGAL_VERSION = '2026-02-05';
+const LEGAL_CONTENT = {
+  disclaimer: {
+    title: '免責事項・賭博禁止',
+    body: `
+      <p>本アプリは友人間のポーカーにおけるチップ管理を目的とした娯楽ツールです。現金賭博や違法行為を助長・支援するものではありません。</p>
+      <ul>
+        <li>現金の賭博や違法行為の目的での使用を禁止します。</li>
+        <li>18歳以上推奨（各地域の成人年齢以上）。未成年の利用は保護者の同意の下で行ってください。</li>
+        <li>各国・地域の法令遵守は利用者の責任です。</li>
+        <li>本アプリの利用により生じたいかなる損害についても、運営者は責任を負いません。</li>
+      </ul>
+    `
+  },
+  terms: {
+    title: '利用規約',
+    body: `
+      <p>本利用規約は、Pocket Pot（以下「本アプリ」）の利用条件を定めます。</p>
+      <ul>
+        <li>本アプリは現状有姿で提供され、特定目的への適合性や無停止を保証しません。</li>
+        <li>不正利用、法令違反、公序良俗に反する行為を禁止します。</li>
+        <li>運営者は事前の予告なく機能変更・停止・終了できるものとします。</li>
+        <li>本アプリの利用に起因する損害について、運営者は一切の責任を負いません。</li>
+        <li>準拠法は日本法とし、紛争は運営者所在地を管轄する裁判所を専属的合意管轄とします。</li>
+      </ul>
+    `
+  },
+  privacy: {
+    title: 'プライバシーポリシー',
+    body: `
+      <p>本ポリシーは、本アプリにおける個人情報等の取扱いについて定めます。</p>
+      <p>収集する情報</p>
+      <ul>
+        <li>端末内に保存される情報: 表示名、プレイヤー名、チップやゲーム設定、履歴など（ローカル保存）。</li>
+        <li>オンライン対戦利用時: ルームコード、表示名、座席、ゲーム進行に必要な情報を、リアルタイム同期のため外部サーバー（Supabase）へ送信・共有します。</li>
+      </ul>
+      <p>外部サービス</p>
+      <ul>
+        <li>Webフォント提供のため Google Fonts を利用します。読み込み時にIPアドレス等が送信される場合があります。</li>
+      </ul>
+      <p>利用目的</p>
+      <ul>
+        <li>ゲーム進行、表示、同期、設定保存のため。</li>
+      </ul>
+      <p>第三者提供</p>
+      <ul>
+        <li>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</li>
+      </ul>
+      <p>保管・削除</p>
+      <ul>
+        <li>端末内データはユーザーがブラウザ/アプリのデータ削除で消去できます。</li>
+      </ul>
+      <p>お問い合わせ</p>
+      <ul>
+        <li>pocketpotpoker@gmail.com</li>
+      </ul>
+      <p>本ポリシーは必要に応じて更新されます。</p>
+    `
+  }
+};
+
+function openLegal(type) {
+  const overlay = document.getElementById('legal-overlay');
+  const titleEl = document.getElementById('legal-title');
+  const bodyEl = document.getElementById('legal-body');
+  const content = LEGAL_CONTENT[type];
+  if (!overlay || !titleEl || !bodyEl || !content) return;
+  titleEl.textContent = content.title;
+  bodyEl.innerHTML = content.body;
+  overlay.classList.add('visible');
+}
+
+function closeLegal() {
+  const overlay = document.getElementById('legal-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function showLegalConsentIfNeeded() {
+  const overlay = document.getElementById('legal-consent-overlay');
+  if (!overlay) return;
+  const stored = localStorage.getItem(LEGAL_STORAGE_KEY);
+  if (stored === LEGAL_VERSION) return;
+  overlay.classList.add('visible');
+}
+
+function acceptLegalConsent() {
+  const overlay = document.getElementById('legal-consent-overlay');
+  localStorage.setItem(LEGAL_STORAGE_KEY, LEGAL_VERSION);
+  if (overlay) overlay.classList.remove('visible');
+}
 
 function findNextActivePlayer(state, fromIndex) {
   const len = state.players.length;
@@ -4071,6 +4292,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuHistoryBtn = document.getElementById('menu-history-btn');
   const joinSeatBtn = document.getElementById('join-seat-btn');
   const joinCancelBtn = document.getElementById('join-cancel-btn');
+  const legalCloseBtn = document.getElementById('legal-close-btn');
+  const legalAcceptBtn = document.getElementById('legal-accept-btn');
+  const legalOverlay = document.getElementById('legal-overlay');
+  const legalLinks = document.querySelectorAll('.legal-link');
   const seatSelectCancelBtn = document.getElementById('seat-select-cancel-btn');
   const joinCancelNoBtn = document.getElementById('join-cancel-no');
   const joinCancelYesBtn = document.getElementById('join-cancel-yes');
@@ -4093,6 +4318,24 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNumericInput(document.getElementById('late-join-max-chips'));
   const lateJoinToggle = document.getElementById('late-join-toggle');
   const lateJoinMaxInput = document.getElementById('late-join-max-chips');
+
+  if (legalLinks && legalLinks.length > 0) {
+    legalLinks.forEach((link) => {
+      link.addEventListener('click', () => openLegal(link.dataset.legal));
+    });
+  }
+  if (legalCloseBtn) {
+    bindOnce(legalCloseBtn, 'click', () => closeLegal());
+  }
+  if (legalOverlay) {
+    bindOnce(legalOverlay, 'click', (e) => {
+      if (e.target === legalOverlay) closeLegal();
+    });
+  }
+  if (legalAcceptBtn) {
+    bindOnce(legalAcceptBtn, 'click', () => acceptLegalConsent());
+  }
+  showLegalConsentIfNeeded();
   if (lateJoinToggle && lateJoinMaxInput) {
     const syncLateJoinOptions = () => {
       lateJoinMaxInput.disabled = !lateJoinToggle.checked;

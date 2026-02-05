@@ -3249,6 +3249,98 @@ summary.setup-label::-webkit-details-marker { display: none; }
   filter: brightness(1.05);
 }
 
+/* ─── Legal Overlay ─────────────────────────── */
+.legal-links {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.legal-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+}
+.legal-link:hover { color: var(--text-primary); }
+.legal-sep { opacity: 0.5; }
+
+.legal-overlay,
+.legal-consent-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.legal-overlay.visible,
+.legal-consent-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.legal-card {
+  background: var(--felt-edge);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100dvh - 48px);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.legal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: center;
+}
+.legal-body {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  overflow-y: auto;
+}
+.legal-body p { margin: 0 0 10px; }
+.legal-body ul { margin: 0 0 10px 18px; padding: 0; }
+.legal-body li { margin: 0 0 6px; }
+.legal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.legal-close-btn,
+.legal-accept-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text-primary);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.legal-close-btn:hover,
+.legal-accept-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 /* ─── Join Status Banner ─────────────────────── */
 .join-status-banner {
   display: none;

@@ -67,6 +67,13 @@
       <button class="room-btn" id="room-local-btn" style="width:100%;">📱 1端末で開始（複数人で画面を共有）</button>
     </div>
   </div>
+  <div class="legal-links">
+    <button class="legal-link" data-legal="disclaimer">免責・賭博禁止</button>
+    <span class="legal-sep">/</span>
+    <button class="legal-link" data-legal="privacy">プライバシーポリシー</button>
+    <span class="legal-sep">/</span>
+    <button class="legal-link" data-legal="terms">利用規約</button>
+  </div>
 </div>
 
 <!-- ─── WAITING SCREEN ────────────────────────── -->
@@ -583,6 +590,36 @@
     </div>
     <div class="player-manage-list" id="player-manage-list"></div>
     <button class="showdown-cancel-btn" onclick="hidePlayerManage()">閉じる</button>
+  </div>
+</div>
+
+<!-- ─── LEGAL OVERLAY ───────────────────────── -->
+<div class="legal-overlay" id="legal-overlay">
+  <div class="legal-card">
+    <div class="legal-title" id="legal-title">—</div>
+    <div class="legal-body" id="legal-body"></div>
+    <div class="legal-actions">
+      <button class="legal-close-btn" id="legal-close-btn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── LEGAL CONSENT OVERLAY ────────────────── -->
+<div class="legal-consent-overlay" id="legal-consent-overlay">
+  <div class="legal-card">
+    <div class="legal-title">利用に関する重要なお知らせ</div>
+    <div class="legal-body">
+      <p>本アプリは友人間のポーカーにおけるチップ管理を目的とした娯楽ツールです。現金賭博や違法行為を助長・支援するものではありません。</p>
+      <ul>
+        <li>現金の賭博や違法行為の目的での使用を禁止します。</li>
+        <li>18歳以上推奨（各地域の成人年齢以上）。未成年の利用は保護者の同意の下で行ってください。</li>
+        <li>各国・地域の法令遵守は利用者の責任です。</li>
+      </ul>
+      <p>詳細は「免責・賭博禁止」をご確認ください。</p>
+    </div>
+    <div class="legal-actions">
+      <button class="legal-accept-btn" id="legal-accept-btn">同意して続ける</button>
+    </div>
   </div>
 </div>
 
