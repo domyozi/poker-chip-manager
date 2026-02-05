@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.28";
+const APP_VERSION = "v0.9.29";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -4122,7 +4122,7 @@ function generateRandomName() {
     { id: 'chara4', src: 'img/chara4.png', label: 'Chara 4' },
     { id: 'chara5', src: 'img/chara5.png', label: 'Chara 5' },
     { id: 'chara6', src: 'img/chara6.png', label: 'Chara 6' },
-    { id: 'coming-soon', src: '', label: 'Comming Soon...' }
+    { id: 'coming-soon', src: '', label: 'Coming Soon...' }
   ];
   const CHARACTER_IDS = new Set(CHARACTERS.filter(c => c.id !== 'coming-soon').map(c => c.id));
 const DEFAULT_CHARACTER_ID = 'chara1';

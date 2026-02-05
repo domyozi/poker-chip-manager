@@ -319,6 +319,37 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(0,0,0,0.35);
   backdrop-filter: blur(6px);
 }
+.room-panel.offline-panel {
+  position: relative;
+  overflow: hidden;
+}
+.coming-soon-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 12, 0.15);
+  border-radius: inherit;
+  cursor: not-allowed;
+  pointer-events: auto;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+.coming-soon-overlay .coming-soon-pill {
+  font-family: 'Playfair Display', serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(212,175,55,0.6);
+  padding: 6px 10px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+.coming-soon-overlay:hover {
+  background: rgba(10, 14, 12, 0.45);
+}
 .room-row { display: flex; gap: 8px; align-items: center; }
 .room-input {
   flex: 1;
@@ -375,6 +406,11 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .room-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
 .room-btn:active { transform: scale(0.97); }
+.room-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
 .room-btn.primary {
   background: rgba(212,175,55,0.18);
   border-color: var(--gold-dim);
@@ -3271,6 +3307,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .legal-link:hover { color: var(--text-primary); }
 .legal-sep { opacity: 0.5; }
+
+/* Room screen fit on small heights */
+@media (max-height: 700px) {
+  #room-screen { justify-content: flex-start; padding-top: calc(14px + env(safe-area-inset-top)); }
+  #room-screen .brand-header { margin-bottom: 8px; }
+  #room-screen .brand-logo { width: 48px; height: 48px; }
+  #room-screen .brand-title { font-size: 28px; letter-spacing: 2px; }
+  #room-screen .setup-section { margin-bottom: 16px; }
+  #room-screen .setup-label { font-size: 12px; margin-bottom: 8px; }
+  #room-screen .room-panel { padding: 12px; }
+  #room-screen .room-btn { padding: 10px 12px; font-size: 11px; }
+  #room-screen .room-status { font-size: 11px; margin-top: 6px; }
+  #room-screen .legal-links { margin-top: 8px; }
+}
 
 .legal-overlay,
 .legal-consent-overlay {
