@@ -184,6 +184,14 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   margin-bottom: 40px;
   opacity: 0.8;
 }
+.intro-copy {
+  max-width: min(420px, calc(100vw - 32px));
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+}
 
 .setup-section { width: 100%; max-width: min(400px, calc(100vw - 32px)); margin-bottom: 28px; box-sizing: border-box; }
 .setup-label {
@@ -3333,6 +3341,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   #room-screen .brand-header { margin-bottom: 8px; }
   #room-screen .brand-logo { width: 48px; height: 48px; }
   #room-screen .brand-title { font-size: 28px; letter-spacing: 2px; }
+  #room-screen .intro-copy { font-size: 11px; margin-bottom: 12px; }
   #room-screen .setup-section { margin-bottom: 16px; }
   #room-screen .setup-label { font-size: 12px; margin-bottom: 8px; }
   #room-screen .room-panel { padding: 12px; }
