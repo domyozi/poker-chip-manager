@@ -44,7 +44,7 @@
 
   <div class="setup-section">
     <div class="setup-label">オンラインで遊ぶ</div>
-    <div class="room-panel">
+    <div class="room-panel coming-soon-panel">
       <div class="room-row">
         <button class="room-btn primary" id="room-host-btn" style="flex:1;">🎲 新しいルーム作成</button>
       </div>
@@ -60,16 +60,16 @@
         <button class="room-btn" id="room-join-btn">参加</button>
       </div>
       <div class="room-status" id="room-status"></div>
+      <div class="coming-soon-overlay" aria-hidden="true">
+        <div class="coming-soon-pill">Coming Soon...</div>
+      </div>
     </div>
   </div>
 
   <div class="setup-section">
     <div class="setup-label">オフラインで遊ぶ</div>
-    <div class="room-panel offline-panel">
-      <button class="room-btn" id="room-local-btn" style="width:100%;" disabled>📱 1端末で開始（複数人で画面を共有）</button>
-      <div class="coming-soon-overlay" aria-hidden="true">
-        <div class="coming-soon-pill">Coming Soon...</div>
-      </div>
+    <div class="room-panel">
+      <button class="room-btn" id="room-local-btn" style="width:100%;">📱 1端末で開始（複数人で画面を共有）</button>
     </div>
   </div>
   <div class="legal-links">

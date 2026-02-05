@@ -319,7 +319,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   background: rgba(0,0,0,0.35);
   backdrop-filter: blur(6px);
 }
-.room-panel.offline-panel {
+.room-panel.coming-soon-panel {
   position: relative;
   overflow: hidden;
 }
