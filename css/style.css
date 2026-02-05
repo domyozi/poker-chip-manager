@@ -2017,7 +2017,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 /* ─── Pot Center ─────────────────────────────── */
 .pot-center {
   position: absolute;
-  top: 28%; left: 50%;
+  top: 35%; left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: row;
