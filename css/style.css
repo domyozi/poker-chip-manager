@@ -323,13 +323,32 @@ summary.setup-label::-webkit-details-marker { display: none; }
   position: relative;
   overflow: hidden;
 }
+.room-panel.coming-soon-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 9, 0.25);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.room-panel.coming-soon-panel .room-btn,
+.room-panel.coming-soon-panel .room-input,
+.room-panel.coming-soon-panel .room-select {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+.room-panel.coming-soon-panel .room-btn,
+.room-panel.coming-soon-panel .room-input,
+.room-panel.coming-soon-panel .room-select {
+  pointer-events: none;
+}
 .coming-soon-overlay {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 14, 12, 0.15);
+  background: rgba(8, 10, 9, 0.55);
   border-radius: inherit;
   cursor: not-allowed;
   pointer-events: auto;
@@ -337,18 +356,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .coming-soon-overlay .coming-soon-pill {
   font-family: 'Playfair Display', serif;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--gold);
-  background: rgba(0,0,0,0.55);
-  border: 1px solid rgba(212,175,55,0.6);
-  padding: 6px 10px;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(212,175,55,0.75);
+  padding: 8px 12px;
   border-radius: 999px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.45);
 }
 .coming-soon-overlay:hover {
-  background: rgba(10, 14, 12, 0.45);
+  background: rgba(8, 10, 9, 0.7);
 }
 .room-row { display: flex; gap: 8px; align-items: center; }
 .room-input {
