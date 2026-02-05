@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.26";
+const APP_VERSION = "v0.9.27";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -16,70 +16,163 @@ let actionCounter = 0;
 const LEGAL_STORAGE_KEY = 'pocketpotLegalConsent';
 const LEGAL_VERSION = '2026-02-05';
 const LEGAL_CONTENT = {
-  disclaimer: {
-    title: '免責事項・賭博禁止',
-    body: `
-      <p>本アプリは友人間のポーカーにおけるチップ管理を目的とした娯楽ツールです。現金賭博や違法行為を助長・支援するものではありません。</p>
-      <ul>
-        <li>現金の賭博や違法行為の目的での使用を禁止します。</li>
-        <li>18歳以上推奨（各地域の成人年齢以上）。未成年の利用は保護者の同意の下で行ってください。</li>
-        <li>各国・地域の法令遵守は利用者の責任です。</li>
-        <li>本アプリの利用により生じたいかなる損害についても、運営者は責任を負いません。</li>
-      </ul>
-    `
+  ja: {
+    disclaimer: {
+      title: '免責事項・賭博禁止',
+      body: `
+        <p>本アプリは友人間のポーカーにおけるチップ管理を目的とした娯楽ツールです。現金賭博や違法行為を助長・支援するものではありません。</p>
+        <ul>
+          <li>現金の賭博や違法行為の目的での使用を禁止します。</li>
+          <li>18歳以上推奨（各地域の成人年齢以上）。未成年の利用は保護者の同意の下で行ってください。</li>
+          <li>各国・地域の法令遵守は利用者の責任です。</li>
+          <li>本アプリの利用により生じたいかなる損害についても、運営者は責任を負いません。</li>
+        </ul>
+      `
+    },
+    terms: {
+      title: '利用規約',
+      body: `
+        <p>本利用規約は、Pocket Pot（以下「本アプリ」）の利用条件を定めます。</p>
+        <ul>
+          <li>本アプリは現状有姿で提供され、特定目的への適合性や無停止を保証しません。</li>
+          <li>不正利用、法令違反、公序良俗に反する行為を禁止します。</li>
+          <li>運営者は事前の予告なく機能変更・停止・終了できるものとします。</li>
+          <li>本アプリの利用に起因する損害について、運営者は一切の責任を負いません。</li>
+          <li>準拠法は日本法とし、紛争は運営者所在地を管轄する裁判所を専属的合意管轄とします。</li>
+        </ul>
+      `
+    },
+    privacy: {
+      title: 'プライバシーポリシー',
+      body: `
+        <p>本ポリシーは、本アプリにおける個人情報等の取扱いについて定めます。</p>
+        <p>収集する情報</p>
+        <ul>
+          <li>端末内に保存される情報: 表示名、プレイヤー名、チップやゲーム設定、履歴など（ローカル保存）。</li>
+          <li>オンライン対戦利用時: ルームコード、表示名、座席、ゲーム進行に必要な情報を、リアルタイム同期のため外部サーバー（Supabase）へ送信・共有します。</li>
+        </ul>
+        <p>外部サービス</p>
+        <ul>
+          <li>Webフォント提供のため Google Fonts を利用します。読み込み時にIPアドレス等が送信される場合があります。</li>
+        </ul>
+        <p>利用目的</p>
+        <ul>
+          <li>ゲーム進行、表示、同期、設定保存のため。</li>
+        </ul>
+        <p>第三者提供</p>
+        <ul>
+          <li>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</li>
+        </ul>
+        <p>保管・削除</p>
+        <ul>
+          <li>端末内データはユーザーがブラウザ/アプリのデータ削除で消去できます。</li>
+        </ul>
+        <p>お問い合わせ</p>
+        <ul>
+          <li>pocketpotpoker@gmail.com</li>
+        </ul>
+        <p>本ポリシーは必要に応じて更新されます。</p>
+      `
+    },
+    consent: {
+      title: '利用に関する重要なお知らせ',
+      body: `
+        <p>本アプリは友人間のポーカーにおけるチップ管理を目的とした娯楽ツールです。現金賭博や違法行為を助長・支援するものではありません。</p>
+        <ul>
+          <li>現金の賭博や違法行為の目的での使用を禁止します。</li>
+          <li>18歳以上推奨（各地域の成人年齢以上）。未成年の利用は保護者の同意の下で行ってください。</li>
+          <li>各国・地域の法令遵守は利用者の責任です。</li>
+        </ul>
+        <p>詳細は「免責・賭博禁止」をご確認ください。</p>
+      `,
+      accept: '同意して続ける'
+    }
   },
-  terms: {
-    title: '利用規約',
-    body: `
-      <p>本利用規約は、Pocket Pot（以下「本アプリ」）の利用条件を定めます。</p>
-      <ul>
-        <li>本アプリは現状有姿で提供され、特定目的への適合性や無停止を保証しません。</li>
-        <li>不正利用、法令違反、公序良俗に反する行為を禁止します。</li>
-        <li>運営者は事前の予告なく機能変更・停止・終了できるものとします。</li>
-        <li>本アプリの利用に起因する損害について、運営者は一切の責任を負いません。</li>
-        <li>準拠法は日本法とし、紛争は運営者所在地を管轄する裁判所を専属的合意管轄とします。</li>
-      </ul>
-    `
-  },
-  privacy: {
-    title: 'プライバシーポリシー',
-    body: `
-      <p>本ポリシーは、本アプリにおける個人情報等の取扱いについて定めます。</p>
-      <p>収集する情報</p>
-      <ul>
-        <li>端末内に保存される情報: 表示名、プレイヤー名、チップやゲーム設定、履歴など（ローカル保存）。</li>
-        <li>オンライン対戦利用時: ルームコード、表示名、座席、ゲーム進行に必要な情報を、リアルタイム同期のため外部サーバー（Supabase）へ送信・共有します。</li>
-      </ul>
-      <p>外部サービス</p>
-      <ul>
-        <li>Webフォント提供のため Google Fonts を利用します。読み込み時にIPアドレス等が送信される場合があります。</li>
-      </ul>
-      <p>利用目的</p>
-      <ul>
-        <li>ゲーム進行、表示、同期、設定保存のため。</li>
-      </ul>
-      <p>第三者提供</p>
-      <ul>
-        <li>法令に基づく場合を除き、本人の同意なく第三者へ提供しません。</li>
-      </ul>
-      <p>保管・削除</p>
-      <ul>
-        <li>端末内データはユーザーがブラウザ/アプリのデータ削除で消去できます。</li>
-      </ul>
-      <p>お問い合わせ</p>
-      <ul>
-        <li>pocketpotpoker@gmail.com</li>
-      </ul>
-      <p>本ポリシーは必要に応じて更新されます。</p>
-    `
+  en: {
+    disclaimer: {
+      title: 'Disclaimer & No Gambling',
+      body: `
+        <p>This app is an entertainment tool for managing chips in friendly poker games. It does not promote or support gambling with real money or any illegal activities.</p>
+        <ul>
+          <li>Use for real-money gambling or illegal activities is prohibited.</li>
+          <li>Recommended for ages 18+ (or the legal adult age in your region). Minors should use with parental consent.</li>
+          <li>Users are responsible for complying with all local laws and regulations.</li>
+          <li>The operator is not liable for any damages arising from the use of this app.</li>
+        </ul>
+      `
+    },
+    terms: {
+      title: 'Terms of Use',
+      body: `
+        <p>These Terms of Use set the conditions for using Pocket Pot (the “App”).</p>
+        <ul>
+          <li>The App is provided “as is” without warranties of fitness or uninterrupted availability.</li>
+          <li>Illegal, abusive, or public-order–violating use is prohibited.</li>
+          <li>The operator may change, suspend, or discontinue the App at any time without notice.</li>
+          <li>The operator is not liable for any damages arising from use of the App.</li>
+          <li>These terms are governed by the laws of Japan, and disputes are subject to the exclusive jurisdiction of the operator’s local courts.</li>
+        </ul>
+      `
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      body: `
+        <p>This policy describes how the App handles personal information.</p>
+        <p>Information we handle</p>
+        <ul>
+          <li>Stored locally on your device: display names, player names, chip and game settings, and history.</li>
+          <li>Online play: room codes, display names, seats, and gameplay data are sent to and shared via external servers (Supabase) for real-time sync.</li>
+        </ul>
+        <p>External services</p>
+        <ul>
+          <li>We use Google Fonts for web fonts. IP address and related data may be transmitted when loading fonts.</li>
+        </ul>
+        <p>Purpose of use</p>
+        <ul>
+          <li>Game progression, display, synchronization, and settings storage.</li>
+        </ul>
+        <p>Sharing with third parties</p>
+        <ul>
+          <li>We do not share your information without consent, except as required by law.</li>
+        </ul>
+        <p>Retention & deletion</p>
+        <ul>
+          <li>Local data can be removed by clearing browser/app storage.</li>
+        </ul>
+        <p>Contact</p>
+        <ul>
+          <li>pocketpotpoker@gmail.com</li>
+        </ul>
+        <p>This policy may be updated as needed.</p>
+      `
+    },
+    consent: {
+      title: 'Important Notice',
+      body: `
+        <p>This app is an entertainment tool for managing chips in friendly poker games. It does not promote or support real-money gambling or illegal activities.</p>
+        <ul>
+          <li>Use for real-money gambling or illegal activities is prohibited.</li>
+          <li>Recommended for ages 18+ (or the legal adult age in your region). Minors should use with parental consent.</li>
+          <li>Users are responsible for complying with all local laws and regulations.</li>
+        </ul>
+        <p>Please review “Disclaimer & No Gambling” for details.</p>
+      `,
+      accept: 'Agree and Continue'
+    }
   }
 };
+
+function getLegalLocale() {
+  const lang = (navigator.language || '').toLowerCase();
+  return lang.startsWith('ja') ? 'ja' : 'en';
+}
 
 function openLegal(type) {
   const overlay = document.getElementById('legal-overlay');
   const titleEl = document.getElementById('legal-title');
   const bodyEl = document.getElementById('legal-body');
-  const content = LEGAL_CONTENT[type];
+  const locale = getLegalLocale();
+  const content = LEGAL_CONTENT[locale]?.[type];
   if (!overlay || !titleEl || !bodyEl || !content) return;
   titleEl.textContent = content.title;
   bodyEl.innerHTML = content.body;
@@ -93,9 +186,19 @@ function closeLegal() {
 
 function showLegalConsentIfNeeded() {
   const overlay = document.getElementById('legal-consent-overlay');
+  const titleEl = document.querySelector('#legal-consent-overlay .legal-title');
+  const bodyEl = document.querySelector('#legal-consent-overlay .legal-body');
+  const acceptBtn = document.getElementById('legal-accept-btn');
   if (!overlay) return;
   const stored = localStorage.getItem(LEGAL_STORAGE_KEY);
   if (stored === LEGAL_VERSION) return;
+  const locale = getLegalLocale();
+  const consent = LEGAL_CONTENT[locale]?.consent;
+  if (consent) {
+    if (titleEl) titleEl.textContent = consent.title;
+    if (bodyEl) bodyEl.innerHTML = consent.body;
+    if (acceptBtn) acceptBtn.textContent = consent.accept;
+  }
   overlay.classList.add('visible');
 }
 
