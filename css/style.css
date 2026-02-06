@@ -237,6 +237,7 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.18);
@@ -248,6 +249,14 @@ button, .room-btn, .action-btn, .winner-btn, .start-btn, .ready-btn {
   text-decoration: none;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.share-icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.share-label {
+  line-height: 1;
 }
 .share-btn:hover {
   background: rgba(255,255,255,0.12);
