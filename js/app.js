@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.38";
+const APP_VERSION = "v0.9.39";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -4375,6 +4375,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const legalAcceptBtn = document.getElementById('legal-accept-btn');
     const legalOverlay = document.getElementById('legal-overlay');
     const legalLinks = document.querySelectorAll('.legal-link');
+    const shareNativeBtn = document.getElementById('share-native-btn');
+    const shareXBtn = document.getElementById('share-x-btn');
+    const shareLineBtn = document.getElementById('share-line-btn');
 
     // デフォルトでランダム名を設定
     if (nameInput && !nameInput.value) {
@@ -4397,6 +4400,28 @@ document.addEventListener('DOMContentLoaded', () => {
       bindOnce(legalAcceptBtn, 'click', () => acceptLegalConsent());
     }
     showLegalConsentIfNeeded();
+    const shareTitle = 'Pocket Pot｜ポーカーのチップ管理アプリ（無料・オフライン対応）';
+    const shareText = 'ホームゲームに最適なオフライン対応のチップ管理アプリ';
+    const shareUrl = 'https://pocket-pot.vercel.app/';
+    if (shareXBtn) {
+      const xHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+      shareXBtn.setAttribute('href', xHref);
+    }
+    if (shareLineBtn) {
+      const lineHref = `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+      shareLineBtn.setAttribute('href', lineHref);
+    }
+    if (shareNativeBtn) {
+      if (navigator.share) {
+        bindOnce(shareNativeBtn, 'click', async () => {
+          try {
+            await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+          } catch (e) {}
+        });
+      } else {
+        shareNativeBtn.style.display = 'none';
+      }
+    }
     const startBtn = document.getElementById('start-btn');
     const menuBtn = document.getElementById('menu-btn');
     const menu = document.getElementById('header-menu');
