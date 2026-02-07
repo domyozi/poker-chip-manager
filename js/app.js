@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.1.2";
+const APP_VERSION = "v0.1.3";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -20,6 +20,9 @@ const LEGAL_VERSION = '2026-02-05';
 const OFFLINE_RESUME_KEY = 'pocketpotOfflineResume';
 const OFFLINE_RESUME_VERSION = 1;
 const OFFLINE_RESUME_TTL_MS = 24 * 60 * 60 * 1000;
+const SHARE_TEMPLATE_KEY = 'pocketpotShareTemplate';
+const GAME_ARCHIVES_KEY = 'pocketpotGameArchives';
+const GAME_ARCHIVES_LIMIT = 50;
 const LEGAL_CONTENT = {
   ja: {
     disclaimer: {
@@ -246,6 +249,32 @@ function applyDisplayMode(mode) {
   render();
 }
 
+function getDefaultShareTemplate() {
+  return [
+    'ホームポーカーで遊んだ結果',
+    'Round {round} / {hands}ハンド / 最終ポット {pot}',
+    '勝者: {winner}',
+    '#ポケットポット #PocketPot',
+    '{url}'
+  ].join('\n');
+}
+
+function loadShareTemplate() {
+  try {
+    const raw = localStorage.getItem(SHARE_TEMPLATE_KEY);
+    if (!raw || !raw.trim()) return getDefaultShareTemplate();
+    return raw;
+  } catch (e) {
+    return getDefaultShareTemplate();
+  }
+}
+
+function saveShareTemplate(template) {
+  try {
+    localStorage.setItem(SHARE_TEMPLATE_KEY, template);
+  } catch (e) {}
+}
+
 // ─── FX helpers ────────────────────────────────
 let fxAudioCtx = null;
 let fxAudioUnlocked = false;
@@ -295,6 +324,29 @@ function playWinChime() {
 function playAllInHit() {
   if (!timerSettings.soundEnabled) return;
   playTone({ freq: 196, duration: 0.12, type: 'square', gain: 0.05 });
+}
+function playActionFx(actionType, isAllIn = false) {
+  if (!timerSettings.soundEnabled) return;
+  if (isAllIn) {
+    playAllInHit();
+    return;
+  }
+  if (actionType === 'raise') {
+    playTone({ freq: 740, duration: 0.1, type: 'triangle', gain: 0.055 });
+    setTimeout(() => playTone({ freq: 900, duration: 0.12, type: 'triangle', gain: 0.05 }), 70);
+    return;
+  }
+  if (actionType === 'call') {
+    playTone({ freq: 520, duration: 0.12, type: 'sine', gain: 0.05 });
+    return;
+  }
+  if (actionType === 'fold') {
+    playTone({ freq: 320, duration: 0.1, type: 'sawtooth', gain: 0.045 });
+    return;
+  }
+  if (actionType === 'check') {
+    playTone({ freq: 620, duration: 0.06, type: 'triangle', gain: 0.035 });
+  }
 }
 function setTextWithBump(el, text) {
   if (!el) return;
@@ -382,6 +434,7 @@ let perPlayerStackChips = {};
 let winnerHighlightIds = [];
 let winnerHighlightTimer = null;
 let currentGameSettings = null;
+let currentRoundNumber = 1;
 
 // Timer state
 let timerSettings = { duration: 0, soundEnabled: true };
@@ -475,7 +528,8 @@ function buildOfflineSnapshot() {
       handHistory,
       offlineDisplayFrontIdx,
       offlineLastActorId,
-      lastPhase
+      lastPhase,
+      currentRoundNumber
     }
   };
 }
@@ -528,6 +582,7 @@ function applyOfflineSnapshot(snapshot) {
     : (gameState?.currentPlayerIndex || 0);
   offlineLastActorId = data.offlineLastActorId || null;
   lastPhase = data.lastPhase || null;
+  currentRoundNumber = Number.isFinite(data.currentRoundNumber) ? data.currentRoundNumber : 1;
   lastPhaseFx = null;
   actionLock = false;
   lastActionId = null;
@@ -587,11 +642,84 @@ function maybeShowOfflineResumePrompt() {
   showOfflineResumeModal(snapshot);
 }
 
+function loadGameArchives() {
+  try {
+    const raw = localStorage.getItem(GAME_ARCHIVES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveGameArchives(items) {
+  try {
+    localStorage.setItem(GAME_ARCHIVES_KEY, JSON.stringify(items.slice(0, GAME_ARCHIVES_LIMIT)));
+  } catch (e) {}
+}
+
+function persistCurrentGameArchive() {
+  if (!gameState || !Array.isArray(gameState.players) || gameState.players.length === 0) return;
+  if (!Array.isArray(handHistory) || handHistory.length === 0) return;
+  const ranking = [...gameState.players]
+    .sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'))
+    .map((p, idx) => ({ rank: idx + 1, name: p.name || '—', chips: p.chips || 0 }));
+  const totalPot = handHistory
+    .filter((h) => (h.type || 'hand') === 'hand')
+    .reduce((sum, h) => sum + (h.pot || 0), 0);
+  const archive = {
+    id: `game_${Date.now()}`,
+    at: Date.now(),
+    round: currentRoundNumber,
+    hands: handHistory.filter((h) => (h.type || 'hand') === 'hand').length,
+    totalPot,
+    ranking
+  };
+  const prev = loadGameArchives();
+  saveGameArchives([archive, ...prev]);
+}
+
+function showHomeHistoryOverlay() {
+  const overlay = document.getElementById('home-history-overlay');
+  const listEl = document.getElementById('home-history-list');
+  if (!overlay || !listEl) return;
+  const archives = loadGameArchives();
+  if (archives.length === 0) {
+    listEl.innerHTML = '<div class="home-history-item"><div class="home-history-meta">履歴はまだありません</div></div>';
+  } else {
+    listEl.innerHTML = archives.map((a) => {
+      const d = new Date(a.at || Date.now());
+      const dateText = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const top = Array.isArray(a.ranking) && a.ranking.length > 0 ? a.ranking[0].name : '—';
+      return `
+        <div class="home-history-item">
+          <div class="home-history-title">${dateText} / Round ${a.round || 1}</div>
+          <div class="home-history-meta">ハンド数: ${a.hands || 0} / 合計Pot: ${(a.totalPot || 0).toLocaleString()} / 1位: ${top}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  overlay.classList.add('visible');
+}
+
+function hideHomeHistoryOverlay() {
+  const overlay = document.getElementById('home-history-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
 function updateRoomEntryCtas() {
   const resumeBtn = document.getElementById('resume-offline-btn');
-  if (!resumeBtn) return;
-  const show = uiState === 'room' && hasOfflineSnapshot();
-  resumeBtn.style.display = show ? 'inline-flex' : 'none';
+  const historyBtn = document.getElementById('room-history-btn');
+  const isRoom = uiState === 'room';
+  if (resumeBtn) {
+    const showResume = isRoom && hasOfflineSnapshot();
+    resumeBtn.style.display = showResume ? 'inline-flex' : 'none';
+  }
+  if (historyBtn) {
+    const showHistory = isRoom;
+    historyBtn.style.display = showHistory ? 'inline-flex' : 'none';
+  }
 }
 
 function setupNumericInput(el) {
@@ -770,7 +898,12 @@ function setUiState(state) {
     document.getElementById('showdown-overlay').classList.remove('visible');
     document.getElementById('next-hand-overlay').classList.remove('visible');
     document.getElementById('fold-confirm-overlay').classList.remove('visible');
+    hideRoundGuideOverlay();
+    hideShareTemplateOverlay();
     hideUndoConfirm();
+  }
+  if (state !== 'room') {
+    hideHomeHistoryOverlay();
   }
   if (state === 'waiting' || state === 'settings') {
     updateParticipantList();
@@ -1010,14 +1143,14 @@ function renderEndgameShareImageCanvas() {
 }
 
 function fallbackOpenShare(preferred, text) {
-  const url = 'https://pocket-pot.vercel.app/';
+  const encoded = encodeURIComponent(text);
   if (preferred === 'line') {
-    const href = `https://line.me/R/msg/text/?${encodeURIComponent(`${text} ${url}`)}`;
-    window.open(href, '_blank', 'noopener');
+    const href = `https://line.me/R/msg/text/?${encoded}`;
+    window.location.assign(href);
     return;
   }
-  const href = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-  window.open(href, '_blank', 'noopener');
+  const href = `https://x.com/intent/tweet?text=${encoded}`;
+  window.location.assign(href);
 }
 
 async function shareEndgameWithImage(preferred = 'x') {
@@ -1064,9 +1197,27 @@ async function saveEndgameRankingImage() {
 }
 
 function buildEndgameShareText(stats) {
-  const handText = stats.handCount > 0 ? `${stats.handCount}ハンド` : '友達ポーカー';
-  const potText = stats.lastPot > 0 ? ` / 最終ポット ${stats.lastPot.toLocaleString()}` : '';
-  return `友達ポーカーで遊んだ！${handText}${potText}。Pocket Pot 便利だった。 #PocketPot`;
+  const winner = (stats.winnerText || '勝者: —').replace(/^勝者:\s*/, '').trim() || '—';
+  const template = loadShareTemplate();
+  return template
+    .replaceAll('{hands}', String(stats.handCount || 0))
+    .replaceAll('{pot}', (stats.lastPot || 0).toLocaleString())
+    .replaceAll('{winner}', winner)
+    .replaceAll('{round}', String(currentRoundNumber || 1))
+    .replaceAll('{url}', 'https://pocket-pot.vercel.app/');
+}
+
+function showShareTemplateOverlay() {
+  const overlay = document.getElementById('share-template-overlay');
+  const input = document.getElementById('share-template-input');
+  if (!overlay || !input) return;
+  input.value = loadShareTemplate();
+  overlay.classList.add('visible');
+}
+
+function hideShareTemplateOverlay() {
+  const overlay = document.getElementById('share-template-overlay');
+  if (overlay) overlay.classList.remove('visible');
 }
 
 function showEndgameOverlay() {
@@ -1075,7 +1226,7 @@ function showEndgameOverlay() {
   if (!overlay || !summaryEl) return;
   const stats = getEndgameStats();
   const potLine = stats.lastPot > 0 ? `最終ポット: ${stats.lastPot.toLocaleString()}` : '最終ポット: —';
-  summaryEl.textContent = `この結果、友達にシェアできます。ハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
+  summaryEl.textContent = `この結果は任意でシェアできます。\nハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
   renderEndgameRanking();
   overlay.classList.add('visible');
 }
@@ -2030,6 +2181,7 @@ function startGameWithPlayers(players, settings) {
   gameState.timerSettings = { ...timerSettings };
   gameState.tournamentSettings = { ...tournamentSettings };
   handHistory = [];
+  currentRoundNumber = 1;
   saveChipsBeforeHand();
   gameState = startHand(gameState);
   // Initialize offline display rotation to first acting player
@@ -2588,7 +2740,12 @@ function animatePotToWinners(winnerIds) {
 }
 
 function renderPot() {
-  const total = (gameState?.pots || []).reduce((s, p) => s + p.amount, 0);
+  const committedTotal = (gameState?.players || []).reduce((sum, p) => {
+    const totalBet = Number.isFinite(p.totalBet) ? p.totalBet : 0;
+    const currentBet = Number.isFinite(p.currentBet) ? p.currentBet : 0;
+    return sum + Math.max(0, totalBet - currentBet);
+  }, 0);
+  const total = committedTotal;
   const el = $('pot-amount');
   const blindsEl = $('pot-blinds');
   if (!el) {
@@ -2872,6 +3029,9 @@ let actionProcessing = false;
 function makeActionBtn(cls, label, sub, onClick) {
   const btn = document.createElement('button');
   btn.className = 'action-btn ' + cls + (sub ? '' : ' no-sub');
+  if (cls.includes('btn-raise')) {
+    btn.id = 'action-raise-btn';
+  }
   btn.innerHTML = sub
     ? `<span class="btn-label">${label}</span><span class="btn-sub">${sub}</span>`
     : `<span class="btn-label">${label}</span>`;
@@ -2915,12 +3075,13 @@ function setupRaiseSlider(min, max) {
   raiseMax = max;
   raiseMinTo = min;
   const slider = document.getElementById('raise-slider');
+  if (!slider) return;
   slider.min = 0;
   slider.max = 100;
   slider.value = 0; // min position
   setRaiseValue(min);
   updateRaisePresets();
-  updateRaiseMinLabel();
+  updateRaiseError();
 }
 
 function setRaiseValue(value) {
@@ -2937,7 +3098,6 @@ function setRaiseValue(value) {
   const raiseBtn = document.querySelector('.btn-raise .btn-sub');
   if (raiseBtn) setTextWithBump(raiseBtn, `${formatAmount(raiseValue)}`);
   updateActivePreset();
-  updateRaiseMinLabel();
   updateRaiseError();
 }
 
@@ -2955,10 +3115,10 @@ function updateRaisePresets() {
   const callAmt = gameState.currentMaxBet - actor.currentBet;
   const totalPot = getPotTotal(gameState);
 
-  const addPreset = (label, targetValue, extraClass = '') => {
+  const addPreset = (label, targetValue) => {
     const value = Math.max(raiseMin, Math.min(raiseMax, snapRaiseValue(targetValue)));
     const btn = document.createElement('button');
-    btn.className = `raise-preset-btn${extraClass ? ' ' + extraClass : ''}`;
+    btn.className = 'raise-preset-btn';
     btn.textContent = label;
     btn.dataset.amount = String(value);
     btn.addEventListener('click', () => setRaiseValue(value), { passive: true });
@@ -2971,10 +3131,10 @@ function updateRaisePresets() {
     addPreset('5BB', gameState.bigBlind * 5);
   } else {
     const potFractions = [
-      ['1/3 POT', 1 / 3],
-      ['1/2 POT', 1 / 2],
-      ['2/3 POT', 2 / 3],
-      ['FULL POT', 1]
+      ['1/3P', 1 / 3],
+      ['1/2P', 1 / 2],
+      ['2/3P', 2 / 3],
+      ['POT', 1]
     ];
     potFractions.forEach(([label, frac]) => {
       const betSize = Math.max(1, Math.round(totalPot * frac));
@@ -2982,21 +3142,19 @@ function updateRaisePresets() {
     });
     [2, 3, 4].forEach(mult => {
       const betSize = Math.max(1, Math.round(totalPot * mult));
-      addPreset(`x${mult}`, actor.currentBet + callAmt + betSize, 'is-multi');
+      addPreset(`x${mult}`, actor.currentBet + callAmt + betSize);
     });
   }
   addPreset('ALL IN', actor.currentBet + actor.chips);
   updateActivePreset();
-  updateRaiseMinLabel();
-  updateRaiseError();
 }
 
-function updateRaiseMinLabel() {
-  const el = document.getElementById('raise-min-label');
-  if (!el || !gameState) return;
-  const minRaiseTo = gameState.currentMaxBet + gameState.lastRaiseSize;
-  raiseMinTo = minRaiseTo;
-  el.style.display = 'none';
+function updateActivePreset() {
+  const presetBtns = document.querySelectorAll('.raise-preset-btn');
+  presetBtns.forEach(btn => {
+    const amt = parseInt(btn.dataset.amount || '0', 10);
+    btn.classList.toggle('active', amt === raiseValue);
+  });
 }
 
 function updateInitialChipsBB() {
@@ -3022,62 +3180,57 @@ function updateRaiseError() {
   }
 }
 
-function updateActivePreset() {
-  const presetBtns = document.querySelectorAll('.raise-preset-btn');
-  presetBtns.forEach(btn => {
-    const amt = parseInt(btn.dataset.amount || '0', 10);
-    btn.classList.toggle('active', amt === raiseValue);
-  });
-}
-
 function setRaiseAreaOpen(isOpen) {
   const area = document.getElementById('raise-area');
   const panel = document.getElementById('action-panel');
   if (!area || !panel) return;
   area.classList.toggle('visible', isOpen);
   panel.classList.toggle('raise-open', isOpen);
-  requestAnimationFrame(() => updateActionPanelCompact());
+  if (isOpen) {
+    requestAnimationFrame(() => positionRaiseArea());
+  }
 }
 
 function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
   if (area.classList.contains('visible')) {
-    // Second tap → execute raise
-    const actor = gameState?.players?.[gameState.currentPlayerIndex];
-    const allInTo = actor ? actor.currentBet + actor.chips : raiseValue;
-    if (raiseValue < raiseMinTo && raiseValue < allInTo) {
-      updateRaiseError();
-      return;
-    }
-    // Check if this is an all-in
-    if (actor && raiseValue >= allInTo) {
-      pendingAllInAction = { type: 'raise', amount: raiseValue };
-      showAllInConfirm(actor.chips);
-      return;
-    }
-    doAction('raise', raiseValue);
+    setRaiseAreaOpen(false);
   } else {
-    setRaiseAreaOpen(true);
     updateRaisePresets();
-    requestAnimationFrame(() => updateActionPanelCompact());
+    setRaiseAreaOpen(true);
+    requestAnimationFrame(() => positionRaiseArea());
   }
 }
 
-function updateActionPanelCompact() {
-  const panel = document.getElementById('action-panel');
-  const area = document.getElementById('raise-area');
-  if (!panel || !area) return;
-  if (!area.classList.contains('visible')) {
-    panel.classList.remove('compact', 'compact-tight');
+function applyRaiseAction() {
+  const actor = gameState?.players?.[gameState.currentPlayerIndex];
+  const allInTo = actor ? actor.currentBet + actor.chips : raiseValue;
+  if (raiseValue < raiseMinTo && raiseValue < allInTo) {
+    updateRaiseError();
     return;
   }
-  panel.classList.remove('compact', 'compact-tight');
-  if (panel.scrollHeight > panel.clientHeight + 2) {
-    panel.classList.add('compact');
+  if (actor && raiseValue >= allInTo) {
+    pendingAllInAction = { type: 'raise', amount: raiseValue };
+    showAllInConfirm(actor.chips);
+    return;
   }
-  if (panel.scrollHeight > panel.clientHeight + 2) {
-    panel.classList.add('compact-tight');
-  }
+  doAction('raise', raiseValue);
+}
+
+function positionRaiseArea() {
+  const area = document.getElementById('raise-area');
+  const panel = document.getElementById('action-panel');
+  const raiseBtn = document.getElementById('action-raise-btn');
+  if (!area || !panel || !raiseBtn) return;
+  const panelRect = panel.getBoundingClientRect();
+  const btnRect = raiseBtn.getBoundingClientRect();
+  const width = area.offsetWidth || 84;
+  let left = btnRect.right - panelRect.left + 8;
+  const maxLeft = panel.clientWidth - width - 6;
+  if (left > maxLeft) left = btnRect.left - panelRect.left - width - 8;
+  if (left < 6) left = 6;
+  area.style.right = 'auto';
+  area.style.left = `${left}px`;
 }
 
 let foldConfirmShown = false; // フォールド確認済みフラグ
@@ -3132,6 +3285,7 @@ function executeAction(type, amount) {
     const result = processAction(gameState, type, amount);
     if (result.error) return;
     gameState = result;
+    playActionFx(type, hasNewAllIn(prevState, gameState));
     if (onlineState.role === 'local' && gameState.isHandActive) {
       offlineDisplayFrontIdx = gameState.currentPlayerIndex;
       offlineLastActorId = prevActorId;
@@ -3203,7 +3357,7 @@ function doAction(type, amount = 0) {
     const result = processAction(gameState, type, amount);
     if (result.error) { console.warn(result.error); return; }
     gameState = normalizeActorState(result);
-    if (hasNewAllIn(prevState, gameState)) playAllInHit();
+    playActionFx(type, hasNewAllIn(prevState, gameState));
     lastActionId = actionKey;
 
     // Hide raise area after action
@@ -3664,6 +3818,31 @@ function confirmWinner() {
 // ─── NEXT HAND ────────────────────────────────
 // チップゼロプレイヤーの選択状態を追跡
 let zeroChipDecisions = {};
+let roundGuideTimer = null;
+
+function showRoundGuideOverlay(roundNumber) {
+  const overlay = document.getElementById('round-guide-overlay');
+  const title = document.getElementById('round-guide-title');
+  const message = document.getElementById('round-guide-message');
+  if (!overlay || !title || !message) return;
+  title.textContent = `Round ${roundNumber} 開始`;
+  message.innerHTML = 'SBからカードを配ってください。<br>準備できたら次のアクションへ進みます。';
+  overlay.classList.add('visible');
+  if (roundGuideTimer) clearTimeout(roundGuideTimer);
+  roundGuideTimer = setTimeout(() => {
+    overlay.classList.remove('visible');
+    roundGuideTimer = null;
+  }, 1800);
+}
+
+function hideRoundGuideOverlay() {
+  const overlay = document.getElementById('round-guide-overlay');
+  if (overlay) overlay.classList.remove('visible');
+  if (roundGuideTimer) {
+    clearTimeout(roundGuideTimer);
+    roundGuideTimer = null;
+  }
+}
 
 function showNextHand(winners, gainText = '') {
   const winnersEl = document.getElementById('next-hand-winners');
@@ -3671,8 +3850,12 @@ function showNextHand(winners, gainText = '') {
   winnersEl.innerHTML = `
     <div class="next-hand-winner-name">${names} の勝ち！</div>
   `;
-  const subEl = document.querySelector('.next-hand-sub');
+  const subEl = document.getElementById('next-hand-sub') || document.querySelector('.next-hand-sub');
   if (subEl) subEl.textContent = '';
+  const roundEl = document.getElementById('next-hand-round');
+  if (roundEl) roundEl.textContent = '';
+  const dealHelpEl = document.getElementById('next-hand-deal-help');
+  if (dealHelpEl) dealHelpEl.textContent = '';
   document.getElementById('next-hand-gain').textContent = gainText;
 
   // 退席プレイヤー（left）を含めてソート
@@ -3749,7 +3932,7 @@ function showNextHand(winners, gainText = '') {
   if (nextHandBtn) {
     if (onlineState.role !== 'player') {
       nextHandBtn.disabled = false;
-      nextHandBtn.textContent = '次のハンド';
+      nextHandBtn.textContent = `Round ${currentRoundNumber + 1} を開始`;
     } else {
       nextHandBtn.disabled = true;
       nextHandBtn.textContent = 'ホストの操作を待っています';
@@ -3944,7 +4127,7 @@ function showHistory() {
       }).join(' ');
       return `
           <div class="history-item">
-            <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()}) ${formatHistoryTime(h.at)}</div>
+            <div class="history-header">No.${h.hand} / Round ${h.round || 1} (Pot: ${h.pot.toLocaleString()}) ${formatHistoryTime(h.at)}</div>
             <div class="history-result">
               ${rows}
             </div>
@@ -4374,6 +4557,7 @@ function recordHandResult(winners, totalPot) {
   handHistory.push({
     type: 'hand',
     hand: handHistory.length + 1,
+    round: currentRoundNumber,
     winners: winners.map(w => ({ name: w.name, characterId: w.characterId })),
     losers: losers.map(l => ({ name: l.name, characterId: l.characterId, loss: chipsBeforeHand[l.id] - l.chips })),
     pot: totalPot,
@@ -4410,6 +4594,7 @@ function nextHand() {
   setTimeout(() => { nextHandLock = false; }, 200);
   document.getElementById('next-hand-overlay').classList.remove('visible');
   advanceToNextHandAndBroadcast();
+  showRoundGuideOverlay(currentRoundNumber);
 }
 
 function showGameOver() {
@@ -4423,11 +4608,17 @@ function showGameOver() {
         <div class="next-hand-winner-name">${winner.name}</div>
       </div>
     `;
-    document.querySelector('.next-hand-sub').textContent = 'が優勝！';
+    const sub = document.getElementById('next-hand-sub') || document.querySelector('.next-hand-sub');
+    if (sub) sub.textContent = 'が優勝！';
   } else {
     winnersEl.innerHTML = '<div class="next-hand-winner-name">ゲーム終了</div>';
-    document.querySelector('.next-hand-sub').textContent = '';
+    const sub = document.getElementById('next-hand-sub') || document.querySelector('.next-hand-sub');
+    if (sub) sub.textContent = '';
   }
+  const roundEl = document.getElementById('next-hand-round');
+  if (roundEl) roundEl.textContent = '';
+  const dealHelpEl = document.getElementById('next-hand-deal-help');
+  if (dealHelpEl) dealHelpEl.textContent = '';
   document.getElementById('next-hand-gain').textContent = '';
   overlay.classList.add('visible');
   // ボタンを「新しいゲーム」に変更
@@ -4453,6 +4644,7 @@ function showGameOver() {
 
 function advanceToNextHandAndBroadcast() {
   clearUndoSnapshot();
+  currentRoundNumber += 1;
   gameState = advanceDealer(gameState);
   saveChipsBeforeHand();
   gameState = startHand(gameState);
@@ -4827,7 +5019,10 @@ document.addEventListener('DOMContentLoaded', () => {
     bindOnce(chipsInput, 'change', updateInitialChipsBB);
     bindOnce(chipsInput, 'blur', updateInitialChipsBB);
   }
-  bindOnce(window, 'resize', () => updateActionPanelCompact());
+  bindOnce(window, 'resize', () => {
+    const area = document.getElementById('raise-area');
+    if (area?.classList.contains('visible')) positionRaiseArea();
+  });
     updateInitialChipsBB();
 
     const hostBtn = document.getElementById('room-host-btn');
@@ -4908,8 +5103,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const endgameShareXBtn = document.getElementById('endgame-share-x');
     const endgameShareLineBtn = document.getElementById('endgame-share-line');
     const endgameShareImageBtn = document.getElementById('endgame-share-image');
+    const endgameEditShareBtn = document.getElementById('endgame-edit-share');
     const endgameReplayBtn = document.getElementById('endgame-replay-btn');
     const endgameCloseBtn = document.getElementById('endgame-close-btn');
+    const raiseApplyBtn = document.getElementById('raise-apply-btn');
+    const roundGuideOkBtn = document.getElementById('round-guide-ok-btn');
+    const shareTemplateSaveBtn = document.getElementById('share-template-save-btn');
+    const shareTemplateCancelBtn = document.getElementById('share-template-cancel-btn');
+    const shareTemplateResetBtn = document.getElementById('share-template-reset-btn');
+    const shareTemplateInput = document.getElementById('share-template-input');
+    const roomHistoryBtn = document.getElementById('room-history-btn');
+    const homeHistoryCloseBtn = document.getElementById('home-history-close-btn');
     const startNewOfflineSetup = async () => {
       const fallbackName = nameInput ? nameInput.value.trim() : '';
       await resetOnlineStateForOffline(fallbackName);
@@ -4987,6 +5191,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resumeOfflineBtn) {
       resumeOfflineBtn.addEventListener('click', async () => {
         await openOfflineResumeChoice();
+      });
+    }
+    if (roomHistoryBtn) {
+      roomHistoryBtn.addEventListener('click', () => {
+        showHomeHistoryOverlay();
+      });
+    }
+    if (homeHistoryCloseBtn) {
+      homeHistoryCloseBtn.addEventListener('click', () => {
+        hideHomeHistoryOverlay();
       });
     }
     if (leaveBtn) {
@@ -5146,6 +5360,11 @@ document.addEventListener('DOMContentLoaded', () => {
         await saveEndgameRankingImage();
       });
     }
+    if (endgameEditShareBtn) {
+      endgameEditShareBtn.addEventListener('click', () => {
+        showShareTemplateOverlay();
+      });
+    }
     if (endgameReplayBtn) {
       endgameReplayBtn.addEventListener('click', () => {
         hideEndgameOverlay();
@@ -5154,6 +5373,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (endgameCloseBtn) {
       endgameCloseBtn.addEventListener('click', () => {
         exitGameToTitle();
+      });
+    }
+    if (raiseApplyBtn) {
+      raiseApplyBtn.addEventListener('click', () => {
+        applyRaiseAction();
+      });
+    }
+    if (roundGuideOkBtn) {
+      roundGuideOkBtn.addEventListener('click', () => {
+        hideRoundGuideOverlay();
+      });
+    }
+    if (shareTemplateCancelBtn) {
+      shareTemplateCancelBtn.addEventListener('click', () => {
+        hideShareTemplateOverlay();
+      });
+    }
+    if (shareTemplateResetBtn) {
+      shareTemplateResetBtn.addEventListener('click', () => {
+        if (shareTemplateInput) shareTemplateInput.value = getDefaultShareTemplate();
+      });
+    }
+    if (shareTemplateSaveBtn) {
+      shareTemplateSaveBtn.addEventListener('click', () => {
+        if (!shareTemplateInput) return;
+        const value = (shareTemplateInput.value || '').trim() || getDefaultShareTemplate();
+        saveShareTemplate(value);
+        hideShareTemplateOverlay();
+        showToast('共有文を保存しました');
       });
     }
 
@@ -5275,11 +5523,16 @@ function resetToSetup() {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
+  hideRoundGuideOverlay();
   hideEndgameOverlay();
+  hideShareTemplateOverlay();
+  hideHomeHistoryOverlay();
+  persistCurrentGameArchive();
   stopActionTimer();
   stopTournamentTimer();
   clearUndoSnapshot();
   gameState = null;
+  currentRoundNumber = 1;
   clearOfflineSnapshot();
   if (onlineState.role !== 'local') {
     leaveRoom();

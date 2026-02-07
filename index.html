@@ -99,6 +99,9 @@
       </div>
     </div>
   </div>
+  <div class="setup-section">
+    <button class="room-btn" id="room-history-btn" style="width:100%;" disabled>🕘 過去の履歴（Coming Soon）</button>
+  </div>
   <div class="share-actions" aria-label="SNSで共有">
     <button class="share-btn" id="share-native-btn" type="button">共有</button>
     <a class="share-btn" id="share-x-btn" target="_blank" rel="noopener" aria-label="Xで共有">
@@ -428,12 +431,12 @@
     <div class="action-btns" id="action-btns"></div>
     <div class="raise-area" id="raise-area">
       <div class="raise-presets" id="raise-presets"></div>
-      <div class="raise-min" id="raise-min-label"></div>
       <div class="raise-error" id="raise-error" style="display:none;"></div>
       <div class="raise-slider-row">
-        <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
         <div class="raise-amount" id="raise-amount-display">0</div>
+        <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
       </div>
+      <button class="raise-apply-btn" id="raise-apply-btn" type="button">この額でRAISE</button>
     </div>
   </div>
 </div>
@@ -461,7 +464,9 @@
 <div class="next-hand-overlay" id="next-hand-overlay">
   <div class="next-hand-card">
     <div class="next-hand-winners" id="next-hand-winners"></div>
-    <div class="next-hand-sub">の勝ち！</div>
+    <div class="next-hand-sub" id="next-hand-sub">の勝ち！</div>
+    <div class="next-hand-round" id="next-hand-round"></div>
+    <div class="next-hand-deal-help" id="next-hand-deal-help"></div>
     <div class="next-hand-gain" id="next-hand-gain"></div>
     <div class="next-hand-chip-status" id="next-hand-chip-status"></div>
     <!-- チップゼロプレイヤー用の選択UI -->
@@ -475,6 +480,17 @@
       <button class="between-hand-btn" onclick="showPlayerManageFromNextHand()">プレイヤー管理</button>
     </div>
     <button class="next-hand-btn" id="next-hand-btn" onclick="nextHand()">次のハンド</button>
+  </div>
+</div>
+
+<!-- ─── ROUND GUIDE OVERLAY ───────────────────── -->
+<div class="confirm-dialog-overlay" id="round-guide-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title" id="round-guide-title">Round開始</div>
+    <div class="confirm-dialog-message compact" id="round-guide-message">SBからカードを配ってください。<br>準備できたら次のアクションへ進みます。</div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn primary" id="round-guide-ok-btn">OK</button>
+    </div>
   </div>
 </div>
 
@@ -638,10 +654,36 @@
     </div>
     <div class="confirm-dialog-buttons" style="margin-bottom:10px;">
       <button class="confirm-dialog-btn" id="endgame-share-image">画像で共有</button>
+      <button class="confirm-dialog-btn" id="endgame-edit-share">文面を編集</button>
     </div>
     <div class="confirm-dialog-buttons">
       <button class="confirm-dialog-btn cancel" id="endgame-replay-btn">やっぱり続ける</button>
       <button class="confirm-dialog-btn danger" id="endgame-close-btn">ホームに戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SHARE TEMPLATE OVERLAY ────────────────── -->
+<div class="confirm-dialog-overlay" id="share-template-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">共有文を編集</div>
+    <div class="confirm-dialog-message compact">`{hands}` `{pot}` `{winner}` `{round}` `{url}` が使えます</div>
+    <textarea id="share-template-input" class="share-template-input" rows="6"></textarea>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="share-template-reset-btn">初期化</button>
+      <button class="confirm-dialog-btn cancel" id="share-template-cancel-btn">閉じる</button>
+      <button class="confirm-dialog-btn primary" id="share-template-save-btn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── HOME HISTORY OVERLAY ───────────────────── -->
+<div class="confirm-dialog-overlay" id="home-history-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">過去のゲーム履歴</div>
+    <div class="home-history-list" id="home-history-list"></div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="home-history-close-btn">閉じる</button>
     </div>
   </div>
 </div>

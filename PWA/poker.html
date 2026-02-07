@@ -707,10 +707,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   flex: 1;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 24px 16px;
+  padding: 20px 16px 34px;
   background: radial-gradient(ellipse 80% 70% at 50% 50%, var(--felt) 0%, var(--felt-edge) 100%);
   position: relative;
-  min-height: 340px;
+  min-height: 390px;
   --community-offset: -40px;
   --pot-offset: 38px;
 }
@@ -913,9 +913,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .action-panel {
   background: var(--felt-edge);
   border-top: 1px solid rgba(255,255,255,0.06);
-  padding: 16px 20px 24px;
-  height: 140px;
+  padding: 12px 20px calc(28px + env(safe-area-inset-bottom));
+  height: 154px;
   transition: opacity 0.3s;
+  position: relative;
 }
 .action-panel.hidden { opacity: 0; pointer-events: none; }
 .action-panel.locked { opacity: 0.6; }
@@ -1043,49 +1044,63 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .raise-area {
   display: none;
   flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 0 4px;
-  margin-top: 4px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  margin-top: 0;
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 8px);
+  width: 84px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(16,26,21,0.96);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+  z-index: 25;
 }
 .raise-area.visible { display: flex; }
 .raise-presets {
-  display: flex; gap: 8px;
+  display: flex;
+  gap: 6px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 2px;
   scrollbar-width: none;
+  width: 100%;
 }
 .raise-presets::-webkit-scrollbar { display: none; }
 .raise-preset-btn {
   border: 1px solid rgba(212,175,55,0.35);
   background: rgba(212,175,55,0.08);
   color: var(--gold);
-  padding: 8px 12px;
+  padding: 5px 8px;
   border-radius: 999px;
-  font-size: 13px; font-weight: 600;
+  font-size: 10px;
+  font-weight: 600;
   font-family: 'Source Code Pro', monospace;
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 0.12s, background 0.2s, border-color 0.2s;
 }
-.raise-preset-btn:hover { background: rgba(212,175,55,0.18); border-color: var(--gold); }
-.raise-preset-btn:active { transform: scale(0.96); }
 .raise-preset-btn.active {
   background: rgba(212,175,55,0.22);
   border-color: var(--gold);
   color: #f6e3a8;
 }
 .raise-slider-row {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
 .raise-area input[type=range] {
-  flex: 1;
+  flex: none;
   -webkit-appearance: none;
-  height: 4px;
+  width: 8px;
+  height: 150px;
   border-radius: 2px;
-  background: linear-gradient(to right, rgba(255,255,255,0.1), var(--gold-dim));
+  background: linear-gradient(to top, rgba(255,255,255,0.1), var(--gold-dim));
   outline: none;
+  appearance: slider-vertical;
+  -webkit-appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  touch-action: none;
 }
 .raise-area input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -1100,7 +1115,20 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .raise-amount {
   font-size: 14px; font-weight: 600;
   color: var(--gold);
-  min-width: 52px; text-align: right;
+  min-width: 52px; text-align: center;
+}
+.raise-apply-btn {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(212,175,55,0.45);
+  background: rgba(212,175,55,0.2);
+  color: var(--gold);
+  padding: 8px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.raise-apply-btn:hover {
+  background: rgba(212,175,55,0.28);
 }
 
 /* ─── Showdown / Winner Screen ───────────────── */
@@ -1385,6 +1413,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .endgame-share-line:hover { background: rgba(6,180,75,0.35); }
 .endgame-summary {
   margin-bottom: 28px;
+  white-space: pre-line;
 }
 .endgame-ranking {
   max-height: 180px;
@@ -1427,6 +1456,42 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .endgame-ranking-chips {
   color: var(--text-secondary);
   font-family: 'Source Code Pro', monospace;
+}
+.share-template-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  padding: 10px;
+  margin-bottom: 12px;
+  resize: vertical;
+  min-height: 120px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px;
+}
+.home-history-list {
+  max-height: 280px;
+  overflow: auto;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+}
+.home-history-item {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  text-align: left;
+}
+.home-history-item:last-child { border-bottom: none; }
+.home-history-title {
+  font-size: 12px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.home-history-meta {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* ─── Seat Select Modal ──────────────────────── */
@@ -1505,7 +1570,22 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--gold);
   margin-bottom: 6px;
 }
-.next-hand-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 22px; }
+.next-hand-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.next-hand-round {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.next-hand-deal-help {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+.next-hand-round,
+.next-hand-deal-help {
+  display: none;
+}
 .next-hand-gain {
   font-size: 12px;
   color: var(--gold);
@@ -1662,6 +1742,9 @@ summary.setup-label::-webkit-details-marker { display: none; }
       </div>
       <div class="room-row">
         <button class="room-btn primary" id="resume-offline-btn" style="display:none; width:100%;">途中から再開</button>
+      </div>
+      <div class="room-row">
+        <button class="room-btn" id="room-history-btn" style="display:none; width:100%;" disabled>過去の履歴（Coming Soon）</button>
       </div>
       <div class="room-row">
         <button class="room-btn" id="room-join-btn">参加</button>
@@ -1914,9 +1997,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="raise-area" id="raise-area">
       <div class="raise-presets" id="raise-presets"></div>
       <div class="raise-slider-row">
-        <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
         <div class="raise-amount" id="raise-amount-display">0</div>
+        <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
       </div>
+      <button class="raise-apply-btn" id="raise-apply-btn" type="button">この額でRAISE</button>
     </div>
   </div>
 </div>
@@ -2008,9 +2092,22 @@ summary.setup-label::-webkit-details-marker { display: none; }
 <div class="next-hand-overlay" id="next-hand-overlay">
   <div class="next-hand-card">
     <div class="next-hand-title" id="next-hand-winner-name">—</div>
-    <div class="next-hand-sub">の勝ち！</div>
+    <div class="next-hand-sub" id="next-hand-sub">の勝ち！</div>
+    <div class="next-hand-round" id="next-hand-round"></div>
+    <div class="next-hand-deal-help" id="next-hand-deal-help"></div>
     <div class="next-hand-gain" id="next-hand-gain"></div>
     <button class="next-hand-btn" onclick="nextHand()">次のハンド</button>
+  </div>
+</div>
+
+<!-- ─── ROUND GUIDE OVERLAY ───────────────────── -->
+<div class="reconnect-overlay" id="round-guide-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title" id="round-guide-title">Round開始</div>
+    <div class="reconnect-message" id="round-guide-message">SBからカードを配ってください。<br>準備できたら次のアクションへ進みます。</div>
+    <div class="reconnect-actions">
+      <button class="reconnect-modal-btn primary" id="round-guide-ok-btn">OK</button>
+    </div>
   </div>
 </div>
 
@@ -2061,10 +2158,36 @@ summary.setup-label::-webkit-details-marker { display: none; }
     </div>
     <div class="reconnect-actions" style="margin-top:10px;">
       <button class="reconnect-modal-btn" id="endgame-share-image">画像で共有</button>
+      <button class="reconnect-modal-btn" id="endgame-edit-share">文面を編集</button>
     </div>
     <div class="reconnect-actions" style="margin-top:10px;">
       <button class="reconnect-modal-btn" id="endgame-replay-btn">やっぱり続ける</button>
       <button class="reconnect-modal-btn danger" id="endgame-close-btn">ホームに戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SHARE TEMPLATE OVERLAY ────────────────── -->
+<div class="reconnect-overlay" id="share-template-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title">共有文を編集</div>
+    <div class="reconnect-message">`{hands}` `{pot}` `{winner}` `{round}` `{url}` が使えます</div>
+    <textarea id="share-template-input" class="share-template-input" rows="6"></textarea>
+    <div class="reconnect-actions">
+      <button class="reconnect-modal-btn" id="share-template-reset-btn">初期化</button>
+      <button class="reconnect-modal-btn" id="share-template-cancel-btn">閉じる</button>
+      <button class="reconnect-modal-btn primary" id="share-template-save-btn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── HOME HISTORY OVERLAY ──────────────────── -->
+<div class="reconnect-overlay" id="home-history-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title">過去のゲーム履歴</div>
+    <div class="home-history-list" id="home-history-list"></div>
+    <div class="reconnect-actions" style="margin-top:10px;">
+      <button class="reconnect-modal-btn" id="home-history-close-btn">閉じる</button>
     </div>
   </div>
 </div>
@@ -2545,6 +2668,10 @@ const SOUND_STORAGE_KEY = 'pokerSoundEnabled';
 const OFFLINE_RESUME_KEY = 'pokerOfflineResume';
 const OFFLINE_RESUME_VERSION = 1;
 const OFFLINE_RESUME_TTL_MS = 24 * 60 * 60 * 1000;
+const SHARE_TEMPLATE_KEY = 'pocketpotShareTemplate';
+const GAME_ARCHIVES_KEY = 'pocketpotGameArchives';
+const GAME_ARCHIVES_LIMIT = 50;
+let currentRoundNumber = 1;
 
 // Online sync (Supabase Realtime)
 const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
@@ -2662,7 +2789,8 @@ function buildOfflineSnapshot() {
       chipsBeforeHand,
       handHistory,
       lastPhase,
-      timerSettings
+      timerSettings,
+      currentRoundNumber
     }
   };
 }
@@ -2711,6 +2839,7 @@ function applyOfflineSnapshot(snapshot) {
   chipsBeforeHand = data.chipsBeforeHand || {};
   handHistory = Array.isArray(data.handHistory) ? data.handHistory : [];
   lastPhase = data.lastPhase || null;
+  currentRoundNumber = Number.isFinite(data.currentRoundNumber) ? data.currentRoundNumber : 1;
   timerSettings = data.timerSettings || timerSettings;
   actionLock = false;
   confirmLock = false;
@@ -2753,9 +2882,113 @@ function maybeShowOfflineResumePrompt() {
 
 function updateRoomEntryCtas() {
   const resumeBtn = document.getElementById('resume-offline-btn');
-  if (!resumeBtn) return;
-  const show = uiState === 'room' && hasOfflineSnapshot();
-  resumeBtn.style.display = show ? 'inline-flex' : 'none';
+  const historyBtn = document.getElementById('room-history-btn');
+  const isRoom = uiState === 'room';
+  if (resumeBtn) {
+    const showResume = isRoom && hasOfflineSnapshot();
+    resumeBtn.style.display = showResume ? 'inline-flex' : 'none';
+  }
+  if (historyBtn) {
+    const showHistory = isRoom;
+    historyBtn.style.display = showHistory ? 'inline-flex' : 'none';
+  }
+}
+
+function getDefaultShareTemplate() {
+  return [
+    'ホームポーカーで遊んだ結果',
+    'Round {round} / {hands}ハンド / 最終ポット {pot}',
+    '勝者: {winner}',
+    '#ポケットポット #PocketPot',
+    '{url}'
+  ].join('\n');
+}
+
+function loadShareTemplate() {
+  try {
+    const raw = localStorage.getItem(SHARE_TEMPLATE_KEY);
+    if (!raw || !raw.trim()) return getDefaultShareTemplate();
+    return raw;
+  } catch (e) {
+    return getDefaultShareTemplate();
+  }
+}
+
+function saveShareTemplate(template) {
+  try {
+    localStorage.setItem(SHARE_TEMPLATE_KEY, template);
+  } catch (e) {}
+}
+
+function showShareTemplateOverlay() {
+  const overlay = document.getElementById('share-template-overlay');
+  const input = document.getElementById('share-template-input');
+  if (!overlay || !input) return;
+  input.value = loadShareTemplate();
+  overlay.classList.add('visible');
+}
+
+function hideShareTemplateOverlay() {
+  const overlay = document.getElementById('share-template-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function loadGameArchives() {
+  try {
+    const raw = localStorage.getItem(GAME_ARCHIVES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveGameArchives(items) {
+  try {
+    localStorage.setItem(GAME_ARCHIVES_KEY, JSON.stringify(items.slice(0, GAME_ARCHIVES_LIMIT)));
+  } catch (e) {}
+}
+
+function persistCurrentGameArchive() {
+  if (!gameState || !Array.isArray(gameState.players) || gameState.players.length === 0) return;
+  if (!Array.isArray(handHistory) || handHistory.length === 0) return;
+  const ranking = [...gameState.players]
+    .sort((a, b) => (b.chips - a.chips) || (a.name || '').localeCompare(b.name || '', 'ja'))
+    .map((p, idx) => ({ rank: idx + 1, name: p.name || '—', chips: p.chips || 0 }));
+  const totalPot = handHistory.reduce((sum, h) => sum + (h.pot || 0), 0);
+  const archive = {
+    id: `game_${Date.now()}`,
+    at: Date.now(),
+    round: currentRoundNumber,
+    hands: handHistory.length,
+    totalPot,
+    ranking
+  };
+  saveGameArchives([archive, ...loadGameArchives()]);
+}
+
+function showHomeHistoryOverlay() {
+  const overlay = document.getElementById('home-history-overlay');
+  const listEl = document.getElementById('home-history-list');
+  if (!overlay || !listEl) return;
+  const archives = loadGameArchives();
+  if (archives.length === 0) {
+    listEl.innerHTML = '<div class="home-history-item"><div class="home-history-meta">履歴はまだありません</div></div>';
+  } else {
+    listEl.innerHTML = archives.map((a) => {
+      const d = new Date(a.at || Date.now());
+      const dateText = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const top = Array.isArray(a.ranking) && a.ranking.length > 0 ? a.ranking[0].name : '—';
+      return `<div class="home-history-item"><div class="home-history-title">${dateText} / Round ${a.round || 1}</div><div class="home-history-meta">ハンド数: ${a.hands || 0} / 合計Pot: ${(a.totalPot || 0).toLocaleString()} / 1位: ${top}</div></div>`;
+    }).join('');
+  }
+  overlay.classList.add('visible');
+}
+
+function hideHomeHistoryOverlay() {
+  const overlay = document.getElementById('home-history-overlay');
+  if (overlay) overlay.classList.remove('visible');
 }
 
 function setUiState(state) {
@@ -2776,7 +3009,12 @@ function setUiState(state) {
     document.getElementById('showdown-overlay').classList.remove('visible');
     document.getElementById('next-hand-overlay').classList.remove('visible');
     document.getElementById('fold-confirm-overlay').classList.remove('visible');
+    hideRoundGuideOverlay();
+    hideShareTemplateOverlay();
     hideUndoConfirm();
+  }
+  if (state !== 'room') {
+    hideHomeHistoryOverlay();
   }
   if (state === 'waiting' || state === 'settings') {
     updateParticipantList();
@@ -3300,14 +3538,14 @@ function renderEndgameShareImageCanvas() {
 }
 
 function fallbackOpenShare(preferred, text) {
-  const url = 'https://pocket-pot.vercel.app/';
+  const encoded = encodeURIComponent(text);
   if (preferred === 'line') {
-    const href = `https://line.me/R/msg/text/?${encodeURIComponent(`${text} ${url}`)}`;
-    window.open(href, '_blank', 'noopener');
+    const href = `https://line.me/R/msg/text/?${encoded}`;
+    window.location.assign(href);
     return;
   }
-  const href = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-  window.open(href, '_blank', 'noopener');
+  const href = `https://x.com/intent/tweet?text=${encoded}`;
+  window.location.assign(href);
 }
 
 async function shareEndgameWithImage(preferred = 'x') {
@@ -3354,9 +3592,14 @@ async function saveEndgameRankingImage() {
 }
 
 function buildEndgameShareText(stats) {
-  const handText = stats.handCount > 0 ? `${stats.handCount}ハンド` : '友達ポーカー';
-  const potText = stats.lastPot > 0 ? ` / 最終ポット ${stats.lastPot.toLocaleString()}` : '';
-  return `友達ポーカーで遊んだ！${handText}${potText}。Pocket Pot 便利だった。`;
+  const winner = (stats.winnerText || '勝者: —').replace(/^勝者:\s*/, '').trim() || '—';
+  const template = loadShareTemplate();
+  return template
+    .replaceAll('{hands}', String(stats.handCount || 0))
+    .replaceAll('{pot}', (stats.lastPot || 0).toLocaleString())
+    .replaceAll('{winner}', winner)
+    .replaceAll('{round}', String(currentRoundNumber || 1))
+    .replaceAll('{url}', 'https://pocket-pot.vercel.app/');
 }
 
 function showEndgameOverlay() {
@@ -3365,7 +3608,7 @@ function showEndgameOverlay() {
   if (!overlay || !summaryEl) return;
   const stats = getEndgameStats();
   const potLine = stats.lastPot > 0 ? `最終ポット: ${stats.lastPot.toLocaleString()}` : '最終ポット: —';
-  summaryEl.textContent = `この結果、友達にシェアできます。ハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
+  summaryEl.textContent = `この結果は任意でシェアできます。\nハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
   renderEndgameRanking();
   overlay.classList.add('visible');
 }
@@ -3995,6 +4238,45 @@ function playTimeoutSound() {
   } catch (e) {}
 }
 
+function playActionFx(actionType, isAllIn = false) {
+  if (!timerSettings.soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    let freq = 620;
+    let duration = 0.1;
+    if (isAllIn) {
+      freq = 180;
+      duration = 0.13;
+      osc.type = 'square';
+    } else if (actionType === 'raise') {
+      freq = 780;
+      osc.type = 'triangle';
+    } else if (actionType === 'call') {
+      freq = 520;
+      osc.type = 'sine';
+    } else if (actionType === 'fold') {
+      freq = 320;
+      osc.type = 'sawtooth';
+    } else {
+      osc.type = 'triangle';
+      duration = 0.08;
+    }
+    osc.frequency.value = freq;
+    gain.gain.value = 0.12;
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) {}
+}
+
+function hasNewAllInState(prevState, nextState) {
+  if (!prevState || !nextState || !prevState.players || !nextState.players) return false;
+  return nextState.players.some((p, i) => p.status === 'allIn' && prevState.players[i]?.status !== 'allIn');
+}
+
 // ─── TOURNAMENT FUNCTIONS ────────────────────────
 function startTournamentTimer() {
   stopTournamentTimer();
@@ -4111,6 +4393,7 @@ function startGameWithNames(names, settings) {
   gameState.tournamentSettings = { ...tournamentSettings };
   gameState.lateJoinSettings = { enabled: lateJoinSettings.enabled, maxChips: lateJoinSettings.maxChips };
   handHistory = [];
+  currentRoundNumber = 1;
   saveChipsBeforeHand();
   gameState = startHand(gameState);
 
@@ -4226,7 +4509,11 @@ function renderPlayers() {
 }
 
 function renderPot() {
-  const total = (gameState.pots||[]).reduce((s, p) => s + p.amount, 0);
+  const total = (gameState.players || []).reduce((sum, p) => {
+    const totalBet = Number.isFinite(p.totalBet) ? p.totalBet : 0;
+    const currentBet = Number.isFinite(p.currentBet) ? p.currentBet : 0;
+    return sum + Math.max(0, totalBet - currentBet);
+  }, 0);
   const el = document.getElementById('pot-amount');
   const prev = parseInt(el.textContent) || 0;
   el.textContent = total.toLocaleString();
@@ -4363,6 +4650,9 @@ function renderActionPanel() {
 function makeActionBtn(cls, label, sub, onClick) {
   const btn = document.createElement('button');
   btn.className = 'action-btn ' + cls;
+  if (cls.includes('btn-raise')) {
+    btn.id = 'action-raise-btn';
+  }
   btn.innerHTML = `<span class="btn-label">${label}</span><span class="btn-sub">${sub}</span>`;
   btn.addEventListener('click', onClick, { passive: true });
   return btn;
@@ -4374,6 +4664,7 @@ function setupRaiseSlider(min, max) {
   raiseMin = min;
   raiseMax = max;
   const slider = document.getElementById('raise-slider');
+  if (!slider) return;
   slider.min = 0;
   slider.max = 100;
   slider.value = 0; // min position
@@ -4426,14 +4717,18 @@ function updateRaisePresets() {
     addPreset('5BB', gameState.bigBlind * 5);
   } else {
     const potFractions = [
-      ['1/3 POT', 1 / 3],
-      ['1/2 POT', 1 / 2],
-      ['2/3 POT', 2 / 3],
-      ['FULL POT', 1]
+      ['1/3P', 1 / 3],
+      ['1/2P', 1 / 2],
+      ['2/3P', 2 / 3],
+      ['POT', 1]
     ];
     potFractions.forEach(([label, frac]) => {
       const betSize = Math.max(1, Math.round(totalPot * frac));
       addPreset(label, actor.currentBet + callAmt + betSize);
+    });
+    [2, 3, 4].forEach(mult => {
+      const betSize = Math.max(1, Math.round(totalPot * mult));
+      addPreset(`x${mult}`, actor.currentBet + callAmt + betSize);
     });
   }
   addPreset('ALL IN', actor.currentBet + actor.chips);
@@ -4451,12 +4746,32 @@ function updateActivePreset() {
 function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
   if (area.classList.contains('visible')) {
-    // Second tap → execute raise
-    doAction('raise', raiseValue);
+    area.classList.remove('visible');
   } else {
-    area.classList.add('visible');
     updateRaisePresets();
+    area.classList.add('visible');
+    requestAnimationFrame(() => positionRaiseArea());
   }
+}
+
+function applyRaiseAction() {
+  doAction('raise', raiseValue);
+}
+
+function positionRaiseArea() {
+  const area = document.getElementById('raise-area');
+  const panel = document.getElementById('action-panel');
+  const raiseBtn = document.getElementById('action-raise-btn');
+  if (!area || !panel || !raiseBtn) return;
+  const panelRect = panel.getBoundingClientRect();
+  const btnRect = raiseBtn.getBoundingClientRect();
+  const width = area.offsetWidth || 84;
+  let left = btnRect.right - panelRect.left + 8;
+  const maxLeft = panel.clientWidth - width - 6;
+  if (left > maxLeft) left = btnRect.left - panelRect.left - width - 8;
+  if (left < 6) left = 6;
+  area.style.right = 'auto';
+  area.style.left = `${left}px`;
 }
 
 function showFoldConfirm() {
@@ -4485,9 +4800,11 @@ function recordHandResult(winners, totalPot) {
   );
   handHistory.push({
     hand: handHistory.length + 1,
+    round: currentRoundNumber,
     winners: winners.map(w => ({ name: w.name, icon: w.icon || '' })),
     losers: losers.map(l => ({ name: l.name, icon: l.icon || '', loss: chipsBeforeHand[l.id] - l.chips })),
-    pot: totalPot
+    pot: totalPot,
+    at: Date.now()
   });
 }
 
@@ -4526,9 +4843,11 @@ function doAction(type, amount = 0) {
   }
   if (!gameState) return;
   captureActionSnapshot();
+  const prevState = gameState;
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
+  playActionFx(type, hasNewAllInState(prevState, gameState));
 
   // Hide raise area after action
   document.getElementById('raise-area').classList.remove('visible');
@@ -4666,7 +4985,13 @@ function confirmWinner() {
 // ─── NEXT HAND ────────────────────────────────
 function showNextHand(winnerName, gainText = '') {
   document.getElementById('next-hand-winner-name').textContent = winnerName;
+  const roundEl = document.getElementById('next-hand-round');
+  if (roundEl) roundEl.textContent = '';
+  const dealHelpEl = document.getElementById('next-hand-deal-help');
+  if (dealHelpEl) dealHelpEl.textContent = '';
   document.getElementById('next-hand-gain').textContent = gainText;
+  const nextBtn = document.querySelector('#next-hand-overlay .next-hand-btn');
+  if (nextBtn) nextBtn.textContent = `Round ${currentRoundNumber + 1} を開始`;
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.add('visible');
@@ -4674,6 +4999,31 @@ function showNextHand(winnerName, gainText = '') {
   const flash = document.getElementById('win-flash');
   flash.classList.add('visible');
   setTimeout(() => flash.classList.remove('visible'), 600);
+}
+
+let roundGuideTimer = null;
+function showRoundGuideOverlay(roundNumber) {
+  const overlay = document.getElementById('round-guide-overlay');
+  const title = document.getElementById('round-guide-title');
+  const message = document.getElementById('round-guide-message');
+  if (!overlay || !title || !message) return;
+  title.textContent = `Round ${roundNumber} 開始`;
+  message.innerHTML = 'SBからカードを配ってください。<br>準備できたら次のアクションへ進みます。';
+  overlay.classList.add('visible');
+  if (roundGuideTimer) clearTimeout(roundGuideTimer);
+  roundGuideTimer = setTimeout(() => {
+    overlay.classList.remove('visible');
+    roundGuideTimer = null;
+  }, 1800);
+}
+
+function hideRoundGuideOverlay() {
+  const overlay = document.getElementById('round-guide-overlay');
+  if (overlay) overlay.classList.remove('visible');
+  if (roundGuideTimer) {
+    clearTimeout(roundGuideTimer);
+    roundGuideTimer = null;
+  }
 }
 
 function showHistory() {
@@ -4730,7 +5080,7 @@ function renderHistoryList(list) {
     ).join(' ');
     return `
       <div class="history-item">
-        <div class="history-header">No.${h.hand} (Pot: ${h.pot.toLocaleString()})</div>
+        <div class="history-header">No.${h.hand} / Round ${h.round || 1} (Pot: ${h.pot.toLocaleString()})</div>
         <div class="history-result">
           ${winnerText}
           ${loserText}
@@ -4760,6 +5110,7 @@ function nextHand() {
     gameState = removePendingExits(gameState);
     gameState = addLateJoiners(gameState);
   }
+  currentRoundNumber += 1;
   gameState = advanceDealer(gameState);
   saveChipsBeforeHand();
   gameState = startHand(gameState);
@@ -4768,6 +5119,7 @@ function nextHand() {
   if (onlineState.role === 'host') {
     broadcastState();
   }
+  showRoundGuideOverlay(currentRoundNumber);
 }
 
 function removePendingExits(state) {
@@ -4891,13 +5243,18 @@ function resetToSetup() {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
+  hideRoundGuideOverlay();
   hideEndgameOverlay();
+  hideShareTemplateOverlay();
+  hideHomeHistoryOverlay();
   hideUndoConfirm();
   document.getElementById('tournament-bar').style.display = 'none';
   stopTournamentTimer();
   stopActionTimer();
   clearUndoSnapshot();
+  persistCurrentGameArchive();
   gameState = null;
+  currentRoundNumber = 1;
   clearOfflineSnapshot();
   if (onlineState.role !== 'local') {
     leaveRoom({ clearReconnect: true });
@@ -4930,6 +5287,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const hostBtn = document.getElementById('room-host-btn');
   const joinBtn = document.getElementById('room-join-btn');
   const resumeOfflineBtn = document.getElementById('resume-offline-btn');
+  const roomHistoryBtn = document.getElementById('room-history-btn');
   const localBtn = document.getElementById('room-local-btn');
   const leaveBtn = document.getElementById('room-leave-btn');
   const waitingStartBtn = document.getElementById('waiting-start-btn');
@@ -4948,8 +5306,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const endgameShareXBtn = document.getElementById('endgame-share-x');
   const endgameShareLineBtn = document.getElementById('endgame-share-line');
   const endgameShareImageBtn = document.getElementById('endgame-share-image');
+  const endgameEditShareBtn = document.getElementById('endgame-edit-share');
   const endgameReplayBtn = document.getElementById('endgame-replay-btn');
   const endgameCloseBtn = document.getElementById('endgame-close-btn');
+  const raiseApplyBtn = document.getElementById('raise-apply-btn');
+  const roundGuideOkBtn = document.getElementById('round-guide-ok-btn');
+  const shareTemplateSaveBtn = document.getElementById('share-template-save-btn');
+  const shareTemplateCancelBtn = document.getElementById('share-template-cancel-btn');
+  const shareTemplateResetBtn = document.getElementById('share-template-reset-btn');
+  const shareTemplateInput = document.getElementById('share-template-input');
+  const homeHistoryCloseBtn = document.getElementById('home-history-close-btn');
   const menuJoinBtn = document.getElementById('menu-join-btn');
   const menuSoundBtn = document.getElementById('menu-sound-toggle');
   const menuHistoryBtn = document.getElementById('menu-history-btn');
@@ -5119,6 +5485,16 @@ document.addEventListener('DOMContentLoaded', () => {
       openOfflineResumeChoice();
     });
   }
+  if (roomHistoryBtn) {
+    bindOnce(roomHistoryBtn, 'click', () => {
+      showHomeHistoryOverlay();
+    });
+  }
+  if (homeHistoryCloseBtn) {
+    bindOnce(homeHistoryCloseBtn, 'click', () => {
+      hideHomeHistoryOverlay();
+    });
+  }
   if (leaveBtn) {
     bindOnce(leaveBtn, 'click', () => {
       leaveRoom({ clearReconnect: true });
@@ -5215,6 +5591,11 @@ document.addEventListener('DOMContentLoaded', () => {
       await saveEndgameRankingImage();
     });
   }
+  if (endgameEditShareBtn) {
+    bindOnce(endgameEditShareBtn, 'click', () => {
+      showShareTemplateOverlay();
+    });
+  }
   if (endgameReplayBtn) {
     bindOnce(endgameReplayBtn, 'click', () => {
       hideEndgameOverlay();
@@ -5225,6 +5606,39 @@ document.addEventListener('DOMContentLoaded', () => {
       exitGameToTitle();
     });
   }
+  if (shareTemplateCancelBtn) {
+    bindOnce(shareTemplateCancelBtn, 'click', () => {
+      hideShareTemplateOverlay();
+    });
+  }
+  if (shareTemplateResetBtn) {
+    bindOnce(shareTemplateResetBtn, 'click', () => {
+      if (shareTemplateInput) shareTemplateInput.value = getDefaultShareTemplate();
+    });
+  }
+  if (shareTemplateSaveBtn) {
+    bindOnce(shareTemplateSaveBtn, 'click', () => {
+      if (!shareTemplateInput) return;
+      const value = (shareTemplateInput.value || '').trim() || getDefaultShareTemplate();
+      saveShareTemplate(value);
+      hideShareTemplateOverlay();
+      showToast('共有文を保存しました');
+    });
+  }
+  if (raiseApplyBtn) {
+    bindOnce(raiseApplyBtn, 'click', () => {
+      applyRaiseAction();
+    });
+  }
+  if (roundGuideOkBtn) {
+    bindOnce(roundGuideOkBtn, 'click', () => {
+      hideRoundGuideOverlay();
+    });
+  }
+  bindOnce(window, 'resize', () => {
+    const area = document.getElementById('raise-area');
+    if (area?.classList.contains('visible')) positionRaiseArea();
+  });
   if (menuJoinBtn) {
     bindOnce(menuJoinBtn, 'click', () => {
       if (menu) menu.style.display = 'none';
