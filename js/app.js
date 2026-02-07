@@ -419,6 +419,7 @@ let lastActionPanelLogKey = null;
 // Offline mode: display rotation - which player index appears at bottom (front)
 let offlineDisplayFrontIdx = 0;
 let offlineLastActorId = null;
+let lastActionSnapshot = null;
 let debugBannerEl = null;
 
 const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
@@ -534,6 +535,7 @@ function applyOfflineSnapshot(snapshot) {
   localPendingActionKey = null;
   pendingAllInAction = null;
   foldConfirmShown = false;
+  clearUndoSnapshot();
   appMode = 'offline';
   onlineState.role = 'local';
   onlineState.connected = false;
@@ -768,6 +770,7 @@ function setUiState(state) {
     document.getElementById('showdown-overlay').classList.remove('visible');
     document.getElementById('next-hand-overlay').classList.remove('visible');
     document.getElementById('fold-confirm-overlay').classList.remove('visible');
+    hideUndoConfirm();
   }
   if (state === 'waiting' || state === 'settings') {
     updateParticipantList();
@@ -777,6 +780,7 @@ function setUiState(state) {
   }
   updateHeaderMenuVisibility();
   updateSaveExitVisibility();
+  updateUndoVisibility();
   updateRoomEntryCtas();
   updatePlayerBadge();
   updateDebugBanner();
@@ -791,6 +795,7 @@ function updateHeaderMenuVisibility() {
   const show = onlineState.role === 'local' || onlineState.role === 'host';
   menuBtn.style.display = show ? 'inline-flex' : 'none';
   updateSaveExitVisibility();
+  updateUndoVisibility();
 }
 
 function updateSaveExitVisibility() {
@@ -798,6 +803,94 @@ function updateSaveExitVisibility() {
   if (!btn) return;
   const show = appMode === 'offline' && onlineState.role === 'local' && uiState === 'playing';
   btn.style.display = show ? 'inline-flex' : 'none';
+}
+
+function cloneStateDeep(value) {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch (e) {}
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
+function canUseUndo() {
+  return appMode === 'offline' && onlineState.role === 'local' && uiState === 'playing' && !!gameState;
+}
+
+function updateUndoVisibility() {
+  const btn = document.getElementById('menu-undo-action-btn');
+  if (!btn) return;
+  btn.style.display = (canUseUndo() && !!lastActionSnapshot) ? 'inline-flex' : 'none';
+}
+
+function clearUndoSnapshot() {
+  lastActionSnapshot = null;
+  updateUndoVisibility();
+}
+
+function captureActionSnapshot() {
+  if (!canUseUndo()) return;
+  try {
+    lastActionSnapshot = {
+      gameState: cloneStateDeep(gameState),
+      chipsBeforeHand: cloneStateDeep(chipsBeforeHand),
+      handHistory: cloneStateDeep(handHistory),
+      offlineDisplayFrontIdx,
+      offlineLastActorId,
+      lastActionId,
+      lastTurnKey,
+      localPendingActionKey,
+      pendingAllInAction,
+      lastPhase
+    };
+    updateUndoVisibility();
+  } catch (e) {
+    lastActionSnapshot = null;
+    updateUndoVisibility();
+  }
+}
+
+function showUndoConfirm() {
+  const overlay = document.getElementById('undo-action-overlay');
+  if (!overlay) return;
+  overlay.classList.add('visible');
+}
+
+function hideUndoConfirm() {
+  const overlay = document.getElementById('undo-action-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('visible');
+}
+
+function undoLastAction() {
+  if (!canUseUndo() || !lastActionSnapshot) return;
+  const snap = lastActionSnapshot;
+  gameState = cloneStateDeep(snap.gameState);
+  chipsBeforeHand = cloneStateDeep(snap.chipsBeforeHand || {});
+  handHistory = cloneStateDeep(snap.handHistory || []);
+  offlineDisplayFrontIdx = Number.isFinite(snap.offlineDisplayFrontIdx)
+    ? snap.offlineDisplayFrontIdx
+    : (gameState?.currentPlayerIndex || 0);
+  offlineLastActorId = snap.offlineLastActorId || null;
+  lastActionId = snap.lastActionId || null;
+  lastTurnKey = snap.lastTurnKey || null;
+  localPendingActionKey = snap.localPendingActionKey || null;
+  pendingAllInAction = snap.pendingAllInAction || null;
+  foldConfirmShown = false;
+  actionLock = false;
+  lastPhase = snap.lastPhase || lastPhase;
+  lastPhaseFx = null;
+  setRaiseAreaOpen(false);
+  clearUndoSnapshot();
+  hideUndoConfirm();
+  render();
+  if (gameState?.isHandActive) {
+    startActionTimer();
+  } else {
+    stopActionTimer();
+  }
+  saveOfflineSnapshot();
 }
 
 function getEndgameStats() {
@@ -973,7 +1066,7 @@ async function saveEndgameRankingImage() {
 function buildEndgameShareText(stats) {
   const handText = stats.handCount > 0 ? `${stats.handCount}ハンド` : '友達ポーカー';
   const potText = stats.lastPot > 0 ? ` / 最終ポット ${stats.lastPot.toLocaleString()}` : '';
-  return `友達ポーカーで遊んだ！${handText}${potText}。Pocket Pot 便利だった。`;
+  return `友達ポーカーで遊んだ！${handText}${potText}。Pocket Pot 便利だった。 #PocketPot`;
 }
 
 function showEndgameOverlay() {
@@ -995,6 +1088,7 @@ function hideEndgameOverlay() {
 function saveAndExitGame() {
   saveOfflineSnapshot();
   offlineResumeDismissed = true;
+  clearUndoSnapshot();
   gameState = null;
   setUiState('room');
   updateSaveExitVisibility();
@@ -1299,6 +1393,7 @@ async function leaveRoom() {
   lastActionId = null;
   lastTurnKey = null;
   pendingAllInAction = null;
+  clearUndoSnapshot();
   onlineState = {
     role: "local",
     roomCode: "",
@@ -1330,6 +1425,7 @@ async function resetOnlineStateForOffline(fallbackName = '') {
   lastActionId = null;
   lastTurnKey = null;
   pendingAllInAction = null;
+  clearUndoSnapshot();
   onlineState.role = 'local';
   if (!onlineState.displayName) {
     onlineState.displayName = fallbackName || onlineState.displayName || 'Player';
@@ -1904,6 +2000,7 @@ function startGameWithPlayers(players, settings) {
   lastActionId = null;
   lastTurnKey = null;
   pendingAllInAction = null;
+  clearUndoSnapshot();
   currentGameSettings = { ...settings };
   applySettings(settings);
   const perPlayerEnabled = getPerPlayerStackEnabled();
@@ -3029,6 +3126,7 @@ function executeAction(type, amount) {
     }
     sendActionRequest(type, amount);
   } else {
+    captureActionSnapshot();
     const prevState = gameState;
     const prevActorId = gameState?.players?.[gameState.currentPlayerIndex]?.id || null;
     const result = processAction(gameState, type, amount);
@@ -3094,6 +3192,7 @@ function doAction(type, amount = 0) {
     return;
   }
   if (!gameState) return;
+  captureActionSnapshot();
   const prevState = gameState;
   const prevActorId = gameState.players[gameState.currentPlayerIndex]?.id || null;
   const actorId = gameState.players[gameState.currentPlayerIndex]?.id;
@@ -3155,6 +3254,7 @@ function render() {
   safeCall('renderActionPanel', renderActionPanel);
   safeCall('handlePhaseTransition', handlePhaseTransition);
   updateSaveExitVisibility();
+  updateUndoVisibility();
   if (shouldSaveOfflineSnapshot()) {
     scheduleOfflineSnapshotSave();
   }
@@ -4257,6 +4357,7 @@ function saveChipsBeforeHand() {
 
 function recordHandResult(winners, totalPot) {
   if (!gameState || !gameState.players) return;
+  clearUndoSnapshot();
   const results = gameState.players.map(p => {
     const before = chipsBeforeHand[p.id] ?? p.chips;
     const delta = p.chips - before;
@@ -4351,6 +4452,7 @@ function showGameOver() {
 }
 
 function advanceToNextHandAndBroadcast() {
+  clearUndoSnapshot();
   gameState = advanceDealer(gameState);
   saveChipsBeforeHand();
   gameState = startHand(gameState);
@@ -4774,7 +4876,7 @@ document.addEventListener('DOMContentLoaded', () => {
       saveOfflineSnapshot();
     });
     const shareTitle = 'Pocket Pot｜ポーカーチップ管理アプリ（無料・オフライン対応）';
-    const shareText = 'ホームゲームに最適なオフライン対応のチップ管理アプリ';
+    const shareText = 'ホームゲームに最適なオフライン対応のチップ管理アプリ #PocketPot';
     const shareUrl = 'https://pocket-pot.vercel.app/';
     if (shareXBtn) {
       const xHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
@@ -4800,6 +4902,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const menu = document.getElementById('header-menu');
     const menuResetBtn = document.getElementById('menu-reset-btn');
     const menuSaveExitBtn = document.getElementById('menu-save-exit-btn');
+    const menuUndoActionBtn = document.getElementById('menu-undo-action-btn');
+    const undoActionCancelBtn = document.getElementById('undo-action-cancel-btn');
+    const undoActionConfirmBtn = document.getElementById('undo-action-confirm-btn');
     const endgameShareXBtn = document.getElementById('endgame-share-x');
     const endgameShareLineBtn = document.getElementById('endgame-share-line');
     const endgameShareImageBtn = document.getElementById('endgame-share-image');
@@ -5010,6 +5115,22 @@ document.addEventListener('DOMContentLoaded', () => {
         saveAndExitGame();
       });
     }
+    if (menuUndoActionBtn) {
+      menuUndoActionBtn.addEventListener('click', () => {
+        if (menu) menu.style.display = 'none';
+        showUndoConfirm();
+      });
+    }
+    if (undoActionCancelBtn) {
+      bindOnce(undoActionCancelBtn, 'click', () => {
+        hideUndoConfirm();
+      });
+    }
+    if (undoActionConfirmBtn) {
+      bindOnce(undoActionConfirmBtn, 'click', () => {
+        undoLastAction();
+      });
+    }
     if (endgameShareXBtn) {
       endgameShareXBtn.addEventListener('click', async () => {
         await shareEndgameWithImage('x');
@@ -5157,6 +5278,7 @@ function resetToSetup() {
   hideEndgameOverlay();
   stopActionTimer();
   stopTournamentTimer();
+  clearUndoSnapshot();
   gameState = null;
   clearOfflineSnapshot();
   if (onlineState.role !== 'local') {

@@ -1856,6 +1856,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
         <button class="header-menu-item" id="menu-join-status" style="display:none;" disabled>参加状態: 観戦</button>
         <button class="header-menu-item" id="menu-sound-toggle">音量: ON</button>
         <button class="header-menu-item" id="menu-history-btn">履歴を表示</button>
+        <button class="header-menu-item" id="menu-undo-action-btn" style="display:none;">前のアクションに戻る</button>
         <button class="header-menu-item" id="menu-save-exit-btn" style="display:none;">保存して終了</button>
         <button class="header-menu-item" id="menu-reset-btn">結果を見る/共有する</button>
       </div>
@@ -1987,6 +1988,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
     <div class="fold-confirm-actions">
       <button class="fold-confirm-btn" id="fold-confirm-cancel">キャンセル</button>
       <button class="fold-confirm-btn danger" id="fold-confirm-ok">フォールドする</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── UNDO ACTION CONFIRM ─────────────────── -->
+<div class="reconnect-overlay" id="undo-action-overlay">
+  <div class="reconnect-card">
+    <div class="reconnect-title">前のアクションに戻る</div>
+    <div class="reconnect-message">直前の操作を取り消して、1つ前の状態に戻します。</div>
+    <div class="reconnect-actions">
+      <button class="reconnect-modal-btn" id="undo-action-cancel-btn">キャンセル</button>
+      <button class="reconnect-modal-btn danger" id="undo-action-confirm-btn">戻る</button>
     </div>
   </div>
 </div>
@@ -2514,6 +2527,7 @@ let nextHandLock = false;
 let foldConfirmShown = false;
 let handHistory = [];
 let chipsBeforeHand = {};
+let lastActionSnapshot = null;
 
 // Timer state
 let timerSettings = { duration: 30, soundEnabled: true };
@@ -2702,6 +2716,7 @@ function applyOfflineSnapshot(snapshot) {
   confirmLock = false;
   nextHandLock = false;
   foldConfirmShown = false;
+  clearUndoSnapshot();
   onlineState.role = 'local';
   onlineState.connected = false;
   onlineState.roomCode = '';
@@ -2761,6 +2776,7 @@ function setUiState(state) {
     document.getElementById('showdown-overlay').classList.remove('visible');
     document.getElementById('next-hand-overlay').classList.remove('visible');
     document.getElementById('fold-confirm-overlay').classList.remove('visible');
+    hideUndoConfirm();
   }
   if (state === 'waiting' || state === 'settings') {
     updateParticipantList();
@@ -2775,6 +2791,7 @@ function setUiState(state) {
   updateJoinStatusMenuLabel();
   updateRoomEntryCtas();
   updatePlayerBadge();
+  updateUndoVisibility();
   updateAwayControls();
   if (state === 'playing' && onlineState.role !== 'local') {
     saveReconnectInfo({
@@ -3083,6 +3100,7 @@ function updateHeaderMenuVisibility() {
     (onlineState.role === 'player' && onlineState.joinMode === 'watch');
   menuBtn.style.display = show ? 'inline-flex' : 'none';
   updateSaveExitVisibility();
+  updateUndoVisibility();
 }
 
 function updateSaveExitVisibility() {
@@ -3090,6 +3108,79 @@ function updateSaveExitVisibility() {
   if (!btn) return;
   const show = onlineState.role === 'local' && uiState === 'playing';
   btn.style.display = show ? 'inline-flex' : 'none';
+}
+
+function cloneStateDeep(value) {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch (e) {}
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
+function canUseUndo() {
+  return onlineState.role === 'local' && uiState === 'playing' && !!gameState;
+}
+
+function updateUndoVisibility() {
+  const btn = document.getElementById('menu-undo-action-btn');
+  if (!btn) return;
+  btn.style.display = (canUseUndo() && !!lastActionSnapshot) ? 'inline-flex' : 'none';
+}
+
+function clearUndoSnapshot() {
+  lastActionSnapshot = null;
+  updateUndoVisibility();
+}
+
+function captureActionSnapshot() {
+  if (!canUseUndo()) return;
+  try {
+    lastActionSnapshot = {
+      gameState: cloneStateDeep(gameState),
+      chipsBeforeHand: cloneStateDeep(chipsBeforeHand),
+      handHistory: cloneStateDeep(handHistory),
+      lastPhase
+    };
+    updateUndoVisibility();
+  } catch (e) {
+    lastActionSnapshot = null;
+    updateUndoVisibility();
+  }
+}
+
+function showUndoConfirm() {
+  const overlay = document.getElementById('undo-action-overlay');
+  if (!overlay) return;
+  overlay.classList.add('visible');
+}
+
+function hideUndoConfirm() {
+  const overlay = document.getElementById('undo-action-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('visible');
+}
+
+function undoLastAction() {
+  if (!canUseUndo() || !lastActionSnapshot) return;
+  const snap = lastActionSnapshot;
+  gameState = cloneStateDeep(snap.gameState);
+  chipsBeforeHand = cloneStateDeep(snap.chipsBeforeHand || {});
+  handHistory = cloneStateDeep(snap.handHistory || []);
+  lastPhase = snap.lastPhase || lastPhase;
+  foldConfirmShown = false;
+  actionLock = false;
+  document.getElementById('raise-area')?.classList.remove('visible');
+  clearUndoSnapshot();
+  hideUndoConfirm();
+  render();
+  if (gameState?.isHandActive) {
+    startActionTimer();
+  } else {
+    stopActionTimer();
+  }
+  saveOfflineSnapshot();
 }
 
 function getEndgameStats() {
@@ -3287,6 +3378,7 @@ function hideEndgameOverlay() {
 function saveAndExitGame() {
   saveOfflineSnapshot();
   offlineResumeDismissed = true;
+  clearUndoSnapshot();
   gameState = null;
   setUiState('room');
   updateSaveExitVisibility();
@@ -3540,6 +3632,7 @@ async function leaveRoom(options = {}) {
   };
   joinChoiceConfirmed = false;
   onlineReady = false;
+  clearUndoSnapshot();
   setRoomControls(false);
   setRoomStatus('ローカルモード');
   setUiState('room');
@@ -4011,6 +4104,7 @@ function getOnlinePlayerNames() {
 }
 
 function startGameWithNames(names, settings) {
+  clearUndoSnapshot();
   applySettings(settings);
   gameState = initGame(names, settings.smallBlind, settings.bigBlind, settings.initialChips);
   gameState.timerSettings = { ...timerSettings };
@@ -4384,6 +4478,7 @@ function saveChipsBeforeHand() {
 }
 
 function recordHandResult(winners, totalPot) {
+  clearUndoSnapshot();
   if (!gameState || !gameState.players) return;
   const losers = gameState.players.filter(p =>
     !winners.some(w => w.name === p.name) && chipsBeforeHand[p.id] !== p.chips
@@ -4430,6 +4525,7 @@ function doAction(type, amount = 0) {
     return;
   }
   if (!gameState) return;
+  captureActionSnapshot();
   const result = processAction(gameState, type, amount);
   if (result.error) { console.warn(result.error); return; }
   gameState = result;
@@ -4457,6 +4553,7 @@ function render() {
   updateJoinStatusBanner();
   handlePhaseTransition();
   updateSaveExitVisibility();
+  updateUndoVisibility();
   if (shouldSaveOfflineSnapshot()) {
     scheduleOfflineSnapshotSave();
   }
@@ -4657,6 +4754,7 @@ function nextHand() {
   if (nextHandLock) return;
   nextHandLock = true;
   setTimeout(() => { nextHandLock = false; }, 200);
+  clearUndoSnapshot();
   document.getElementById('next-hand-overlay').classList.remove('visible');
   if (onlineState.role === 'host') {
     gameState = removePendingExits(gameState);
@@ -4794,9 +4892,11 @@ function resetToSetup() {
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
   hideEndgameOverlay();
+  hideUndoConfirm();
   document.getElementById('tournament-bar').style.display = 'none';
   stopTournamentTimer();
   stopActionTimer();
+  clearUndoSnapshot();
   gameState = null;
   clearOfflineSnapshot();
   if (onlineState.role !== 'local') {
@@ -4842,6 +4942,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const menu = document.getElementById('header-menu');
   const menuResetBtn = document.getElementById('menu-reset-btn');
   const menuSaveExitBtn = document.getElementById('menu-save-exit-btn');
+  const menuUndoActionBtn = document.getElementById('menu-undo-action-btn');
+  const undoActionCancelBtn = document.getElementById('undo-action-cancel-btn');
+  const undoActionConfirmBtn = document.getElementById('undo-action-confirm-btn');
   const endgameShareXBtn = document.getElementById('endgame-share-x');
   const endgameShareLineBtn = document.getElementById('endgame-share-line');
   const endgameShareImageBtn = document.getElementById('endgame-share-image');
@@ -5079,6 +5182,22 @@ document.addEventListener('DOMContentLoaded', () => {
     bindOnce(menuSaveExitBtn, 'click', () => {
       if (menu) menu.style.display = 'none';
       saveAndExitGame();
+    });
+  }
+  if (menuUndoActionBtn) {
+    bindOnce(menuUndoActionBtn, 'click', () => {
+      if (menu) menu.style.display = 'none';
+      showUndoConfirm();
+    });
+  }
+  if (undoActionCancelBtn) {
+    bindOnce(undoActionCancelBtn, 'click', () => {
+      hideUndoConfirm();
+    });
+  }
+  if (undoActionConfirmBtn) {
+    bindOnce(undoActionConfirmBtn, 'click', () => {
+      undoLastAction();
     });
   }
   if (endgameShareXBtn) {

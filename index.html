@@ -41,6 +41,7 @@
 <meta name="twitter:title" content="ポーカーチップ管理アプリ｜Pocket Pot（インストール不要）">
 <meta name="twitter:description" content="インストール不要で今すぐ使える。スマホがチップ代わりになる無料アプリ、オフラインでもOK。">
 <meta name="twitter:image" content="https://pocket-pot.vercel.app/img/ogp.png">
+<meta name="twitter:site" content="@poket_pot_poker">
 <meta name="theme-color" content="#1a3328">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -610,6 +611,7 @@
   <button class="header-menu-item" id="menu-chip-adjust-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">チップ調整</button>
   <button class="header-menu-item" id="menu-player-manage-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">プレイヤー追加/退席</button>
   <button class="header-menu-item" id="menu-history-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">履歴を表示</button>
+  <button class="header-menu-item" id="menu-undo-action-btn" style="padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#f0ece0; cursor:pointer; display:none;">前のアクションに戻る</button>
   <button class="header-menu-item" id="menu-save-exit-btn" style="padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#f0ece0; cursor:pointer; display:none;">保存して終了</button>
   <button class="header-menu-item" id="menu-reset-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">結果を見る/共有する</button>
 </div>
@@ -640,6 +642,18 @@
     <div class="confirm-dialog-buttons">
       <button class="confirm-dialog-btn cancel" id="endgame-replay-btn">やっぱり続ける</button>
       <button class="confirm-dialog-btn danger" id="endgame-close-btn">ホームに戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── UNDO ACTION OVERLAY ─────────────────── -->
+<div class="confirm-dialog-overlay" id="undo-action-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">前のアクションに戻る</div>
+    <div class="confirm-dialog-message">直前の操作を取り消して、1つ前の状態に戻します。</div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="undo-action-cancel-btn">キャンセル</button>
+      <button class="confirm-dialog-btn danger" id="undo-action-confirm-btn">戻る</button>
     </div>
   </div>
 </div>
