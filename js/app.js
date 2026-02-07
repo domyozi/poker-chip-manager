@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.40";
+const APP_VERSION = "v0.9.41";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -4400,7 +4400,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bindOnce(legalAcceptBtn, 'click', () => acceptLegalConsent());
     }
     showLegalConsentIfNeeded();
-    const shareTitle = 'Pocket Pot｜ポーカーのチップ管理アプリ（無料・オフライン対応）';
+    const shareTitle = 'Pocket Pot｜ポーカーチップ管理アプリ（無料・オフライン対応）';
     const shareText = 'ホームゲームに最適なオフライン対応のチップ管理アプリ';
     const shareUrl = 'https://pocket-pot.vercel.app/';
     if (shareXBtn) {

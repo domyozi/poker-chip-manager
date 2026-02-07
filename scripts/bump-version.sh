@@ -13,7 +13,7 @@ if [[ ! -f "$sw_file" ]]; then
   exit 0
 fi
 
-current=$(rg -n "APP_VERSION\\s*=\\s*\"v[0-9]+\\.[0-9]+\\.[0-9]+\"" "$file" -o | head -n1 | sed -E 's/.*\"(v[0-9]+\.[0-9]+\.[0-9]+)\"/\1/')
+current=$(grep -oE "APP_VERSION\s*=\s*\"v[0-9]+\.[0-9]+\.[0-9]+\"" "$file" | head -n1 | sed -E 's/.*"(v[0-9]+\.[0-9]+\.[0-9]+)"/\1/')
 if [[ -z "${current:-}" ]]; then
   echo "bump-version: APP_VERSION not found; skip." >&2
   exit 0
