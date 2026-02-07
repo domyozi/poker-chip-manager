@@ -1,0 +1,45 @@
+{
+  "nextIssueNumber": 1,
+  "labels": [
+    {
+      "name": "priority:P0",
+      "color": "B60205",
+      "description": "Critical"
+    },
+    {
+      "name": "priority:P1",
+      "color": "D93F0B",
+      "description": "High"
+    },
+    {
+      "name": "priority:P2",
+      "color": "FBCA04",
+      "description": "Medium"
+    },
+    {
+      "name": "priority:P3",
+      "color": "0E8A16",
+      "description": "Low"
+    },
+    {
+      "name": "source:x",
+      "color": "1D76DB",
+      "description": "From X feedback"
+    }
+  ],
+  "issues": [],
+  "projects": [
+    {
+      "id": "mock-project-1",
+      "name": "Pocket Pot Dev",
+      "columns": [
+        "Inbox",
+        "Triage",
+        "Ready",
+        "In Progress",
+        "Done"
+      ],
+      "items": []
+    }
+  ]
+}

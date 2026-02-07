@@ -1,0 +1,70 @@
+{
+  "x": {
+    "lastReleaseTweetId": "dry-1770459368366",
+    "lastReleaseTweetUrl": "dry-run://x/dry-1770459368366"
+  },
+  "github": {
+    "projectId": "mock-project-1"
+  },
+  "triage": {
+    "lastRunAt": "2026-02-07T10:16:01.519Z"
+  },
+  "runHistory": [
+    {
+      "at": "2026-02-07T10:15:15.120Z",
+      "mode": "triage",
+      "dryRun": true,
+      "summary": {
+        "fetched": 0,
+        "clusters": 0,
+        "candidates": 0,
+        "selected": 0,
+        "created": 0
+      }
+    },
+    {
+      "at": "2026-02-07T10:15:26.876Z",
+      "mode": "triage",
+      "dryRun": true,
+      "summary": {
+        "fetched": 0,
+        "clusters": 0,
+        "candidates": 0,
+        "selected": 0,
+        "created": 0
+      }
+    },
+    {
+      "at": "2026-02-07T10:15:26.890Z",
+      "mode": "release",
+      "dryRun": true,
+      "summary": {
+        "version": "v0.0.0",
+        "tweetId": "dry-1770459326890",
+        "url": "dry-run://x/dry-1770459326890"
+      }
+    },
+    {
+      "at": "2026-02-07T10:16:01.519Z",
+      "mode": "triage",
+      "dryRun": true,
+      "summary": {
+        "fetched": 0,
+        "clusters": 0,
+        "candidates": 0,
+        "selected": 0,
+        "created": 0
+      }
+    },
+    {
+      "at": "2026-02-07T10:16:08.366Z",
+      "mode": "release",
+      "dryRun": true,
+      "summary": {
+        "version": "v0.0.0",
+        "tweetId": "dry-1770459368366",
+        "url": "dry-run://x/dry-1770459368366"
+      }
+    }
+  ]
+}

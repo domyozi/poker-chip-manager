@@ -1,0 +1,22 @@
+{
+  "name": "pocket-pot-mcp-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mcp": "node --import tsx mcp/src/server.ts",
+    "triage": "node --import tsx mcp/src/pipeline/run-triage.ts",
+    "release": "node --import tsx mcp/src/release/run-release.ts",
+    "reports": "node --import tsx mcp/src/pipeline/generate-reports.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
