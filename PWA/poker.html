@@ -1045,20 +1045,26 @@ summary.setup-label::-webkit-details-marker { display: none; }
   display: none;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px 8px;
+  gap: 6px;
+  padding: 7px 6px;
   margin-top: 0;
   position: absolute;
   right: 8px;
-  bottom: calc(100% + 8px);
-  width: 84px;
-  border-radius: 12px;
+  bottom: calc(100% + 6px);
+  width: 56px;
+  border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.15);
   background: rgba(16,26,21,0.96);
   box-shadow: 0 8px 20px rgba(0,0,0,0.35);
   z-index: 25;
 }
 .raise-area.visible { display: flex; }
+.raise-presets-row {
+  display: none;
+  width: 100%;
+  margin-top: 6px;
+}
+.raise-presets-row.visible { display: block; }
 .raise-presets {
   display: flex;
   gap: 6px;
@@ -1066,6 +1072,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   width: 100%;
+  justify-content: center;
 }
 .raise-presets::-webkit-scrollbar { display: none; }
 .raise-preset-btn {
@@ -1086,13 +1093,13 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: #f6e3a8;
 }
 .raise-slider-row {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
 .raise-area input[type=range] {
   flex: none;
   -webkit-appearance: none;
-  width: 8px;
-  height: 150px;
+  width: 6px;
+  height: 100px;
   border-radius: 2px;
   background: linear-gradient(to top, rgba(255,255,255,0.1), var(--gold-dim));
   outline: none;
@@ -1104,7 +1111,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .raise-area input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 22px; height: 22px;
+  width: 15px; height: 15px;
   border-radius: 50%;
   background: var(--gold);
   box-shadow: 0 2px 8px var(--gold-glow);
@@ -1113,18 +1120,18 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .raise-area input[type=range]::-webkit-slider-thumb:active { transform: scale(1.15); }
 .raise-amount {
-  font-size: 14px; font-weight: 600;
+  font-size: 11px; font-weight: 600;
   color: var(--gold);
-  min-width: 52px; text-align: center;
+  min-width: 34px; text-align: center;
 }
 .raise-apply-btn {
   width: 100%;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid rgba(212,175,55,0.45);
   background: rgba(212,175,55,0.2);
   color: var(--gold);
-  padding: 8px 6px;
-  font-size: 11px;
+  padding: 6px 4px;
+  font-size: 10px;
   cursor: pointer;
 }
 .raise-apply-btn:hover {
@@ -1994,8 +2001,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
       <button class="aux-exit-btn" id="exit-next-hand-btn">次ハンドで退出</button>
     </div>
     <div class="action-btns" id="action-btns"></div>
-    <div class="raise-area" id="raise-area">
+    <div class="raise-presets-row" id="raise-presets-row">
       <div class="raise-presets" id="raise-presets"></div>
+    </div>
+    <div class="raise-area" id="raise-area">
       <div class="raise-slider-row">
         <div class="raise-amount" id="raise-amount-display">0</div>
         <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
@@ -4645,6 +4654,7 @@ function renderActionPanel() {
 
   // Hide raise area initially
   document.getElementById('raise-area').classList.remove('visible');
+  document.getElementById('raise-presets-row')?.classList.remove('visible');
 }
 
 function makeActionBtn(cls, label, sub, onClick) {
@@ -4745,11 +4755,14 @@ function updateActivePreset() {
 
 function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
+  const presetsRow = document.getElementById('raise-presets-row');
   if (area.classList.contains('visible')) {
     area.classList.remove('visible');
+    if (presetsRow) presetsRow.classList.remove('visible');
   } else {
     updateRaisePresets();
     area.classList.add('visible');
+    if (presetsRow) presetsRow.classList.add('visible');
     requestAnimationFrame(() => positionRaiseArea());
   }
 }
@@ -4765,11 +4778,11 @@ function positionRaiseArea() {
   if (!area || !panel || !raiseBtn) return;
   const panelRect = panel.getBoundingClientRect();
   const btnRect = raiseBtn.getBoundingClientRect();
-  const width = area.offsetWidth || 84;
-  let left = btnRect.right - panelRect.left + 8;
+  const width = area.offsetWidth || 56;
+  let left = (btnRect.left + btnRect.width / 2) - panelRect.left - width / 2;
   const maxLeft = panel.clientWidth - width - 6;
-  if (left > maxLeft) left = btnRect.left - panelRect.left - width - 8;
   if (left < 6) left = 6;
+  if (left > maxLeft) left = maxLeft;
   area.style.right = 'auto';
   area.style.left = `${left}px`;
 }
@@ -4851,6 +4864,7 @@ function doAction(type, amount = 0) {
 
   // Hide raise area after action
   document.getElementById('raise-area').classList.remove('visible');
+  document.getElementById('raise-presets-row')?.classList.remove('visible');
 
   render();
 

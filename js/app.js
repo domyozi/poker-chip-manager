@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.1.3";
+const APP_VERSION = "v0.1.4";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2260,6 +2260,11 @@ function buildPositionLabels(count, dealerIndex) {
   const labels = Array.from({ length: count }, () => '');
   if (count <= 0) return labels;
   const normDealer = ((dealerIndex % count) + count) % count;
+  if (count === 2) {
+    labels[normDealer] = 'SB';
+    labels[(normDealer + 1) % count] = 'BB';
+    return labels;
+  }
   labels[normDealer] = 'BTN';
   if (count === 1) return labels;
   const sbIdx = count === 2 ? normDealer : (normDealer + 1) % count;
@@ -3183,8 +3188,10 @@ function updateRaiseError() {
 function setRaiseAreaOpen(isOpen) {
   const area = document.getElementById('raise-area');
   const panel = document.getElementById('action-panel');
+  const presetsRow = document.getElementById('raise-presets-row');
   if (!area || !panel) return;
   area.classList.toggle('visible', isOpen);
+  if (presetsRow) presetsRow.classList.toggle('visible', isOpen);
   panel.classList.toggle('raise-open', isOpen);
   if (isOpen) {
     requestAnimationFrame(() => positionRaiseArea());
@@ -3224,11 +3231,11 @@ function positionRaiseArea() {
   if (!area || !panel || !raiseBtn) return;
   const panelRect = panel.getBoundingClientRect();
   const btnRect = raiseBtn.getBoundingClientRect();
-  const width = area.offsetWidth || 84;
-  let left = btnRect.right - panelRect.left + 8;
+  const width = area.offsetWidth || 56;
+  let left = (btnRect.left + btnRect.width / 2) - panelRect.left - width / 2;
   const maxLeft = panel.clientWidth - width - 6;
-  if (left > maxLeft) left = btnRect.left - panelRect.left - width - 8;
   if (left < 6) left = 6;
+  if (left > maxLeft) left = maxLeft;
   area.style.right = 'auto';
   area.style.left = `${left}px`;
 }
