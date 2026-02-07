@@ -14,7 +14,12 @@ export interface ToolContext {
 
 export function createToolContext(config: AppConfig): ToolContext {
   const xClient: XClient = config.x.adapter === 'api' && config.x.bearerToken
-    ? new XApiClient(config.x.bearerToken, config.x.userId)
+    ? new XApiClient(config.x.bearerToken, config.x.userId, {
+      apiKey: config.x.apiKey,
+      apiKeySecret: config.x.apiKeySecret,
+      accessToken: config.x.accessToken,
+      accessTokenSecret: config.x.accessTokenSecret
+    })
     : new MockXClient();
 
   const githubClient: GitHubClient = (

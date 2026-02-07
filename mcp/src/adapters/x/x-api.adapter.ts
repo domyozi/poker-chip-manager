@@ -1,8 +1,61 @@
+import crypto from 'node:crypto';
 import { FetchResult, XItem } from '../../types.js';
 import { XClient } from './interface.js';
 
 export class XApiClient implements XClient {
-  constructor(private readonly bearerToken: string, private readonly userId?: string) {}
+  constructor(
+    private readonly bearerToken: string,
+    private readonly userId?: string,
+    private readonly oauth?: {
+      apiKey?: string;
+      apiKeySecret?: string;
+      accessToken?: string;
+      accessTokenSecret?: string;
+    }
+  ) {}
+
+  private percentEncode(input: string): string {
+    return encodeURIComponent(input).replace(/[!'()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
+  }
+
+  private buildOAuthHeader(method: string, url: string): string {
+    const apiKey = this.oauth?.apiKey;
+    const apiKeySecret = this.oauth?.apiKeySecret;
+    const accessToken = this.oauth?.accessToken;
+    const accessTokenSecret = this.oauth?.accessTokenSecret;
+    if (!apiKey || !apiKeySecret || !accessToken || !accessTokenSecret) {
+      throw new Error('Missing OAuth 1.0a credentials for X tweet posting.');
+    }
+
+    const oauthParams: Record<string, string> = {
+      oauth_consumer_key: apiKey,
+      oauth_nonce: crypto.randomBytes(16).toString('hex'),
+      oauth_signature_method: 'HMAC-SHA1',
+      oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+      oauth_token: accessToken,
+      oauth_version: '1.0'
+    };
+
+    const paramPairs = Object.entries(oauthParams)
+      .map(([k, v]) => [this.percentEncode(k), this.percentEncode(v)] as const)
+      .sort(([aKey, aVal], [bKey, bVal]) => (aKey === bKey ? aVal.localeCompare(bVal) : aKey.localeCompare(bKey)));
+    const normalized = paramPairs.map(([k, v]) => `${k}=${v}`).join('&');
+
+    const baseString = [
+      method.toUpperCase(),
+      this.percentEncode(url),
+      this.percentEncode(normalized)
+    ].join('&');
+    const signingKey = `${this.percentEncode(apiKeySecret)}&${this.percentEncode(accessTokenSecret)}`;
+    const signature = crypto.createHmac('sha1', signingKey).update(baseString).digest('base64');
+
+    const authHeaderParams = { ...oauthParams, oauth_signature: signature };
+    const header = Object.entries(authHeaderParams)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${this.percentEncode(k)}="${this.percentEncode(v)}"`)
+      .join(', ');
+    return `OAuth ${header}`;
+  }
 
   private async request<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, {
@@ -14,7 +67,9 @@ export class XApiClient implements XClient {
       }
     });
     if (!res.ok) {
-      throw new Error(`X API request failed: ${res.status} ${res.statusText}`);
+      const body = await res.text().catch(() => '');
+      const detail = body ? ` - ${body.slice(0, 400)}` : '';
+      throw new Error(`X API request failed: ${res.status} ${res.statusText}${detail}`);
     }
     return (await res.json()) as T;
   }
@@ -22,7 +77,15 @@ export class XApiClient implements XClient {
   async postTweet(text: string): Promise<{ tweetId: string; url: string }> {
     type Resp = { data?: { id: string } };
     const body = JSON.stringify({ text });
-    const json = await this.request<Resp>('https://api.x.com/2/tweets', { method: 'POST', body });
+    const url = 'https://api.x.com/2/tweets';
+    const auth = this.buildOAuthHeader('POST', url);
+    const json = await this.request<Resp>(url, {
+      method: 'POST',
+      body,
+      headers: {
+        Authorization: auth
+      }
+    });
     const tweetId = json.data?.id || String(Date.now());
     return { tweetId, url: `https://x.com/i/web/status/${tweetId}` };
   }

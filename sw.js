@@ -1,4 +1,4 @@
-const CACHE_NAME = 'poker-v0.9.49';
+const CACHE_NAME = 'poker-v0.1.1';
 const urlsToCache = [
   './',
   './index.html',

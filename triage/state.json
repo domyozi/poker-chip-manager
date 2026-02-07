@@ -1,13 +1,13 @@
 {
   "x": {
-    "lastReleaseTweetId": "dry-1770459368366",
-    "lastReleaseTweetUrl": "dry-run://x/dry-1770459368366"
+    "lastReleaseTweetId": "2020090837116539193",
+    "lastReleaseTweetUrl": "https://x.com/i/web/status/2020090837116539193"
   },
   "github": {
     "projectId": "mock-project-1"
   },
   "triage": {
-    "lastRunAt": "2026-02-07T10:16:01.519Z"
+    "lastRunAt": "2026-02-07T10:45:47.596Z"
   },
   "runHistory": [
     {
@@ -64,6 +64,80 @@
         "version": "v0.0.0",
         "tweetId": "dry-1770459368366",
         "url": "dry-run://x/dry-1770459368366"
+      }
+    },
+    {
+      "at": "2026-02-07T10:44:31.325Z",
+      "mode": "triage",
+      "dryRun": true,
+      "summary": {
+        "fetched": 0,
+        "clusters": 0,
+        "candidates": 0,
+        "selected": 0,
+        "created": 0
+      }
+    },
+    {
+      "at": "2026-02-07T10:44:31.326Z",
+      "mode": "release",
+      "dryRun": true,
+      "summary": {
+        "version": "v0.0.0",
+        "tweetId": "dry-1770461071326",
+        "url": "dry-run://x/dry-1770461071326"
+      }
+    },
+    {
+      "at": "2026-02-07T10:45:47.596Z",
+      "mode": "triage",
+      "dryRun": false,
+      "summary": {
+        "fetched": 0,
+        "clusters": 0,
+        "candidates": 0,
+        "selected": 0,
+        "created": 0
+      }
+    },
+    {
+      "at": "2026-02-07T10:46:10.350Z",
+      "mode": "release",
+      "dryRun": false,
+      "summary": {
+        "version": "v0.0.0",
+        "tweetId": "1770461170350",
+        "url": "https://x.com/mock/status/1770461170350?text=Pocket%20Pot%20v0.0.0%20%E3%83%AA%E3%83%AA"
+      }
+    },
+    {
+      "at": "2026-02-07T10:47:12.140Z",
+      "mode": "release",
+      "dryRun": false,
+      "summary": {
+        "version": "v0.0.1",
+        "tweetId": "1770461232140",
+        "url": "https://x.com/mock/status/1770461232140?text=Pocket%20Pot%20v0.0.1%20%E3%82%92%E3%83%AA"
+      }
+    },
+    {
+      "at": "2026-02-07T10:51:50.462Z",
+      "mode": "release",
+      "dryRun": true,
+      "summary": {
+        "version": "v0.0.3",
+        "tweetId": "dry-1770461510462",
+        "url": "dry-run://x/dry-1770461510462"
+      }
+    },
+    {
+      "at": "2026-02-07T11:02:41.852Z",
+      "mode": "release",
+      "dryRun": false,
+      "summary": {
+        "version": "v0.0.7",
+        "tweetId": "2020090837116539193",
+        "url": "https://x.com/i/web/status/2020090837116539193"
       }
     }
   ]

@@ -11,8 +11,11 @@ This folder contains an MCP-style automation workflow for:
 - `npm run mcp`
 - `npm run triage`
 - `npm run triage -- --apply`
-- `npm run release -- --version v0.0.0`
-- `npm run release -- --version v0.0.0 --apply`
+- `npm run release`
+- `npm run release -- --apply`
+- `npm run version:sync`
+- `npm run version:check`
+- `npm run release:auto`
 - `npm run reports`
 
 ## Safety defaults

@@ -4,10 +4,11 @@ import { createLogger } from '../util/logger.js';
 import { loadState, saveState } from '../tools/state-tools.js';
 import { summarizeRelease } from './summarize-release.js';
 import { createToolContext } from '../tools/context.js';
+import { readPackageVersion } from './version-source.js';
 
 function parseVersion(): string {
   const i = process.argv.indexOf('--version');
-  if (i < 0 || !process.argv[i + 1]) return 'v0.0.0';
+  if (i < 0 || !process.argv[i + 1]) return readPackageVersion();
   return process.argv[i + 1];
 }
 

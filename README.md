@@ -16,7 +16,13 @@ npm install
 ```bash
 cp .env.example .env
 ```
-3. Keep defaults for safe start (`DRY_RUN=true`, mock adapters)
+3. Fill required values in `.env` for X/GitHub API mode
+4. Keep defaults for safe start (use mock adapters first)
+
+Notes:
+- `.env` is auto-loaded by the app, no `source .env` is required.
+- `--apply` is required for side effects.
+- For X posting in API mode, both bearer token and OAuth 1.0a credentials are required.
 
 ## Commands
 - Start MCP server:
@@ -33,11 +39,23 @@ npm run triage -- --apply
 ```
 - Post release tweet preview:
 ```bash
-npm run release -- --version v0.0.0
+npm run release
 ```
 - Post release tweet apply:
 ```bash
-npm run release -- --version v0.0.0 --apply
+npm run release -- --apply
+```
+- Sync UI version from `package.json`:
+```bash
+npm run version:sync
+```
+- Check version consistency:
+```bash
+npm run version:check
+```
+- One-command release apply (sync + post):
+```bash
+npm run release:auto
 ```
 - Generate reports:
 ```bash
@@ -61,3 +79,8 @@ npm test
 - `triage/inbox.json`
 - `triage/inbox.md`
 - `triage/confirm.json`
+
+## Release Version Policy
+- Single source of truth is `package.json#version`.
+- UI version (`js/app.js` `APP_VERSION`) must match `v${package.json.version}`.
+- `npm run release` (without `--version`) now uses `package.json` version automatically.

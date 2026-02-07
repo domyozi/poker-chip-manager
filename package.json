@@ -7,6 +7,9 @@
     "mcp": "node --import tsx mcp/src/server.ts",
     "triage": "node --import tsx mcp/src/pipeline/run-triage.ts",
     "release": "node --import tsx mcp/src/release/run-release.ts",
+    "release:auto": "npm run version:sync && npm run release -- --apply",
+    "version:sync": "node --import tsx mcp/src/release/sync-version.ts",
+    "version:check": "node --import tsx mcp/src/release/check-version-consistency.ts",
     "reports": "node --import tsx mcp/src/pipeline/generate-reports.ts",
     "test": "vitest run"
   },
