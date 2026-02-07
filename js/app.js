@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.1.1";
+const APP_VERSION = "v0.1.2";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -2256,7 +2256,7 @@ function createPlayerSlot(player, idx, posLabel, isActivePlayer, isOfflineMode, 
 
 function getBetMarkerPosition(anchorKey) {
   switch (anchorKey) {
-    case 'top-center': return { x: 50, y: 18 };
+    case 'top-center': return { x: 50, y: 22 };
     case 'top-left': return { x: 34, y: 25 };
     case 'top-right': return { x: 66, y: 25 };
     case 'mid-left': return { x: 30, y: 34 };
