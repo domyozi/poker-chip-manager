@@ -12,6 +12,7 @@ Track incoming feature requests and UX changes separately from progress and requ
 - (none)
 
 ## Logged Specs (Implemented)
+- P1: 初期メニュー補助文の削除（1画面収まり）｜Acceptance: 「オフラインで遊ぶ」「オンラインで遊ぶ」配下の説明文が非表示になり、初期画面の縦スペースが縮小される
 - P1: Offline視点ローテーション（次アクターが常に手前）｜Acceptance: オフラインで各アクション後、次のアクターが手前に来て表示順が安定する
 - P1: 座席の正順（seatIndex）に基づく回転｜Acceptance: 配列順に依存せず、seatIndexに基づき表示と進行順が決定される
 - P1: テーブル画像を縦型（table-tate.png）に置換｜Acceptance: 中央テーブルが新画像で崩れず表示される
