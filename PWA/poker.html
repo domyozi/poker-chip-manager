@@ -2425,6 +2425,9 @@ let tournamentTimer = null;
 let tournamentTimeRemaining = 0;
 let currentBlindLevel = 1;
 const SOUND_STORAGE_KEY = 'pokerSoundEnabled';
+const OFFLINE_RESUME_KEY = 'pokerOfflineResume';
+const OFFLINE_RESUME_VERSION = 1;
+const OFFLINE_RESUME_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Online sync (Supabase Realtime)
 const SUPABASE_URL = "https://tpucsakhvzkincyvyscn.supabase.co";
@@ -2454,6 +2457,8 @@ let reconnectInfo = null;
 let reconnectContext = null;
 let joinChoiceConfirmed = false;
 let autoEnterOnStateSync = false;
+let offlineResumePending = null;
+let offlineResumeDismissed = false;
 
 const COMMUNITY_SUITS = ['♠','♣','♥','♦','♠'];
 const boundEvents = new WeakMap();
@@ -2524,6 +2529,103 @@ function clearReconnectInfo() {
   try {
     localStorage.removeItem(RECONNECT_STORAGE_KEY);
   } catch (e) {}
+}
+
+function shouldSaveOfflineSnapshot() {
+  return onlineState.role === 'local' && uiState === 'playing' && !!gameState;
+}
+
+function buildOfflineSnapshot() {
+  return {
+    version: OFFLINE_RESUME_VERSION,
+    updatedAt: Date.now(),
+    data: {
+      uiState,
+      gameState,
+      chipsBeforeHand,
+      handHistory,
+      lastPhase,
+      timerSettings
+    }
+  };
+}
+
+function saveOfflineSnapshot() {
+  if (!shouldSaveOfflineSnapshot()) return;
+  try {
+    const payload = buildOfflineSnapshot();
+    localStorage.setItem(OFFLINE_RESUME_KEY, JSON.stringify(payload));
+  } catch (e) {}
+}
+
+const scheduleOfflineSnapshotSave = debounce(() => {
+  saveOfflineSnapshot();
+}, 250);
+
+function clearOfflineSnapshot() {
+  try {
+    localStorage.removeItem(OFFLINE_RESUME_KEY);
+  } catch (e) {}
+}
+
+function loadOfflineSnapshot() {
+  try {
+    const raw = localStorage.getItem(OFFLINE_RESUME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== OFFLINE_RESUME_VERSION) return null;
+    if (!parsed.updatedAt || (Date.now() - parsed.updatedAt) > OFFLINE_RESUME_TTL_MS) return null;
+    if (!parsed.data || !parsed.data.gameState) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyOfflineSnapshot(snapshot) {
+  if (!snapshot || !snapshot.data) return false;
+  const data = snapshot.data;
+  gameState = data.gameState || null;
+  chipsBeforeHand = data.chipsBeforeHand || {};
+  handHistory = Array.isArray(data.handHistory) ? data.handHistory : [];
+  lastPhase = data.lastPhase || null;
+  timerSettings = data.timerSettings || timerSettings;
+  actionLock = false;
+  confirmLock = false;
+  nextHandLock = false;
+  foldConfirmShown = false;
+  onlineState.role = 'local';
+  onlineState.connected = false;
+  onlineState.roomCode = '';
+  updatePlayerBadge();
+  setUiState('playing');
+  render();
+  startActionTimer();
+  return true;
+}
+
+function showOfflineResumeModal(snapshot) {
+  showReconnectModal({
+    context: 'offline-resume',
+    title: '前回の途中から開始しますか？',
+    message: '前回のゲームが見つかりました。続きから再開できます。',
+    note: 'この端末のローカルデータを使用します。',
+    showWatch: true,
+    watchLabel: 'あとで',
+    playLabel: '続きから',
+    cancelLabel: '破棄',
+    hideChipsRow: true
+  });
+  offlineResumePending = snapshot;
+}
+
+function maybeShowOfflineResumePrompt() {
+  if (offlineResumeDismissed) return;
+  if (uiState !== 'room') return;
+  if (onlineState.role !== 'local') return;
+  const snapshot = loadOfflineSnapshot();
+  if (!snapshot) return;
+  showOfflineResumeModal(snapshot);
 }
 
 function setUiState(state) {
@@ -2894,6 +2996,7 @@ function showReconnectModal(options = {}) {
   const chipsInput = document.getElementById('reconnect-chips');
   const watchBtn = document.getElementById('reconnect-watch-btn');
   const playBtn = document.getElementById('reconnect-play-btn');
+  const cancelBtn = document.getElementById('reconnect-cancel-btn');
   const noteEl = document.getElementById('reconnect-note');
   const role = options.role || onlineState.role;
   const roomCode = options.roomCode || onlineState.roomCode || '';
@@ -2908,8 +3011,11 @@ function showReconnectModal(options = {}) {
   }
   const showWatch = role !== 'host' && options.showWatch !== false;
   if (watchBtn) watchBtn.style.display = showWatch ? 'inline-flex' : 'none';
-  if (playBtn) playBtn.textContent = role === 'host' ? '再接続する' : '参加する';
-  if (chipsRow) chipsRow.style.display = role === 'host' ? 'none' : 'flex';
+  if (watchBtn) watchBtn.textContent = options.watchLabel || '観戦する';
+  if (playBtn) playBtn.textContent = options.playLabel || (role === 'host' ? '再接続する' : '参加する');
+  const hideChips = options.hideChipsRow === true || role === 'host';
+  if (chipsRow) chipsRow.style.display = hideChips ? 'none' : 'flex';
+  if (cancelBtn) cancelBtn.textContent = options.cancelLabel || 'キャンセル';
   if (chipsInput) {
     const defaultChips = options.defaultChips || onlineState.requestedChips || 1000;
     chipsInput.value = String(defaultChips);
@@ -4019,6 +4125,9 @@ function render() {
   renderActionPanel();
   updateJoinStatusBanner();
   handlePhaseTransition();
+  if (shouldSaveOfflineSnapshot()) {
+    scheduleOfflineSnapshotSave();
+  }
 }
 
 // ─── SHOWDOWN ─────────────────────────────────
@@ -4354,6 +4463,7 @@ function resetToSetup() {
   stopTournamentTimer();
   stopActionTimer();
   gameState = null;
+  clearOfflineSnapshot();
   if (onlineState.role !== 'local') {
     leaveRoom({ clearReconnect: true });
   } else {
@@ -4444,6 +4554,9 @@ document.addEventListener('DOMContentLoaded', () => {
     bindOnce(legalAcceptBtn, 'click', () => acceptLegalConsent());
   }
   showLegalConsentIfNeeded();
+  window.addEventListener('beforeunload', () => {
+    saveOfflineSnapshot();
+  });
   if (lateJoinToggle && lateJoinMaxInput) {
     const syncLateJoinOptions = () => {
       lateJoinMaxInput.disabled = !lateJoinToggle.checked;
@@ -4466,6 +4579,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     updateSoundMenuLabel();
   }
+  maybeShowOfflineResumePrompt();
   if (awayToggle) {
     bindOnce(awayToggle, 'change', () => {
       if (onlineState.role !== 'player') return;
@@ -4658,6 +4772,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (reconnectWatchBtn) {
     bindOnce(reconnectWatchBtn, 'click', async () => {
+      if (reconnectContext === 'offline-resume') {
+        hideReconnectModal();
+        offlineResumeDismissed = true;
+        return;
+      }
       const chips = getRequestedChips();
       if (reconnectContext === 'startup') {
         const info = reconnectInfo || loadReconnectInfo();
@@ -4680,6 +4799,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (reconnectPlayBtn) {
     bindOnce(reconnectPlayBtn, 'click', async () => {
+      if (reconnectContext === 'offline-resume') {
+        const snapshot = offlineResumePending;
+        offlineResumePending = null;
+        hideReconnectModal();
+        applyOfflineSnapshot(snapshot);
+        return;
+      }
       const chips = getRequestedChips();
       if (reconnectContext === 'startup') {
         const info = reconnectInfo || loadReconnectInfo();
@@ -4704,6 +4830,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (reconnectCancelBtn) {
     bindOnce(reconnectCancelBtn, 'click', () => {
+      if (reconnectContext === 'offline-resume') {
+        clearOfflineSnapshot();
+        offlineResumePending = null;
+        hideReconnectModal();
+        return;
+      }
       hideReconnectModal();
     });
   }

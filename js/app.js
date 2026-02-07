@@ -7,14 +7,19 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.43";
+const APP_VERSION = "v0.9.44";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
 let actionCounter = 0;
+let offlineResumePending = null;
+let offlineResumeDismissed = false;
 
 const LEGAL_STORAGE_KEY = 'pocketpotLegalConsent';
 const LEGAL_VERSION = '2026-02-05';
+const OFFLINE_RESUME_KEY = 'pocketpotOfflineResume';
+const OFFLINE_RESUME_VERSION = 1;
+const OFFLINE_RESUME_TTL_MS = 24 * 60 * 60 * 1000;
 const LEGAL_CONTENT = {
   ja: {
     disclaimer: {
@@ -452,6 +457,127 @@ function debounce(fn, wait = 120) {
     if (t) clearTimeout(t);
     t = setTimeout(() => fn(...args), wait);
   };
+}
+
+function shouldSaveOfflineSnapshot() {
+  return appMode === 'offline' && onlineState.role === 'local' && uiState === 'playing' && !!gameState;
+}
+
+function buildOfflineSnapshot() {
+  return {
+    version: OFFLINE_RESUME_VERSION,
+    updatedAt: Date.now(),
+    data: {
+      uiState,
+      gameState,
+      chipsBeforeHand,
+      handHistory,
+      offlineDisplayFrontIdx,
+      offlineLastActorId,
+      lastPhase
+    }
+  };
+}
+
+function saveOfflineSnapshot() {
+  if (!shouldSaveOfflineSnapshot()) return;
+  try {
+    const payload = buildOfflineSnapshot();
+    localStorage.setItem(OFFLINE_RESUME_KEY, JSON.stringify(payload));
+  } catch (e) {}
+}
+
+const scheduleOfflineSnapshotSave = debounce(() => {
+  saveOfflineSnapshot();
+}, 250);
+
+function clearOfflineSnapshot() {
+  try {
+    localStorage.removeItem(OFFLINE_RESUME_KEY);
+  } catch (e) {}
+}
+
+function loadOfflineSnapshot() {
+  try {
+    const raw = localStorage.getItem(OFFLINE_RESUME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== OFFLINE_RESUME_VERSION) return null;
+    if (!parsed.updatedAt || (Date.now() - parsed.updatedAt) > OFFLINE_RESUME_TTL_MS) return null;
+    if (!parsed.data || !parsed.data.gameState) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyOfflineSnapshot(snapshot) {
+  if (!snapshot || !snapshot.data) return false;
+  const data = snapshot.data;
+  gameState = data.gameState || null;
+  chipsBeforeHand = data.chipsBeforeHand || {};
+  handHistory = Array.isArray(data.handHistory) ? data.handHistory : [];
+  offlineDisplayFrontIdx = Number.isFinite(data.offlineDisplayFrontIdx)
+    ? data.offlineDisplayFrontIdx
+    : (gameState?.currentPlayerIndex || 0);
+  offlineLastActorId = data.offlineLastActorId || null;
+  lastPhase = data.lastPhase || null;
+  lastPhaseFx = null;
+  actionLock = false;
+  lastActionId = null;
+  lastTurnKey = null;
+  localPendingActionKey = null;
+  pendingAllInAction = null;
+  foldConfirmShown = false;
+  appMode = 'offline';
+  onlineState.role = 'local';
+  onlineState.connected = false;
+  onlineState.roomCode = '';
+  if (!onlineState.displayName && gameState?.players?.length) {
+    onlineState.displayName = gameState.players[0]?.name || onlineState.displayName;
+  }
+  updatePlayerBadge();
+  setUiState('playing');
+  render();
+  startActionTimer();
+  return true;
+}
+
+function showOfflineResumeModal(snapshot) {
+  const overlay = document.getElementById('reconnect-overlay');
+  if (!overlay) return;
+  const titleEl = document.getElementById('reconnect-title');
+  const messageEl = document.getElementById('reconnect-message');
+  const chipsRow = document.getElementById('reconnect-chip-row');
+  const noteEl = document.getElementById('reconnect-note');
+  const watchBtn = document.getElementById('reconnect-watch-btn');
+  const playBtn = document.getElementById('reconnect-play-btn');
+  const cancelBtn = document.getElementById('reconnect-cancel-btn');
+
+  if (titleEl) titleEl.textContent = '前回の途中から開始しますか？';
+  if (messageEl) messageEl.textContent = '前回のゲームが見つかりました。続きから再開できます。';
+  if (noteEl) noteEl.textContent = 'この端末のローカルデータを使用します。';
+  if (chipsRow) chipsRow.style.display = 'none';
+  if (watchBtn) watchBtn.textContent = 'あとで';
+  if (playBtn) playBtn.textContent = '続きから';
+  if (cancelBtn) cancelBtn.textContent = '破棄';
+
+  offlineResumePending = snapshot;
+  overlay.classList.add('visible');
+}
+
+function hideOfflineResumeModal() {
+  const overlay = document.getElementById('reconnect-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function maybeShowOfflineResumePrompt() {
+  if (offlineResumeDismissed) return;
+  if (uiState !== 'room') return;
+  if (appMode !== 'offline' || onlineState.role !== 'local') return;
+  const snapshot = loadOfflineSnapshot();
+  if (!snapshot) return;
+  showOfflineResumeModal(snapshot);
 }
 
 function setupNumericInput(el) {
@@ -2799,6 +2925,9 @@ function render() {
   safeCall('renderPhase', renderPhase);
   safeCall('renderActionPanel', renderActionPanel);
   safeCall('handlePhaseTransition', handlePhaseTransition);
+  if (shouldSaveOfflineSnapshot()) {
+    scheduleOfflineSnapshotSave();
+  }
 }
 
 function runSmokeChecks() {
@@ -4378,6 +4507,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareNativeBtn = document.getElementById('share-native-btn');
     const shareXBtn = document.getElementById('share-x-btn');
     const shareLineBtn = document.getElementById('share-line-btn');
+    const reconnectWatchBtn = document.getElementById('reconnect-watch-btn');
+    const reconnectPlayBtn = document.getElementById('reconnect-play-btn');
+    const reconnectCancelBtn = document.getElementById('reconnect-cancel-btn');
 
     // デフォルトでランダム名を設定
     if (nameInput && !nameInput.value) {
@@ -4400,6 +4532,9 @@ document.addEventListener('DOMContentLoaded', () => {
       bindOnce(legalAcceptBtn, 'click', () => acceptLegalConsent());
     }
     showLegalConsentIfNeeded();
+    window.addEventListener('beforeunload', () => {
+      saveOfflineSnapshot();
+    });
     const shareTitle = 'Pocket Pot｜ポーカーチップ管理アプリ（無料・オフライン対応）';
     const shareText = 'ホームゲームに最適なオフライン対応のチップ管理アプリ';
     const shareUrl = 'https://pocket-pot.vercel.app/';
@@ -4658,6 +4793,31 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    if (reconnectWatchBtn) {
+      bindOnce(reconnectWatchBtn, 'click', () => {
+        if (!offlineResumePending) return;
+        hideOfflineResumeModal();
+        offlineResumeDismissed = true;
+      });
+    }
+    if (reconnectPlayBtn) {
+      bindOnce(reconnectPlayBtn, 'click', () => {
+        if (!offlineResumePending) return;
+        const snapshot = offlineResumePending;
+        offlineResumePending = null;
+        hideOfflineResumeModal();
+        applyOfflineSnapshot(snapshot);
+      });
+    }
+    if (reconnectCancelBtn) {
+      bindOnce(reconnectCancelBtn, 'click', () => {
+        if (!offlineResumePending) return;
+        clearOfflineSnapshot();
+        offlineResumePending = null;
+        hideOfflineResumeModal();
+      });
+    }
+
     ensureDebugBanner();
 
     if (debugEnabled) {
@@ -4675,6 +4835,7 @@ document.addEventListener('DOMContentLoaded', () => {
         debugLog(`touch @${t.clientX},${t.clientY} -> ${hit?.id || hit?.className || hit?.tagName}`);
       }, { passive: true });
     }
+    maybeShowOfflineResumePrompt();
   } catch (err) {
     showBootError(err);
   }
@@ -4687,6 +4848,7 @@ function resetToSetup() {
   stopActionTimer();
   stopTournamentTimer();
   gameState = null;
+  clearOfflineSnapshot();
   if (onlineState.role !== 'local') {
     leaveRoom();
   } else {
