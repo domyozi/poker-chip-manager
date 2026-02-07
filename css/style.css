@@ -2316,7 +2316,7 @@ summary.setup-label::-webkit-details-marker { display: none; }
 
 /* ─── Action Panel ───────────────────────────── */
 .action-panel {
-  --action-panel-height: 120px;
+  --action-panel-height: 140px;
   background: var(--felt-edge);
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
@@ -2516,14 +2516,14 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--gold);
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 10px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   font-family: 'Source Code Pro', monospace;
   white-space: nowrap;
   cursor: pointer;
   transition: transform 0.12s, background 0.2s, border-color 0.2s;
 }
-.action-panel.compact .raise-preset-btn { padding: 5px 8px; font-size: 9px; }
-.action-panel.compact-tight .raise-preset-btn { padding: 4px 6px; font-size: 8px; }
+.action-panel.compact .raise-preset-btn { padding: 5px 8px; font-size: 11px; }
+.action-panel.compact-tight .raise-preset-btn { padding: 4px 6px; font-size: 10px; }
 .raise-preset-btn.is-multi {
   background: rgba(76,184,255,0.1);
   border-color: rgba(76,184,255,0.35);
