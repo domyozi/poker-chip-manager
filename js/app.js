@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.47";
+const APP_VERSION = "v0.9.48";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -816,6 +816,160 @@ function getEndgameStats() {
   return { handCount, lastPot, winnerText };
 }
 
+function getEndgameRanking() {
+  if (!gameState || !Array.isArray(gameState.players)) return [];
+  return [...gameState.players]
+    .sort((a, b) => (b.chips - a.chips) || a.name.localeCompare(b.name, 'ja'))
+    .map((p, idx) => ({
+      rank: idx + 1,
+      name: p.name || '—',
+      chips: Number.isFinite(p.chips) ? p.chips : 0,
+      left: p.status === 'left'
+    }));
+}
+
+function renderEndgameRanking() {
+  const listEl = document.getElementById('endgame-ranking-list');
+  if (!listEl) return;
+  const ranking = getEndgameRanking();
+  if (ranking.length === 0) {
+    listEl.innerHTML = '<div class="endgame-ranking-row"><span class="endgame-ranking-name">ランキング情報がありません</span></div>';
+    return;
+  }
+  listEl.innerHTML = ranking.map((row) => {
+    const rankClass = row.rank === 1 ? 'gold' : row.rank === 2 ? 'silver' : row.rank === 3 ? 'bronze' : '';
+    const safeName = row.name
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    return `
+      <div class="endgame-ranking-row">
+        <span class="endgame-ranking-pos ${rankClass}">${row.rank}</span>
+        <span class="endgame-ranking-name ${row.left ? 'left' : ''}">${safeName}</span>
+        <span class="endgame-ranking-chips">${row.chips.toLocaleString()}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderEndgameShareImageCanvas() {
+  const stats = getEndgameStats();
+  const ranking = getEndgameRanking();
+  const width = 1080;
+  const rowHeight = 52;
+  const headerHeight = 260;
+  const footerHeight = 130;
+  const height = Math.max(760, headerHeight + footerHeight + (ranking.length * rowHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, height);
+  grad.addColorStop(0, '#113529');
+  grad.addColorStop(1, '#0a1d17');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = '#d4af37';
+  ctx.font = '700 56px "Playfair Display", serif';
+  ctx.fillText('Pocket Pot 結果', 70, 95);
+  ctx.fillStyle = '#f0ece0';
+  ctx.font = '500 34px "Source Code Pro", monospace';
+  ctx.fillText(`ハンド数 ${stats.handCount}`, 70, 152);
+  ctx.fillText(`最終ポット ${stats.lastPot.toLocaleString()}`, 70, 198);
+  ctx.fillText(stats.winnerText, 70, 244);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(60, 278, width - 120, 2);
+
+  let y = 336;
+  ranking.forEach((row) => {
+    const rankBg = row.rank === 1 ? '#d4af37' : row.rank === 2 ? '#c0c0c0' : row.rank === 3 ? '#cd7f32' : '#f1f1f1';
+    const rankFg = '#1a1408';
+    ctx.fillStyle = rankBg;
+    ctx.beginPath();
+    ctx.arc(88, y - 14, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rankFg;
+    ctx.font = '700 20px "Source Code Pro", monospace';
+    ctx.fillText(String(row.rank), 82, y - 8);
+
+    ctx.fillStyle = '#f0ece0';
+    ctx.font = '500 28px "Source Code Pro", monospace';
+    ctx.fillText(row.left ? `${row.name} (退席)` : row.name, 122, y - 3);
+
+    const chipsText = row.chips.toLocaleString();
+    ctx.fillStyle = '#c7d1cc';
+    ctx.font = '500 26px "Source Code Pro", monospace';
+    const textWidth = ctx.measureText(chipsText).width;
+    ctx.fillText(chipsText, width - 80 - textWidth, y - 3);
+    y += rowHeight;
+  });
+
+  ctx.fillStyle = '#91a29b';
+  ctx.font = '500 22px "Source Code Pro", monospace';
+  ctx.fillText('https://pocket-pot.vercel.app/', 70, height - 52);
+  return canvas;
+}
+
+function fallbackOpenShare(preferred, text) {
+  const url = 'https://pocket-pot.vercel.app/';
+  if (preferred === 'line') {
+    const href = `https://line.me/R/msg/text/?${encodeURIComponent(`${text} ${url}`)}`;
+    window.open(href, '_blank', 'noopener');
+    return;
+  }
+  const href = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  window.open(href, '_blank', 'noopener');
+}
+
+async function shareEndgameWithImage(preferred = 'x') {
+  const stats = getEndgameStats();
+  const text = buildEndgameShareText(stats);
+  const canvas = renderEndgameShareImageCanvas();
+  if (!canvas) {
+    fallbackOpenShare(preferred, text);
+    return;
+  }
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) {
+    fallbackOpenShare(preferred, text);
+    return;
+  }
+  const file = new File([blob], 'pocket-pot-result.png', { type: 'image/png' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        title: 'Pocket Pot リザルト',
+        text,
+        files: [file]
+      });
+      return;
+    } catch (e) {}
+  }
+  fallbackOpenShare(preferred, text);
+}
+
+async function saveEndgameRankingImage() {
+  const canvas = renderEndgameShareImageCanvas();
+  if (!canvas) return;
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return;
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = 'pocket-pot-result.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+  showToast('ランキング画像を保存しました');
+}
+
 function buildEndgameShareText(stats) {
   const handText = stats.handCount > 0 ? `${stats.handCount}ハンド` : '友達ポーカー';
   const potText = stats.lastPot > 0 ? ` / 最終ポット ${stats.lastPot.toLocaleString()}` : '';
@@ -829,6 +983,7 @@ function showEndgameOverlay() {
   const stats = getEndgameStats();
   const potLine = stats.lastPot > 0 ? `最終ポット: ${stats.lastPot.toLocaleString()}` : '最終ポット: —';
   summaryEl.textContent = `この結果、友達にシェアできます。ハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
+  renderEndgameRanking();
   overlay.classList.add('visible');
 }
 
@@ -4647,6 +4802,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuSaveExitBtn = document.getElementById('menu-save-exit-btn');
     const endgameShareXBtn = document.getElementById('endgame-share-x');
     const endgameShareLineBtn = document.getElementById('endgame-share-line');
+    const endgameShareImageBtn = document.getElementById('endgame-share-image');
     const endgameReplayBtn = document.getElementById('endgame-replay-btn');
     const endgameCloseBtn = document.getElementById('endgame-close-btn');
     const startNewOfflineSetup = async () => {
@@ -4855,21 +5011,18 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     if (endgameShareXBtn) {
-      endgameShareXBtn.addEventListener('click', () => {
-        const stats = getEndgameStats();
-        const text = buildEndgameShareText(stats);
-        const url = 'https://pocket-pot.vercel.app/';
-        const href = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-        window.open(href, '_blank', 'noopener');
+      endgameShareXBtn.addEventListener('click', async () => {
+        await shareEndgameWithImage('x');
       });
     }
     if (endgameShareLineBtn) {
-      endgameShareLineBtn.addEventListener('click', () => {
-        const stats = getEndgameStats();
-        const text = buildEndgameShareText(stats);
-        const url = 'https://pocket-pot.vercel.app/';
-        const href = `https://line.me/R/msg/text/?${encodeURIComponent(`${text} ${url}`)}`;
-        window.open(href, '_blank', 'noopener');
+      endgameShareLineBtn.addEventListener('click', async () => {
+        await shareEndgameWithImage('line');
+      });
+    }
+    if (endgameShareImageBtn) {
+      endgameShareImageBtn.addEventListener('click', async () => {
+        await saveEndgameRankingImage();
       });
     }
     if (endgameReplayBtn) {

@@ -3405,6 +3405,55 @@ summary.setup-label::-webkit-details-marker { display: none; }
 .endgame-share-line:hover {
   background: rgba(6,180,75,0.35);
 }
+.endgame-summary {
+  margin-bottom: 28px;
+}
+.endgame-ranking {
+  max-height: 180px;
+  overflow: auto;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+}
+.endgame-ranking-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-size: 12px;
+}
+.endgame-ranking-row:last-child {
+  border-bottom: none;
+}
+.endgame-ranking-pos {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.endgame-ranking-pos.gold { background: #d4af37; color: #1a1408; }
+.endgame-ranking-pos.silver { background: #c0c0c0; color: #1a1408; }
+.endgame-ranking-pos.bronze { background: #cd7f32; color: #1a1408; }
+.endgame-ranking-name {
+  color: var(--text-primary);
+}
+.endgame-ranking-name.left::after {
+  content: " (退席)";
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.endgame-ranking-chips {
+  color: var(--text-secondary);
+  font-family: 'Source Code Pro', monospace;
+}
 
 /* ─── Legal Overlay ─────────────────────────── */
 .legal-links {
