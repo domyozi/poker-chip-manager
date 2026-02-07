@@ -3341,6 +3341,10 @@ summary.setup-label::-webkit-details-marker { display: none; }
   margin-bottom: 20px;
   line-height: 1.5;
 }
+.confirm-dialog-message.compact {
+  font-size: 13px;
+  color: var(--text-primary);
+}
 .confirm-dialog-buttons {
   display: flex; gap: 10px;
 }
@@ -3373,6 +3377,33 @@ summary.setup-label::-webkit-details-marker { display: none; }
 }
 .confirm-dialog-btn.primary:hover {
   filter: brightness(1.05);
+}
+.endgame-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.endgame-share-icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.endgame-share-x {
+  background: rgba(20,20,20,0.78);
+  border-color: rgba(255,255,255,0.18);
+  color: #f5f5f5;
+}
+.endgame-share-x:hover {
+  background: rgba(35,35,35,0.92);
+}
+.endgame-share-line {
+  background: rgba(6,180,75,0.2);
+  border-color: rgba(6,180,75,0.4);
+  color: #f0fff5;
+}
+.endgame-share-line:hover {
+  background: rgba(6,180,75,0.35);
 }
 
 /* ─── Legal Overlay ─────────────────────────── */

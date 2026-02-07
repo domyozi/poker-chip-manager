@@ -68,7 +68,8 @@
     <div class="setup-label">オフラインで遊ぶ</div>
     <div class="setup-help">スマホ1台をみんなで回して進行</div>
     <div class="room-panel">
-      <button class="room-btn" id="room-local-btn" style="width:100%;">📱 1台で開始</button>
+      <button class="room-btn primary" id="resume-offline-btn" style="width:100%; display:none;">▶ 途中から再開</button>
+      <button class="room-btn" id="room-local-btn" style="width:100%;">📱 新しく開始</button>
     </div>
   </div>
 
@@ -611,7 +612,34 @@
   <button class="header-menu-item" id="menu-chip-adjust-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">チップ調整</button>
   <button class="header-menu-item" id="menu-player-manage-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">プレイヤー追加/退席</button>
   <button class="header-menu-item" id="menu-history-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">履歴を表示</button>
-  <button class="header-menu-item" id="menu-reset-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">ゲーム終了して戻る</button>
+  <button class="header-menu-item" id="menu-save-exit-btn" style="padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#f0ece0; cursor:pointer; display:none;">保存して終了</button>
+  <button class="header-menu-item" id="menu-reset-btn" style="padding:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#f0ece0; cursor:pointer;">結果をシェアして終了</button>
+</div>
+
+<!-- ─── ENDGAME OVERLAY ─────────────────────── -->
+<div class="confirm-dialog-overlay" id="endgame-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-dialog-title">結果をシェアして締めよう</div>
+    <div class="confirm-dialog-message compact" id="endgame-summary">—</div>
+    <div class="confirm-dialog-buttons" style="margin-bottom:10px;">
+      <button class="confirm-dialog-btn primary endgame-share-btn endgame-share-x" id="endgame-share-x" aria-label="Xで共有">
+        <svg class="endgame-share-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18.9 3H22l-7.2 8.2L23 21h-6.2l-4.9-5.9L6.8 21H3.6l7.7-8.7L1 3h6.4l4.4 5.2L18.9 3zm-1.1 16h1.7L7.1 5H5.2l12.6 14z"/>
+        </svg>
+        <span>Xで共有</span>
+      </button>
+      <button class="confirm-dialog-btn primary endgame-share-btn endgame-share-line" id="endgame-share-line" aria-label="LINEで共有">
+        <svg class="endgame-share-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3c-5 0-9 3.4-9 7.6 0 2.6 1.6 4.9 4.1 6.3l-.6 3.1 3.2-2.1c.8.2 1.6.3 2.4.3 5 0 9-3.4 9-7.6S17 3 12 3zM7.6 11.2h8.8v1.6H7.6v-1.6zM7.6 8.4h8.8V10H7.6V8.4z"/>
+        </svg>
+        <span>LINEで共有</span>
+      </button>
+    </div>
+    <div class="confirm-dialog-buttons">
+      <button class="confirm-dialog-btn cancel" id="endgame-replay-btn">やっぱり続ける</button>
+      <button class="confirm-dialog-btn danger" id="endgame-close-btn">ホームに戻る</button>
+    </div>
+  </div>
 </div>
 
 <!-- ─── CHIP ADJUST OVERLAY ─────────────────── -->

@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.9.45";
+const APP_VERSION = "v0.9.46";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -495,6 +495,7 @@ function clearOfflineSnapshot() {
   try {
     localStorage.removeItem(OFFLINE_RESUME_KEY);
   } catch (e) {}
+  updateRoomEntryCtas();
 }
 
 function loadOfflineSnapshot() {
@@ -509,6 +510,10 @@ function loadOfflineSnapshot() {
   } catch (e) {
     return null;
   }
+}
+
+function hasOfflineSnapshot() {
+  return !!loadOfflineSnapshot();
 }
 
 function applyOfflineSnapshot(snapshot) {
@@ -554,13 +559,13 @@ function showOfflineResumeModal(snapshot) {
   const playBtn = document.getElementById('reconnect-play-btn');
   const cancelBtn = document.getElementById('reconnect-cancel-btn');
 
-  if (titleEl) titleEl.textContent = '前回の途中から開始しますか？';
-  if (messageEl) messageEl.textContent = '前回のゲームが見つかりました。続きから再開できます。';
-  if (noteEl) noteEl.textContent = 'この端末のローカルデータを使用します。';
+  if (titleEl) titleEl.textContent = '前回の続きがあります';
+  if (messageEl) messageEl.textContent = '途中から再開しますか？新しく開始することもできます。';
+  if (noteEl) noteEl.textContent = 'この端末に保存されたローカルデータを使用します。';
   if (chipsRow) chipsRow.style.display = 'none';
-  if (watchBtn) watchBtn.textContent = 'あとで';
-  if (playBtn) playBtn.textContent = '続きから';
-  if (cancelBtn) cancelBtn.textContent = '破棄';
+  if (watchBtn) watchBtn.textContent = '新しく開始';
+  if (playBtn) playBtn.textContent = '続きから再開';
+  if (cancelBtn) cancelBtn.textContent = '保存データを削除';
 
   offlineResumePending = snapshot;
   overlay.classList.add('visible');
@@ -578,6 +583,13 @@ function maybeShowOfflineResumePrompt() {
   const snapshot = loadOfflineSnapshot();
   if (!snapshot) return;
   showOfflineResumeModal(snapshot);
+}
+
+function updateRoomEntryCtas() {
+  const resumeBtn = document.getElementById('resume-offline-btn');
+  if (!resumeBtn) return;
+  const show = uiState === 'room' && hasOfflineSnapshot();
+  resumeBtn.style.display = show ? 'inline-flex' : 'none';
 }
 
 function setupNumericInput(el) {
@@ -764,6 +776,8 @@ function setUiState(state) {
     updateSettingsPanels();
   }
   updateHeaderMenuVisibility();
+  updateSaveExitVisibility();
+  updateRoomEntryCtas();
   updatePlayerBadge();
   updateDebugBanner();
   updateConnectionIndicatorVisibility();
@@ -776,6 +790,66 @@ function updateHeaderMenuVisibility() {
   // local, hostは表示、playerのみ非表示
   const show = onlineState.role === 'local' || onlineState.role === 'host';
   menuBtn.style.display = show ? 'inline-flex' : 'none';
+  updateSaveExitVisibility();
+}
+
+function updateSaveExitVisibility() {
+  const btn = document.getElementById('menu-save-exit-btn');
+  if (!btn) return;
+  const show = appMode === 'offline' && onlineState.role === 'local' && uiState === 'playing';
+  btn.style.display = show ? 'inline-flex' : 'none';
+}
+
+function getEndgameStats() {
+  const hands = Array.isArray(handHistory) ? handHistory.filter(h => (h.type || 'hand') === 'hand') : [];
+  const handCount = hands.length;
+  const lastHand = handCount > 0 ? hands[hands.length - 1] : null;
+  const lastPot = lastHand?.pot
+    || (gameState?.pots || []).reduce((s, p) => s + (p.amount || 0), 0)
+    || 0;
+  const winnerNames = lastHand?.results
+    ? lastHand.results.filter(r => r.delta > 0).map(r => r.name)
+    : [];
+  const winnerText = winnerNames.length > 0
+    ? `勝者: ${winnerNames.slice(0, 2).join('・')}`
+    : '勝者: —';
+  return { handCount, lastPot, winnerText };
+}
+
+function buildEndgameShareText(stats) {
+  const handText = stats.handCount > 0 ? `${stats.handCount}ハンド` : '友達ポーカー';
+  const potText = stats.lastPot > 0 ? ` / 最終ポット ${stats.lastPot.toLocaleString()}` : '';
+  return `友達ポーカーで遊んだ！${handText}${potText}。Pocket Pot 便利だった。`;
+}
+
+function showEndgameOverlay() {
+  const overlay = document.getElementById('endgame-overlay');
+  const summaryEl = document.getElementById('endgame-summary');
+  if (!overlay || !summaryEl) return;
+  const stats = getEndgameStats();
+  const potLine = stats.lastPot > 0 ? `最終ポット: ${stats.lastPot.toLocaleString()}` : '最終ポット: —';
+  summaryEl.textContent = `この結果、友達にシェアできます。ハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
+  overlay.classList.add('visible');
+}
+
+function hideEndgameOverlay() {
+  const overlay = document.getElementById('endgame-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function saveAndExitGame() {
+  saveOfflineSnapshot();
+  offlineResumeDismissed = true;
+  gameState = null;
+  setUiState('room');
+  updateSaveExitVisibility();
+  updateRoomEntryCtas();
+  hideEndgameOverlay();
+}
+
+function exitGameToTitle() {
+  hideEndgameOverlay();
+  resetToSetup();
 }
 
 function updatePlayerBadge() {
@@ -2925,6 +2999,7 @@ function render() {
   safeCall('renderPhase', renderPhase);
   safeCall('renderActionPanel', renderActionPanel);
   safeCall('handlePhaseTransition', handlePhaseTransition);
+  updateSaveExitVisibility();
   if (shouldSaveOfflineSnapshot()) {
     scheduleOfflineSnapshotSave();
   }
@@ -3624,10 +3699,12 @@ function showHistory() {
   }
   document.getElementById('history-overlay').classList.add('visible');
   document.getElementById('header-menu').style.display = 'none';
+  updateSaveExitVisibility();
 }
 
 function hideHistory() {
   document.getElementById('history-overlay').classList.remove('visible');
+  updateSaveExitVisibility();
 }
 
 function showChipAdjust() {
@@ -3649,10 +3726,12 @@ function showChipAdjust() {
   `).join('');
   document.getElementById('chip-adjust-overlay').classList.add('visible');
   document.getElementById('header-menu').style.display = 'none';
+  updateSaveExitVisibility();
 }
 
 function hideChipAdjust() {
   document.getElementById('chip-adjust-overlay').classList.remove('visible');
+  updateSaveExitVisibility();
 }
 
 // next-hand-overlayから呼び出す版（isHandActiveチェックをスキップ）
@@ -3688,6 +3767,7 @@ function showPlayerManageFromNextHand() {
     addForm.style.display = activeCount < 8 ? 'flex' : 'none';
   }
   document.getElementById('player-manage-overlay').classList.add('visible');
+  updateSaveExitVisibility();
 }
 
 function saveChipAdjust() {
@@ -3778,10 +3858,12 @@ function showPlayerManage() {
   }
   document.getElementById('player-manage-overlay').classList.add('visible');
   document.getElementById('header-menu').style.display = 'none';
+  updateSaveExitVisibility();
 }
 
 function hidePlayerManage() {
   document.getElementById('player-manage-overlay').classList.remove('visible');
+  updateSaveExitVisibility();
 }
 
 function rebuildPlayerManageList() {
@@ -4493,6 +4575,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const hostBtn = document.getElementById('room-host-btn');
     const joinBtn = document.getElementById('room-join-btn');
+    const resumeOfflineBtn = document.getElementById('resume-offline-btn');
     const localBtn = document.getElementById('room-local-btn');
     const leaveBtn = document.getElementById('room-leave-btn');
     const waitingStartBtn = document.getElementById('waiting-start-btn');
@@ -4561,6 +4644,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuBtn = document.getElementById('menu-btn');
     const menu = document.getElementById('header-menu');
     const menuResetBtn = document.getElementById('menu-reset-btn');
+    const menuSaveExitBtn = document.getElementById('menu-save-exit-btn');
+    const endgameShareXBtn = document.getElementById('endgame-share-x');
+    const endgameShareLineBtn = document.getElementById('endgame-share-line');
+    const endgameReplayBtn = document.getElementById('endgame-replay-btn');
+    const endgameCloseBtn = document.getElementById('endgame-close-btn');
+    const startNewOfflineSetup = async () => {
+      const fallbackName = nameInput ? nameInput.value.trim() : '';
+      await resetOnlineStateForOffline(fallbackName);
+      onlineState.displayName = fallbackName || onlineState.displayName;
+      updatePlayerBadge();
+      offlineResumeDismissed = true;
+      setUiState('settings');
+      updateSettingsPanels();
+      updateRoomEntryCtas();
+    };
+    const openOfflineResumeChoice = async () => {
+      const fallbackName = nameInput ? nameInput.value.trim() : '';
+      await resetOnlineStateForOffline(fallbackName);
+      onlineState.displayName = fallbackName || onlineState.displayName;
+      updatePlayerBadge();
+      const snapshot = loadOfflineSnapshot();
+      if (!snapshot) {
+        offlineResumeDismissed = true;
+        setUiState('settings');
+        updateSettingsPanels();
+        updateRoomEntryCtas();
+        return;
+      }
+      showOfflineResumeModal(snapshot);
+    };
     if (hostBtn) {
       hostBtn.addEventListener('click', async () => {
         onlineState.displayName = nameInput ? nameInput.value.trim() : '';
@@ -4603,12 +4716,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (localBtn) {
       localBtn.addEventListener('click', async () => {
-        const fallbackName = nameInput ? nameInput.value.trim() : '';
-        await resetOnlineStateForOffline(fallbackName);
-        onlineState.displayName = fallbackName || onlineState.displayName;
-        updatePlayerBadge();
-        setUiState('settings');
-        updateSettingsPanels();
+        if (hasOfflineSnapshot()) {
+          await openOfflineResumeChoice();
+          return;
+        }
+        await startNewOfflineSetup();
+      });
+    }
+    if (resumeOfflineBtn) {
+      resumeOfflineBtn.addEventListener('click', async () => {
+        await openOfflineResumeChoice();
       });
     }
     if (leaveBtn) {
@@ -4728,7 +4845,41 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuResetBtn) {
       menuResetBtn.addEventListener('click', () => {
         if (menu) menu.style.display = 'none';
-        resetToSetup();
+        showEndgameOverlay();
+      });
+    }
+    if (menuSaveExitBtn) {
+      menuSaveExitBtn.addEventListener('click', () => {
+        if (menu) menu.style.display = 'none';
+        saveAndExitGame();
+      });
+    }
+    if (endgameShareXBtn) {
+      endgameShareXBtn.addEventListener('click', () => {
+        const stats = getEndgameStats();
+        const text = buildEndgameShareText(stats);
+        const url = 'https://pocket-pot.vercel.app/';
+        const href = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+        window.open(href, '_blank', 'noopener');
+      });
+    }
+    if (endgameShareLineBtn) {
+      endgameShareLineBtn.addEventListener('click', () => {
+        const stats = getEndgameStats();
+        const text = buildEndgameShareText(stats);
+        const url = 'https://pocket-pot.vercel.app/';
+        const href = `https://line.me/R/msg/text/?${encodeURIComponent(`${text} ${url}`)}`;
+        window.open(href, '_blank', 'noopener');
+      });
+    }
+    if (endgameReplayBtn) {
+      endgameReplayBtn.addEventListener('click', () => {
+        hideEndgameOverlay();
+      });
+    }
+    if (endgameCloseBtn) {
+      endgameCloseBtn.addEventListener('click', () => {
+        exitGameToTitle();
       });
     }
 
@@ -4794,10 +4945,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (reconnectWatchBtn) {
-      bindOnce(reconnectWatchBtn, 'click', () => {
+      bindOnce(reconnectWatchBtn, 'click', async () => {
         if (!offlineResumePending) return;
         hideOfflineResumeModal();
         offlineResumeDismissed = true;
+        offlineResumePending = null;
+        setUiState('settings');
+        updateSettingsPanels();
       });
     }
     if (reconnectPlayBtn) {
@@ -4806,6 +4960,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const snapshot = offlineResumePending;
         offlineResumePending = null;
         hideOfflineResumeModal();
+        offlineResumeDismissed = true;
         applyOfflineSnapshot(snapshot);
       });
     }
@@ -4815,6 +4970,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearOfflineSnapshot();
         offlineResumePending = null;
         hideOfflineResumeModal();
+        updateRoomEntryCtas();
       });
     }
 
@@ -4835,7 +4991,7 @@ document.addEventListener('DOMContentLoaded', () => {
         debugLog(`touch @${t.clientX},${t.clientY} -> ${hit?.id || hit?.className || hit?.tagName}`);
       }, { passive: true });
     }
-    maybeShowOfflineResumePrompt();
+    updateRoomEntryCtas();
   } catch (err) {
     showBootError(err);
   }
@@ -4845,6 +5001,7 @@ function resetToSetup() {
   document.getElementById('showdown-overlay').classList.remove('visible');
   document.getElementById('next-hand-overlay').classList.remove('visible');
   document.getElementById('fold-confirm-overlay').classList.remove('visible');
+  hideEndgameOverlay();
   stopActionTimer();
   stopTournamentTimer();
   gameState = null;
