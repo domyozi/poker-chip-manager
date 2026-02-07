@@ -1124,20 +1124,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
   color: var(--gold);
   min-width: 34px; text-align: center;
 }
-.raise-apply-btn {
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid rgba(212,175,55,0.45);
-  background: rgba(212,175,55,0.2);
-  color: var(--gold);
-  padding: 6px 4px;
-  font-size: 10px;
-  cursor: pointer;
-}
-.raise-apply-btn:hover {
-  background: rgba(212,175,55,0.28);
-}
-
 /* ─── Showdown / Winner Screen ───────────────── */
 .showdown-overlay {
   position: fixed; inset: 0;
@@ -2009,7 +1995,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
         <div class="raise-amount" id="raise-amount-display">0</div>
         <input type="range" id="raise-slider" min="0" max="100" value="30" oninput="onRaiseSlide()">
       </div>
-      <button class="raise-apply-btn" id="raise-apply-btn" type="button">この額でRAISE</button>
     </div>
   </div>
 </div>
@@ -4757,8 +4742,7 @@ function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
   const presetsRow = document.getElementById('raise-presets-row');
   if (area.classList.contains('visible')) {
-    area.classList.remove('visible');
-    if (presetsRow) presetsRow.classList.remove('visible');
+    applyRaiseAction();
   } else {
     updateRaisePresets();
     area.classList.add('visible');
@@ -5323,7 +5307,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const endgameEditShareBtn = document.getElementById('endgame-edit-share');
   const endgameReplayBtn = document.getElementById('endgame-replay-btn');
   const endgameCloseBtn = document.getElementById('endgame-close-btn');
-  const raiseApplyBtn = document.getElementById('raise-apply-btn');
   const roundGuideOkBtn = document.getElementById('round-guide-ok-btn');
   const shareTemplateSaveBtn = document.getElementById('share-template-save-btn');
   const shareTemplateCancelBtn = document.getElementById('share-template-cancel-btn');
@@ -5637,11 +5620,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveShareTemplate(value);
       hideShareTemplateOverlay();
       showToast('共有文を保存しました');
-    });
-  }
-  if (raiseApplyBtn) {
-    bindOnce(raiseApplyBtn, 'click', () => {
-      applyRaiseAction();
     });
   }
   if (roundGuideOkBtn) {

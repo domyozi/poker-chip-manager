@@ -7,7 +7,7 @@
 // SECTION: Global Variables
 // ═══════════════════════════════════════════════════════════════
 
-const APP_VERSION = "v0.1.5";
+const APP_VERSION = "v0.1.6";
 // Vertical lane layout: no longer using circular seat presets
 const ENABLE_SEAT_PRESETS = false;
 let displayMode = localStorage.getItem('pokerDisplayMode') || 'chips';
@@ -3201,7 +3201,7 @@ function setRaiseAreaOpen(isOpen) {
 function toggleRaiseArea() {
   const area = document.getElementById('raise-area');
   if (area.classList.contains('visible')) {
-    setRaiseAreaOpen(false);
+    applyRaiseAction();
   } else {
     updateRaisePresets();
     setRaiseAreaOpen(true);
@@ -5113,7 +5113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const endgameEditShareBtn = document.getElementById('endgame-edit-share');
     const endgameReplayBtn = document.getElementById('endgame-replay-btn');
     const endgameCloseBtn = document.getElementById('endgame-close-btn');
-    const raiseApplyBtn = document.getElementById('raise-apply-btn');
     const roundGuideOkBtn = document.getElementById('round-guide-ok-btn');
     const shareTemplateSaveBtn = document.getElementById('share-template-save-btn');
     const shareTemplateCancelBtn = document.getElementById('share-template-cancel-btn');
@@ -5380,11 +5379,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (endgameCloseBtn) {
       endgameCloseBtn.addEventListener('click', () => {
         exitGameToTitle();
-      });
-    }
-    if (raiseApplyBtn) {
-      raiseApplyBtn.addEventListener('click', () => {
-        applyRaiseAction();
       });
     }
     if (roundGuideOkBtn) {

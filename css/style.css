@@ -2587,19 +2587,6 @@ summary.setup-label::-webkit-details-marker { display: none; }
   min-width: 34px; text-align: center;
   display: inline-block;
 }
-.raise-apply-btn {
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid rgba(212,175,55,0.45);
-  background: rgba(212,175,55,0.2);
-  color: var(--gold);
-  padding: 6px 4px;
-  font-size: 10px;
-  cursor: pointer;
-}
-.raise-apply-btn:hover {
-  background: rgba(212,175,55,0.28);
-}
 .value-bump { animation: value-bump 0.28s ease-out; }
 @keyframes value-bump {
   0% { transform: scale(1); }
