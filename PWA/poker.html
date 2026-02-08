@@ -7,6 +7,15 @@
 <meta name="description" content="インストール不要で今すぐ使える。スマホがチップ代わりになる無料アプリ、オフラインでもOK。">
 <meta name="keywords" content="ポーカー,チップ,管理,アプリ,無料,ホームゲーム,テキサスホールデム">
 <link rel="canonical" href="https://pocket-pot.vercel.app/">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZH7W86ZQSP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('consent', 'default', { analytics_storage: 'denied' });
+  gtag('config', 'G-ZH7W86ZQSP', { anonymize_ip: true, send_page_view: false });
+</script>
 <meta name="google-site-verification" content="RZl1QAvsCeFFjMYhoLKlDbq8G_zzCPCInfgafPMBPb8">
 
 <!-- OGP -->
@@ -2231,7 +2240,8 @@ let actionCounter = 0;
 function newActionId() { return `act_${Date.now()}_${actionCounter++}`; }
 
 const LEGAL_STORAGE_KEY = 'pocketpotLegalConsent';
-const LEGAL_VERSION = '2026-02-05';
+const LEGAL_VERSION = '2026-02-08-ga4';
+const GA_MEASUREMENT_ID = 'G-ZH7W86ZQSP';
 const LEGAL_CONTENT = {
   ja: {
     disclaimer: {
@@ -2271,6 +2281,7 @@ const LEGAL_CONTENT = {
         <p>外部サービス</p>
         <ul>
           <li>Webフォント提供のため Google Fonts を利用します。読み込み時にIPアドレス等が送信される場合があります。</li>
+          <li>利用状況の解析のため Google Analytics（GA4）を利用します。同意後に匿名化された計測データ（閲覧ページ、操作イベント等）を送信します。</li>
         </ul>
         <p>利用目的</p>
         <ul>
@@ -2343,6 +2354,7 @@ const LEGAL_CONTENT = {
         <p>External services</p>
         <ul>
           <li>We use Google Fonts for web fonts. IP address and related data may be transmitted when loading fonts.</li>
+          <li>We use Google Analytics (GA4) for usage analytics. After consent, anonymized metrics such as page views and interaction events may be sent.</li>
         </ul>
         <p>Purpose of use</p>
         <ul>
@@ -2423,6 +2435,33 @@ function acceptLegalConsent() {
   const overlay = document.getElementById('legal-consent-overlay');
   localStorage.setItem(LEGAL_STORAGE_KEY, LEGAL_VERSION);
   if (overlay) overlay.classList.remove('visible');
+  enableAnalyticsIfConsented(true);
+}
+
+function isLegalConsentGranted() {
+  return localStorage.getItem(LEGAL_STORAGE_KEY) === LEGAL_VERSION;
+}
+
+function enableAnalyticsIfConsented(forceGrant = false) {
+  if (typeof window.gtag !== 'function') return false;
+  if (!forceGrant && !isLegalConsentGranted()) return false;
+  window.gtag('consent', 'update', { analytics_storage: 'granted' });
+  if (!window.__ppPageViewSent) {
+    window.gtag('event', 'page_view', {
+      send_to: GA_MEASUREMENT_ID,
+      page_title: document.title,
+      page_location: window.location.href,
+      page_path: window.location.pathname
+    });
+    window.__ppPageViewSent = true;
+  }
+  return true;
+}
+
+function trackEvent(eventName, params = {}) {
+  if (typeof window.gtag !== 'function') return;
+  if (!enableAnalyticsIfConsented()) return;
+  window.gtag('event', eventName, params);
 }
 
 function findNextActivePlayer(state, fromIndex) {
@@ -3543,6 +3582,11 @@ function fallbackOpenShare(preferred, text) {
 }
 
 async function shareEndgameWithImage(preferred = 'x') {
+  trackEvent('share_click', {
+    channel: preferred,
+    mode: onlineState.role === 'local' ? 'offline' : 'online',
+    round: currentRoundNumber || 0
+  });
   const stats = getEndgameStats();
   const text = buildEndgameShareText(stats);
   const canvas = renderEndgameShareImageCanvas();
@@ -3570,6 +3614,11 @@ async function shareEndgameWithImage(preferred = 'x') {
 }
 
 async function saveEndgameRankingImage() {
+  trackEvent('share_click', {
+    channel: 'image',
+    mode: onlineState.role === 'local' ? 'offline' : 'online',
+    round: currentRoundNumber || 0
+  });
   const canvas = renderEndgameShareImageCanvas();
   if (!canvas) return;
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
@@ -3601,6 +3650,11 @@ function showEndgameOverlay() {
   const summaryEl = document.getElementById('endgame-summary');
   if (!overlay || !summaryEl) return;
   const stats = getEndgameStats();
+  trackEvent('show_result', {
+    mode: onlineState.role === 'local' ? 'offline' : 'online',
+    round: currentRoundNumber || 0,
+    hand_count: stats.handCount || 0
+  });
   const potLine = stats.lastPot > 0 ? `最終ポット: ${stats.lastPot.toLocaleString()}` : '最終ポット: —';
   summaryEl.textContent = `この結果は任意でシェアできます。\nハンド数: ${stats.handCount} / ${potLine} / ${stats.winnerText}`;
   renderEndgameRanking();
@@ -4839,6 +4893,14 @@ function doAction(type, amount = 0) {
     return;
   }
   if (!gameState) return;
+  if (type === 'raise') {
+    trackEvent('action_raise', {
+      mode: onlineState.role === 'local' ? 'offline' : 'online',
+      phase: gameState.phase || 'unknown',
+      round: currentRoundNumber || 0,
+      player_count: gameState.players?.length || 0
+    });
+  }
   captureActionSnapshot();
   const prevState = gameState;
   const result = processAction(gameState, type, amount);
@@ -5228,6 +5290,12 @@ function startGame() {
   }
 
   startGameWithNames(names, settings);
+  trackEvent('start_game', {
+    mode: onlineState.role === 'local' ? 'offline' : 'online',
+    player_count: names.length,
+    small_blind: settings.smallBlind || 0,
+    big_blind: settings.bigBlind || 0
+  });
 
   if (onlineState.role === 'host' && roomChannel) {
     broadcastState();
@@ -5385,6 +5453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindOnce(legalAcceptBtn, 'click', () => acceptLegalConsent());
   }
   showLegalConsentIfNeeded();
+  enableAnalyticsIfConsented();
   window.addEventListener('beforeunload', () => {
     saveOfflineSnapshot();
   });
